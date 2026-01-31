@@ -1,3 +1,4 @@
+console.log('Starting server...');
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
@@ -7,8 +8,10 @@ import { tools, displayTools } from './tools.js';
 import { dcmTools } from './mcp/client.js';
 import { registry } from './data/registry.js';
 
+console.log('Imports loaded');
 const app = express();
 const PORT = process.env.PORT || 3000;
+console.log(`PORT: ${PORT}`);
 
 app.use(cors({
   origin: process.env.CORS_ORIGIN || '*',
@@ -365,8 +368,9 @@ app.post('/api/dcm/chat', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+const HOST = '0.0.0.0';
+app.listen(Number(PORT), HOST, () => {
+  console.log(`Server running on http://${HOST}:${PORT}`);
   console.log(`Data sources: ${registry.getNames().join(', ')}`);
   console.log(`DCM tools: ${Object.keys(dcmCombinedTools).join(', ')}`);
 });
