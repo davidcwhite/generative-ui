@@ -17,6 +17,7 @@ import {
 
 const STORAGE_KEY = 'dcm-chat-history';
 const MAX_STORED_MESSAGES = 50;
+const API_URL = import.meta.env.VITE_API_URL || '/api/dcm/chat';
 
 // Load messages from localStorage
 function loadStoredMessages(): Message[] {
@@ -48,7 +49,7 @@ export default function App() {
   const [initialMessages] = useState<Message[]>(() => loadStoredMessages());
   
   const { messages, input, handleInputChange, handleSubmit, addToolResult, isLoading, setMessages } = useChat({
-    api: '/api/dcm/chat', // DCM Bond Issuance endpoint
+    api: API_URL,
     maxSteps: 15,
     initialMessages,
   });
