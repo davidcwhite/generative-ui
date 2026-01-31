@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface Action {
   id: string;
   label: string;
@@ -14,93 +12,53 @@ interface ApprovalCardProps {
 }
 
 export function ApprovalCard({ summary, risk, actions, onAction, onCancel }: ApprovalCardProps) {
-  const riskColors = {
-    low: { bg: '#e8f5e9', border: '#a5d6a7', text: '#2e7d32', badge: '#4caf50' },
-    medium: { bg: '#fff3e0', border: '#ffcc80', text: '#e65100', badge: '#ff9800' },
-    high: { bg: '#ffebee', border: '#ef9a9a', text: '#c62828', badge: '#f44336' },
+  const riskStyles = {
+    low: {
+      badge: 'bg-emerald-500',
+      text: 'text-emerald-700',
+    },
+    medium: {
+      badge: 'bg-amber-500',
+      text: 'text-amber-700',
+    },
+    high: {
+      badge: 'bg-rose-500',
+      text: 'text-rose-700',
+    },
   };
 
-  const colors = riskColors[risk];
+  const styles = riskStyles[risk];
 
   return (
-    <div style={{ ...styles.container, background: colors.bg, borderColor: colors.border }}>
-      <div style={styles.header}>
-        <span style={styles.title}>Confirmation Required</span>
-        <span style={{ ...styles.badge, background: colors.badge }}>
+    <div className="mt-3 p-4 bg-stone-50 border border-stone-200 rounded-lg shadow-sm">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-sm font-semibold text-stone-700">
+          Confirmation Required
+        </span>
+        <span className={`px-2 py-1 text-[10px] font-bold text-white rounded ${styles.badge}`}>
           {risk.toUpperCase()} RISK
         </span>
       </div>
-      <p style={{ ...styles.summary, color: colors.text }}>{summary}</p>
-      <div style={styles.actions}>
+      <p className={`m-0 mb-4 text-sm leading-relaxed ${styles.text}`}>
+        {summary}
+      </p>
+      <div className="flex flex-wrap gap-2">
         {actions.map((action) => (
           <button
             key={action.id}
             onClick={() => onAction(action.id)}
-            style={styles.actionButton}
+            className="px-4 py-2.5 text-sm font-semibold bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
           >
             {action.label}
           </button>
         ))}
-        <button onClick={onCancel} style={styles.cancelButton}>
+        <button
+          onClick={onCancel}
+          className="px-4 py-2.5 text-sm font-semibold bg-white text-stone-600 border border-stone-300 rounded-md hover:bg-stone-50 hover:border-stone-400 focus:ring-2 focus:ring-offset-2 focus:ring-stone-400 transition-colors"
+        >
           Cancel
         </button>
       </div>
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    marginTop: '12px',
-    padding: '16px',
-    border: '1px solid',
-    borderRadius: '8px',
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: '12px',
-  },
-  title: {
-    fontSize: '14px',
-    fontWeight: 600,
-  },
-  badge: {
-    padding: '4px 8px',
-    fontSize: '10px',
-    fontWeight: 700,
-    color: '#fff',
-    borderRadius: '4px',
-  },
-  summary: {
-    margin: '0 0 16px 0',
-    fontSize: '14px',
-    lineHeight: 1.5,
-  },
-  actions: {
-    display: 'flex',
-    gap: '8px',
-    flexWrap: 'wrap',
-  },
-  actionButton: {
-    padding: '10px 20px',
-    fontSize: '13px',
-    fontWeight: 600,
-    background: '#1976d2',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
-  },
-  cancelButton: {
-    padding: '10px 20px',
-    fontSize: '13px',
-    fontWeight: 600,
-    background: '#fff',
-    color: '#666',
-    border: '1px solid #ddd',
-    borderRadius: '6px',
-    cursor: 'pointer',
-  },
-};

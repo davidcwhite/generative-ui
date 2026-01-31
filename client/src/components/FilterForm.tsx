@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 interface Field {
   key: string;
@@ -33,17 +33,21 @@ export function FilterForm({ title, fields, onSubmit }: FilterFormProps) {
   };
 
   return (
-    <div style={styles.container}>
-      <h3 style={styles.title}>{title}</h3>
-      <form onSubmit={handleSubmit} style={styles.form}>
+    <div className="mt-3 bg-white border border-stone-200 rounded-lg overflow-hidden shadow-sm">
+      <h3 className="m-0 px-4 py-3 text-sm font-semibold bg-stone-100 border-b border-stone-200 text-stone-700">
+        {title}
+      </h3>
+      <form onSubmit={handleSubmit} className="p-4 flex flex-col gap-3">
         {fields.map((field) => (
-          <div key={field.key} style={styles.field}>
-            <label style={styles.label}>{field.label}</label>
+          <div key={field.key} className="flex flex-col gap-1">
+            <label className="text-xs font-semibold text-stone-500">
+              {field.label}
+            </label>
             {field.type === 'select' ? (
               <select
                 value={values[field.key]}
                 onChange={(e) => handleChange(field.key, e.target.value)}
-                style={styles.select}
+                className="px-3 py-2.5 text-sm border border-stone-300 rounded-md outline-none bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
               >
                 <option value="">Select...</option>
                 {field.options?.map((opt) => (
@@ -57,77 +61,19 @@ export function FilterForm({ title, fields, onSubmit }: FilterFormProps) {
                 type={field.type}
                 value={values[field.key]}
                 onChange={(e) => handleChange(field.key, e.target.value)}
-                style={styles.input}
                 placeholder={`Enter ${field.label.toLowerCase()}...`}
+                className="px-3 py-2.5 text-sm border border-stone-300 rounded-md outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
               />
             )}
           </div>
         ))}
-        <button type="submit" style={styles.button}>
+        <button
+          type="submit"
+          className="mt-2 px-6 py-2.5 text-sm font-semibold bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+        >
           Submit
         </button>
       </form>
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    marginTop: '12px',
-    background: '#fff',
-    border: '1px solid #e0e0e0',
-    borderRadius: '8px',
-    overflow: 'hidden',
-  },
-  title: {
-    margin: 0,
-    padding: '12px 16px',
-    fontSize: '14px',
-    fontWeight: 600,
-    background: '#e3f2fd',
-    borderBottom: '1px solid #bbdefb',
-    color: '#1565c0',
-  },
-  form: {
-    padding: '16px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-  },
-  field: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-  },
-  label: {
-    fontSize: '12px',
-    fontWeight: 600,
-    color: '#666',
-  },
-  input: {
-    padding: '10px 12px',
-    fontSize: '14px',
-    border: '1px solid #ddd',
-    borderRadius: '6px',
-    outline: 'none',
-  },
-  select: {
-    padding: '10px 12px',
-    fontSize: '14px',
-    border: '1px solid #ddd',
-    borderRadius: '6px',
-    outline: 'none',
-    background: '#fff',
-  },
-  button: {
-    marginTop: '8px',
-    padding: '12px 24px',
-    fontSize: '14px',
-    fontWeight: 600,
-    background: '#1976d2',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
-  },
-};

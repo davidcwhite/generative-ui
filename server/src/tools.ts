@@ -178,3 +178,78 @@ Specify aggregation as "dataSource:aggregationType" (e.g., "employees:byDepartme
 
 // Export the tools (built at import time)
 export const tools = buildTools();
+
+// ============================================================
+// Standalone Display Tools (no data source dependency)
+// These can be used by any endpoint for custom data display
+// ============================================================
+
+export const displayTools = {
+  // Display custom data in a table format
+  show_table: {
+    description: 'Display data in a table format. Use this when the user asks to see data as a table. Pass the data as a JSON array string.',
+    parameters: z.object({
+      title: z.string().describe('The title of the table'),
+      columns: z.array(z.string()).describe('Column headers'),
+      rowsJson: z.string().describe('Table data rows as JSON array string, e.g. [{"col1":"val1","col2":"val2"}]'),
+    }),
+    execute: async (args: { title: string; columns: string[]; rowsJson: string }) => {
+      const rows = JSON.parse(args.rowsJson);
+      return { title: args.title, columns: args.columns, rows };
+    },
+  },
+
+  // Display a chart from arbitrary data
+  show_chart: {
+    description: 'Display data as a chart (bar, line, pie, or area). Use this when the user asks to visualize data. Pass the data as a JSON array string.',
+    parameters: z.object({
+      title: z.string().describe('Chart title'),
+      type: z.enum(['bar', 'line', 'pie', 'area']).describe('Chart type'),
+      dataJson: z.string().describe('Chart data as JSON array string, e.g. [{"label":"A","value":10},{"label":"B","value":20}]'),
+      xKey: z.string().describe('Key for x-axis values in the data objects'),
+      yKey: z.string().describe('Key for y-axis values in the data objects'),
+      yLabel: z.string().optional().describe('Label for y-axis'),
+    }),
+    execute: async (args: { title: string; type: string; dataJson: string; xKey: string; yKey: string; yLabel?: string }) => {
+      const data = JSON.parse(args.dataJson);
+      return {
+        title: args.title,
+        type: args.type,
+        data,
+        xKey: args.xKey,
+        yKey: args.yKey,
+        yLabel: args.yLabel || args.yKey,
+      };
+    },
+  },
+
+  // Client-side tool: collect user input via a form
+  collect_filters: {
+    description: 'Display a form to collect input from the user. Use for multi-field input or selections.',
+    parameters: z.object({
+      title: z.string().describe('The title of the form'),
+      fields: z.array(z.object({
+        key: z.string().describe('Unique identifier for this field'),
+        label: z.string().describe('Display label for the field'),
+        type: z.enum(['text', 'select', 'date']).describe('The input type'),
+        options: z.array(z.string()).describe('Options for select type (use empty array [] if not select)'),
+        defaultValue: z.string().describe('Default value (use empty string "" if none)'),
+      })).describe('The form fields to display'),
+    }),
+    // No execute - client-side tool
+  },
+
+  // Client-side tool: ask for user confirmation or choice
+  confirm_action: {
+    description: 'Present action buttons to the user. Use for confirmations, choices, or next-step options.',
+    parameters: z.object({
+      summary: z.string().describe('Description or question to present'),
+      risk: z.enum(['low', 'medium', 'high']).describe('Risk level (use "low" for simple choices)'),
+      actions: z.array(z.object({
+        id: z.string().describe('Unique action identifier'),
+        label: z.string().describe('Button label'),
+      })).describe('Available action buttons'),
+    }),
+    // No execute - client-side tool
+  },
+};
