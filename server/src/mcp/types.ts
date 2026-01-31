@@ -55,6 +55,15 @@ export interface DealSummary {
   avgOversubscription: number;
 }
 
+export interface MarketSummary {
+  totalDeals: number;
+  totalVolume: number;
+  avgSpread: number;
+  avgNip: number;
+  bySector: { sector: string; count: number; volume: number }[];
+  byCurrency: { currency: string; count: number; volume: number }[];
+}
+
 export interface PeerComparison {
   issuer: {
     deals: Deal[];

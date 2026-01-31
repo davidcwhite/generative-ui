@@ -6,3 +6,4 @@ export { ComparableDealsPanel } from './ComparableDealsPanel';
 export { AllocationBreakdown } from './AllocationBreakdown';
 export { SecondaryPerformanceView } from './SecondaryPerformanceView';
 export { ExportPanel } from './ExportPanel';
+export { MarketIssuance } from './MarketIssuance';

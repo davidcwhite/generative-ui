@@ -1,6 +1,6 @@
 // Mock deal data for DCM Bond Issuance
 
-import type { Deal, DealSummary } from '../types.js';
+import type { Deal, DealSummary, MarketSummary } from '../types.js';
 import { getIssuerById } from './issuers.js';
 
 const leadBanks = [
@@ -454,4 +454,103 @@ export function getPeerDeals(issuerId: string, sector?: string): Deal[] {
       return dealIssuer && dealIssuer.sector === targetSector && d.issuerId !== issuerId;
     })
     .sort((a, b) => new Date(b.pricingDate).getTime() - new Date(a.pricingDate).getTime());
+}
+
+// Get all deals with optional filtering
+export function getAllDeals(options?: {
+  limit?: number;
+  sector?: string;
+  currency?: string;
+  sortBy?: 'date' | 'size' | 'spread';
+}): Deal[] {
+  let result = [...deals];
+  
+  // Apply sector filter
+  if (options?.sector) {
+    result = result.filter(d => {
+      const issuer = getIssuerById(d.issuerId);
+      return issuer && issuer.sector.toLowerCase() === options.sector!.toLowerCase();
+    });
+  }
+  
+  // Apply currency filter
+  if (options?.currency) {
+    result = result.filter(d => d.currency.toLowerCase() === options.currency!.toLowerCase());
+  }
+  
+  // Sort
+  const sortBy = options?.sortBy || 'date';
+  result.sort((a, b) => {
+    switch (sortBy) {
+      case 'size':
+        return b.size - a.size;
+      case 'spread':
+        return b.spread - a.spread;
+      case 'date':
+      default:
+        return new Date(b.pricingDate).getTime() - new Date(a.pricingDate).getTime();
+    }
+  });
+  
+  // Apply limit
+  if (options?.limit) {
+    result = result.slice(0, options.limit);
+  }
+  
+  return result;
+}
+
+// Calculate market-wide summary statistics
+export function getMarketSummary(dealList: Deal[]): MarketSummary {
+  if (dealList.length === 0) {
+    return {
+      totalDeals: 0,
+      totalVolume: 0,
+      avgSpread: 0,
+      avgNip: 0,
+      bySector: [],
+      byCurrency: [],
+    };
+  }
+
+  const totalVolume = dealList.reduce((sum, d) => sum + d.size, 0);
+  const avgSpread = dealList.reduce((sum, d) => sum + d.spread, 0) / dealList.length;
+  const avgNip = dealList.reduce((sum, d) => sum + d.nip, 0) / dealList.length;
+
+  // Group by sector
+  const sectorMap = new Map<string, { count: number; volume: number }>();
+  for (const deal of dealList) {
+    const issuer = getIssuerById(deal.issuerId);
+    const sector = issuer?.sector || 'Unknown';
+    const existing = sectorMap.get(sector) || { count: 0, volume: 0 };
+    sectorMap.set(sector, {
+      count: existing.count + 1,
+      volume: existing.volume + deal.size,
+    });
+  }
+  const bySector = Array.from(sectorMap.entries())
+    .map(([sector, data]) => ({ sector, ...data }))
+    .sort((a, b) => b.volume - a.volume);
+
+  // Group by currency
+  const currencyMap = new Map<string, { count: number; volume: number }>();
+  for (const deal of dealList) {
+    const existing = currencyMap.get(deal.currency) || { count: 0, volume: 0 };
+    currencyMap.set(deal.currency, {
+      count: existing.count + 1,
+      volume: existing.volume + deal.size,
+    });
+  }
+  const byCurrency = Array.from(currencyMap.entries())
+    .map(([currency, data]) => ({ currency, ...data }))
+    .sort((a, b) => b.volume - a.volume);
+
+  return {
+    totalDeals: dealList.length,
+    totalVolume,
+    avgSpread: Math.round(avgSpread),
+    avgNip: Math.round(avgNip * 10) / 10,
+    bySector,
+    byCurrency,
+  };
 }

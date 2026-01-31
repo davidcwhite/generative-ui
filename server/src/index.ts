@@ -30,6 +30,11 @@ ALWAYS call resolve_entity first when the user mentions a company name.
 
 ### Step 2: Based on user intent, gather relevant data
 
+**For Market Overview** ("all issuance", "all deals", "market supply", "recent deals", "show me bond issuance"):
+→ Call get_market_deals - does NOT require an issuer name first
+→ Do NOT ask for an issuer if the user wants market-wide data
+→ This returns a MarketIssuance component with summary and table
+
 **For Mandate/Pitching requests** ("pitching X", "mandate for X", "meeting with X"):
 1. Call get_issuer_deals to show issuance history
 2. Call get_peer_comparison for sector context
@@ -49,13 +54,14 @@ ALWAYS call resolve_entity first when the user mentions a company name.
 ## Available Tools
 
 ### DCM Data Tools
-1. **resolve_entity**: Resolve company names to canonical IDs. ALWAYS CALL THIS FIRST.
-2. **get_issuer_deals**: Get bond issuance history for an issuer
-3. **get_peer_comparison**: Compare issuer vs sector peers
-4. **get_allocations**: Get investor allocation breakdown for a deal
-5. **get_performance**: Get secondary market performance for a bond
-6. **get_participation_history**: Get investor participation across issuer deals
-7. **generate_mandate_brief**: Generate exportable mandate brief with provenance
+1. **resolve_entity**: Resolve company names to canonical IDs. Call this when user mentions a specific company.
+2. **get_market_deals**: Get recent deals across ALL issuers. Use for market overview queries - does NOT require an issuer.
+3. **get_issuer_deals**: Get bond issuance history for a specific issuer
+4. **get_peer_comparison**: Compare issuer vs sector peers
+5. **get_allocations**: Get investor allocation breakdown for a deal
+6. **get_performance**: Get secondary market performance for a bond
+7. **get_participation_history**: Get investor participation across issuer deals
+8. **generate_mandate_brief**: Generate exportable mandate brief with provenance
 
 ### Display Tools (for custom views)
 8. **show_table**: Display data in a custom table format. Use when user asks for "a table" or "table view".
@@ -66,6 +72,7 @@ ALWAYS call resolve_entity first when the user mentions a company name.
 
 The UI will render rich components based on tool results:
 - Entity resolution with ambiguous matches → EntityPicker
+- Market deals (all issuers) → MarketIssuance
 - Issuer deals → IssuerTimeline
 - Peer comparison → ComparableDealsPanel
 - Allocations → AllocationBreakdown

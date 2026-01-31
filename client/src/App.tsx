@@ -12,6 +12,7 @@ import {
   AllocationBreakdown,
   SecondaryPerformanceView,
   ExportPanel,
+  MarketIssuance,
 } from './components/dcm';
 
 const STORAGE_KEY = 'dcm-chat-history';
@@ -343,6 +344,35 @@ export default function App() {
                             </div>
                           );
                         }
+                      }
+                    }
+
+                    // Tool: get_market_deals
+                    if (toolInvocation.toolName === 'get_market_deals') {
+                      if (toolInvocation.state === 'call') {
+                        return (
+                          <div key={callId} className="italic text-stone-500 py-2">
+                            Loading market issuance data...
+                          </div>
+                        );
+                      }
+                      if (toolInvocation.state === 'result') {
+                        const result = toolInvocation.result;
+                        if (result.error) {
+                          return (
+                            <div key={callId} className="mt-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                              {result.error}
+                            </div>
+                          );
+                        }
+                        return (
+                          <MarketIssuance
+                            key={callId}
+                            deals={result.deals || []}
+                            summary={result.summary || { totalDeals: 0, totalVolume: 0, avgSpread: 0, avgNip: 0, bySector: [], byCurrency: [] }}
+                            filters={result.filters || { sector: 'All', currency: 'All', showing: 0 }}
+                          />
+                        );
                       }
                     }
 
