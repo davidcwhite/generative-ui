@@ -4,6 +4,7 @@ import cors from 'cors';
 import { streamText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { tools } from './tools.js';
+import { dcmTools } from './mcp/client.js';
 import { registry } from './data/registry.js';
 
 const app = express();
@@ -12,7 +13,83 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Build dynamic system prompt based on registered data sources
+// DCM Bond Issuance System Prompt
+function buildDCMSystemPrompt(): string {
+  return `You are a DCM (Debt Capital Markets) AI assistant for bond issuance and syndicate operations.
+You help DCM originators, syndicate bankers, and credit sales professionals with mandate pitching, deal execution, and post-deal analysis.
+
+## Your Workflow
+
+When a user mentions a company or issuer, ALWAYS follow this workflow:
+
+### Step 1: Entity Resolution (REQUIRED FIRST)
+ALWAYS call resolve_entity first when the user mentions a company name.
+- If confidence is "exact": proceed to step 2
+- If confidence is "ambiguous": the UI will show a picker - wait for selection
+- If no matches: inform the user
+
+### Step 2: Based on user intent, gather relevant data
+
+**For Mandate/Pitching requests** ("pitching X", "mandate for X", "meeting with X"):
+1. Call get_issuer_deals to show issuance history
+2. Call get_peer_comparison for sector context
+3. Call get_allocations on the most recent deal
+4. Offer to generate_mandate_brief for export
+
+**For Deal Analysis** ("analyze deal", "show order book"):
+1. Call get_allocations for investor breakdown
+2. Call get_performance for secondary market performance
+
+**For Investor Analysis** ("investor participation", "who bought"):
+1. Call get_participation_history
+
+**For Export** ("create brief", "export", "prepare document"):
+1. Call generate_mandate_brief
+
+## Available Tools
+
+1. **resolve_entity**: Resolve company names to canonical IDs. ALWAYS CALL THIS FIRST.
+2. **get_issuer_deals**: Get bond issuance history for an issuer
+3. **get_peer_comparison**: Compare issuer vs sector peers
+4. **get_allocations**: Get investor allocation breakdown for a deal
+5. **get_performance**: Get secondary market performance for a bond
+6. **get_participation_history**: Get investor participation across issuer deals
+7. **generate_mandate_brief**: Generate exportable mandate brief with provenance
+
+## UI Component Guidelines
+
+The UI will render rich components based on tool results:
+- Entity resolution with ambiguous matches → EntityPicker
+- Issuer deals → IssuerTimeline
+- Peer comparison → ComparableDealsPanel
+- Allocations → AllocationBreakdown
+- Secondary performance → SecondaryPerformanceView
+- Mandate brief → ExportPanel
+
+Your text should COMPLEMENT these components, not repeat them:
+- Provide brief insights (1-2 sentences)
+- Highlight key findings
+- Suggest next steps
+
+## Example Workflow
+
+User: "We're pitching BMW for a mandate"
+
+1. Call resolve_entity({ query: "BMW", type: "issuer" })
+2. If exact match, call get_issuer_deals({ issuerId: "bmw-ag" })
+3. Call get_peer_comparison({ issuerId: "bmw-ag" })
+4. Call get_allocations({ dealId: "most-recent-deal-id" })
+5. Offer: "Would you like me to generate a mandate brief for export?"
+
+## Important Rules
+
+- NEVER make up data - always use tools
+- ALWAYS resolve entities before querying
+- Keep responses concise - the UI shows the details
+- Offer logical next steps based on context`;
+}
+
+// Build dynamic system prompt based on registered data sources (original)
 function buildSystemPrompt(): string {
   const sources = registry.getAll();
   
@@ -164,53 +241,81 @@ BEFORE finishing ANY response, you MUST review your output:
 → Then invoke confirm_action: "Show More", "Filter by Counterparty", "Show Chart", "Other..."`;
 }
 
+// Combined tools: original + DCM
+const allTools = {
+  ...tools,
+  ...dcmTools,
+};
+
+// Helper to stream response
+async function streamResponse(res: express.Response, result: { toDataStreamResponse: (opts?: { getErrorMessage?: (error: unknown) => string }) => Response }) {
+  const response = result.toDataStreamResponse({
+    getErrorMessage: (error) => {
+      if (error instanceof Error) {
+        console.error('Tool error:', error);
+        return error.message;
+      }
+      return String(error);
+    },
+  });
+  
+  response.headers.forEach((value, key) => {
+    res.setHeader(key, value);
+  });
+  
+  if (response.body) {
+    const reader = response.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      res.write(value);
+    }
+    res.end();
+  }
+}
+
+// Original chat endpoint (data assistant)
 app.post('/api/chat', async (req, res) => {
   try {
     const { messages } = req.body;
 
     const result = streamText({
-      model: openai('gpt-5.1'),
+      model: openai('gpt-4o'),
       system: buildSystemPrompt(),
       messages,
       tools,
       maxSteps: 5,
     });
 
-    const response = result.toDataStreamResponse({
-      getErrorMessage: (error) => {
-        if (error instanceof Error) {
-          console.error('Tool error:', error);
-          return error.message;
-        }
-        return String(error);
-      },
-    });
-    
-    // Forward headers
-    response.headers.forEach((value, key) => {
-      res.setHeader(key, value);
-    });
-    
-    // Stream the response
-    if (response.body) {
-      const reader = response.body.getReader();
-      const stream = async () => {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          res.write(value);
-        }
-        res.end();
-      };
-      stream().catch(console.error);
-    }
+    await streamResponse(res, result);
   } catch (error) {
     console.error('Chat error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
+// DCM Bond Issuance chat endpoint
+app.post('/api/dcm/chat', async (req, res) => {
+  try {
+    const { messages } = req.body;
+
+    const result = streamText({
+      model: openai('gpt-4o'),
+      system: buildDCMSystemPrompt(),
+      messages,
+      tools: dcmTools,
+      maxSteps: 10, // More steps for complex DCM workflows
+    });
+
+    await streamResponse(res, result);
+  } catch (error) {
+    console.error('DCM Chat error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`Registered data sources: ${registry.getNames().join(', ')}`);
+  console.log(`Data sources: ${registry.getNames().join(', ')}`);
+  console.log(`DCM tools: ${Object.keys(dcmTools).join(', ')}`);
 });

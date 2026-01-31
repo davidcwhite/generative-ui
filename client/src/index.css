@@ -1,20 +1,28 @@
+@import "tailwindcss";
+
 /* Global styles */
 * {
   box-sizing: border-box;
 }
 
-body {
+html, body, #root {
+  height: 100%;
   margin: 0;
+}
+
+body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
     Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #fafaf9; /* stone-50 */
 }
 
-/* Markdown content styling */
+/* Markdown content styling - stone palette */
 .markdown-content {
   font-size: 14px;
   line-height: 1.6;
+  color: #57534e; /* stone-600 */
 }
 
 .markdown-content p {
@@ -31,6 +39,7 @@ body {
 .markdown-content h4 {
   margin: 0.5em 0 0.25em 0;
   font-weight: 600;
+  color: #292524; /* stone-800 */
 }
 
 .markdown-content h1 {
@@ -56,19 +65,21 @@ body {
 }
 
 .markdown-content code {
-  background: rgba(0, 0, 0, 0.06);
+  background: #e7e5e4; /* stone-200 */
   padding: 0.15em 0.4em;
   border-radius: 4px;
   font-family: 'SF Mono', Monaco, 'Courier New', monospace;
   font-size: 0.9em;
+  color: #44403c; /* stone-700 */
 }
 
 .markdown-content pre {
-  background: #f5f5f5;
+  background: #f5f5f4; /* stone-100 */
   padding: 12px;
   border-radius: 6px;
   overflow-x: auto;
   margin: 0.5em 0;
+  border: 1px solid #e7e5e4; /* stone-200 */
 }
 
 .markdown-content pre code {
@@ -79,16 +90,17 @@ body {
 .markdown-content blockquote {
   margin: 0.5em 0;
   padding-left: 1em;
-  border-left: 3px solid #ddd;
-  color: #666;
+  border-left: 3px solid #d6d3d1; /* stone-300 */
+  color: #78716c; /* stone-500 */
 }
 
 .markdown-content strong {
   font-weight: 600;
+  color: #292524; /* stone-800 */
 }
 
 .markdown-content a {
-  color: #1976d2;
+  color: #2563eb; /* blue-600 */
   text-decoration: none;
 }
 
@@ -104,30 +116,55 @@ body {
 
 .markdown-content th,
 .markdown-content td {
-  border: 1px solid #ddd;
+  border: 1px solid #e7e5e4; /* stone-200 */
   padding: 8px;
   text-align: left;
 }
 
 .markdown-content th {
-  background: #f5f5f5;
+  background: #f5f5f4; /* stone-100 */
   font-weight: 600;
+  color: #44403c; /* stone-700 */
 }
 
 /* User message markdown (light text on dark bg) */
+.markdown-content-user {
+  color: #e7e5e4; /* stone-200 */
+}
+
+.markdown-content-user h1,
+.markdown-content-user h2,
+.markdown-content-user h3,
+.markdown-content-user h4,
+.markdown-content-user strong {
+  color: #fafaf9; /* stone-50 */
+}
+
 .markdown-content-user code {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
+  color: #fafaf9; /* stone-50 */
 }
 
 .markdown-content-user pre {
   background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .markdown-content-user a {
-  color: #90caf9;
+  color: #93c5fd; /* blue-300 */
 }
 
 .markdown-content-user blockquote {
-  border-left-color: rgba(255, 255, 255, 0.5);
-  color: rgba(255, 255, 255, 0.8);
+  border-left-color: rgba(255, 255, 255, 0.4);
+  color: #d6d3d1; /* stone-300 */
+}
+
+.markdown-content-user th,
+.markdown-content-user td {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.markdown-content-user th {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fafaf9;
 }

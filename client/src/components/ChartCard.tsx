@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   BarChart,
   Bar,
@@ -27,27 +26,40 @@ interface ChartCardProps {
   color?: string;
 }
 
-// Color palette for pie charts
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF6B6B'];
+// Color palette for charts - keeping vibrant colors for data visualization
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#ec4899'];
 
-export function ChartCard({ title, type, data, xKey, yKey, yLabel, color = '#8884d8' }: ChartCardProps) {
+export function ChartCard({ title, type, data, xKey, yKey, yLabel, color = '#3b82f6' }: ChartCardProps) {
   const renderChart = () => {
+    const gridColor = '#e7e5e4'; // stone-200
+    const textColor = '#78716c'; // stone-500
+
     switch (type) {
       case 'bar':
         return (
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
-              <CartesianGrid strokeDasharray="3 3" />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
               <XAxis 
                 dataKey={xKey} 
                 angle={-45} 
                 textAnchor="end" 
                 height={80}
                 interval={0}
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 11, fill: textColor }}
               />
-              <YAxis label={yLabel ? { value: yLabel, angle: -90, position: 'insideLeft' } : undefined} />
-              <Tooltip />
+              <YAxis 
+                label={yLabel ? { value: yLabel, angle: -90, position: 'insideLeft', fill: textColor } : undefined}
+                tick={{ fill: textColor }}
+              />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: '#fff', 
+                  border: '1px solid #e7e5e4',
+                  borderRadius: '6px',
+                  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
+                }}
+              />
               <Legend />
               <Bar dataKey={yKey} fill={color} name={yLabel || yKey} isAnimationActive={false} />
             </BarChart>
@@ -58,16 +70,26 @@ export function ChartCard({ title, type, data, xKey, yKey, yLabel, color = '#888
         return (
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
-              <CartesianGrid strokeDasharray="3 3" />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
               <XAxis 
                 dataKey={xKey} 
                 angle={-45} 
                 textAnchor="end" 
                 height={80}
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 11, fill: textColor }}
               />
-              <YAxis label={yLabel ? { value: yLabel, angle: -90, position: 'insideLeft' } : undefined} />
-              <Tooltip />
+              <YAxis 
+                label={yLabel ? { value: yLabel, angle: -90, position: 'insideLeft', fill: textColor } : undefined}
+                tick={{ fill: textColor }}
+              />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: '#fff', 
+                  border: '1px solid #e7e5e4',
+                  borderRadius: '6px',
+                  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
+                }}
+              />
               <Legend />
               <Line type="monotone" dataKey={yKey} stroke={color} name={yLabel || yKey} strokeWidth={2} isAnimationActive={false} />
             </LineChart>
@@ -78,16 +100,26 @@ export function ChartCard({ title, type, data, xKey, yKey, yLabel, color = '#888
         return (
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
-              <CartesianGrid strokeDasharray="3 3" />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
               <XAxis 
                 dataKey={xKey} 
                 angle={-45} 
                 textAnchor="end" 
                 height={80}
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 11, fill: textColor }}
               />
-              <YAxis label={yLabel ? { value: yLabel, angle: -90, position: 'insideLeft' } : undefined} />
-              <Tooltip />
+              <YAxis 
+                label={yLabel ? { value: yLabel, angle: -90, position: 'insideLeft', fill: textColor } : undefined}
+                tick={{ fill: textColor }}
+              />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: '#fff', 
+                  border: '1px solid #e7e5e4',
+                  borderRadius: '6px',
+                  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
+                }}
+              />
               <Legend />
               <Area type="monotone" dataKey={yKey} fill={color} stroke={color} name={yLabel || yKey} fillOpacity={0.6} isAnimationActive={false} />
             </AreaChart>
@@ -103,7 +135,7 @@ export function ChartCard({ title, type, data, xKey, yKey, yLabel, color = '#888
                 cx="50%"
                 cy="50%"
                 labelLine={true}
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                label={({ name, percent }) => `${name}: ${((percent ?? 0) * 100).toFixed(0)}%`}
                 outerRadius={100}
                 dataKey={yKey}
                 nameKey={xKey}
@@ -113,45 +145,32 @@ export function ChartCard({ title, type, data, xKey, yKey, yLabel, color = '#888
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: '#fff', 
+                  border: '1px solid #e7e5e4',
+                  borderRadius: '6px',
+                  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
+                }}
+              />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
         );
 
       default:
-        return <div>Unsupported chart type: {type}</div>;
+        return <div className="text-stone-500">Unsupported chart type: {type}</div>;
     }
   };
 
   return (
-    <div style={styles.container}>
-      <h3 style={styles.title}>{title}</h3>
-      <div style={styles.chartWrapper}>
+    <div className="mt-3 bg-white border border-stone-200 rounded-lg overflow-hidden shadow-sm">
+      <h3 className="m-0 px-4 py-3 text-sm font-semibold bg-stone-100 border-b border-stone-200 text-stone-700">
+        {title}
+      </h3>
+      <div className="p-4">
         {renderChart()}
       </div>
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    marginTop: '12px',
-    background: '#fff',
-    border: '1px solid #e0e0e0',
-    borderRadius: '8px',
-    overflow: 'hidden',
-  },
-  title: {
-    margin: 0,
-    padding: '12px 16px',
-    fontSize: '14px',
-    fontWeight: 600,
-    background: '#f0f7ff',
-    borderBottom: '1px solid #d0e3ff',
-    color: '#1565c0',
-  },
-  chartWrapper: {
-    padding: '16px',
-  },
-};
