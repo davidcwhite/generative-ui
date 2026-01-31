@@ -18,6 +18,22 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Password verification endpoint
+app.post('/api/auth/verify', (req, res) => {
+  const { password } = req.body;
+  const correctPassword = process.env.APP_PASSWORD;
+  
+  if (!correctPassword) {
+    return res.json({ success: true }); // No password set = open access
+  }
+  
+  if (password === correctPassword) {
+    return res.json({ success: true });
+  }
+  
+  return res.status(401).json({ success: false, error: 'Invalid password' });
+});
+
 // DCM Bond Issuance System Prompt
 function buildDCMSystemPrompt(): string {
   return `You are a DCM (Debt Capital Markets) AI assistant for bond issuance and syndicate operations.

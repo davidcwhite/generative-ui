@@ -17,7 +17,9 @@ import {
 
 const STORAGE_KEY = 'dcm-chat-history';
 const MAX_STORED_MESSAGES = 50;
+const AUTH_KEY = 'dcm-authenticated';
 const API_URL = import.meta.env.VITE_API_URL || '/api/dcm/chat';
+const API_BASE = API_URL.replace('/api/dcm/chat', '');
 
 // Load messages from localStorage
 function loadStoredMessages(): Message[] {
@@ -47,6 +49,12 @@ function saveMessages(messages: Message[]) {
 
 export default function App() {
   const [initialMessages] = useState<Message[]>(() => loadStoredMessages());
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem(AUTH_KEY) === 'true';
+  });
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [isCheckingAuth, setIsCheckingAuth] = useState(false);
   
   const { messages, input, handleInputChange, handleSubmit, addToolResult, isLoading, setMessages } = useChat({
     api: API_URL,
@@ -64,6 +72,40 @@ export default function App() {
     localStorage.removeItem(STORAGE_KEY);
     setMessages([]);
   }, [setMessages]);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCheckingAuth(true);
+    setAuthError('');
+    
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        localStorage.setItem(AUTH_KEY, 'true');
+        setIsAuthenticated(true);
+      } else {
+        setAuthError('Invalid password');
+      }
+    } catch (error) {
+      setAuthError('Failed to verify password');
+      console.error('Auth error:', error);
+    } finally {
+      setIsCheckingAuth(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem(AUTH_KEY);
+    setIsAuthenticated(false);
+    setPassword('');
+  };
 
   // Helper to format query_data results as table
   const formatQueryResult = (result: {
@@ -101,20 +143,63 @@ export default function App() {
     );
   };
 
+  // Password screen
+  if (!isAuthenticated) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen w-full bg-stone-50">
+        <div className="w-full max-w-sm px-6">
+          <h1 className="text-2xl font-semibold text-stone-800 text-center mb-2">DCM</h1>
+          <p className="text-stone-500 text-center mb-8">Enter password to continue</p>
+          
+          <form onSubmit={handleLogin} className="space-y-4">
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+              className="w-full px-4 py-3 text-sm bg-white border border-stone-200 rounded-xl outline-none focus:border-stone-400 focus:ring-1 focus:ring-stone-400"
+              autoFocus
+            />
+            
+            {authError && (
+              <p className="text-red-500 text-sm text-center">{authError}</p>
+            )}
+            
+            <button
+              type="submit"
+              disabled={isCheckingAuth || !password.trim()}
+              className="w-full px-4 py-3 text-sm font-medium bg-stone-800 text-white rounded-xl hover:bg-stone-700 transition-colors disabled:bg-stone-300 disabled:cursor-not-allowed"
+            >
+              {isCheckingAuth ? 'Checking...' : 'Continue'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-screen w-full bg-stone-50">
       {/* Header - Minimal */}
       <header className="px-4 py-3 bg-white border-b border-stone-100">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
           <h1 className="text-lg font-semibold text-stone-800">DCM</h1>
-          {messages.length > 0 && (
+          <div className="flex items-center gap-2">
+            {messages.length > 0 && (
+              <button
+                onClick={handleClearHistory}
+                className="px-3 py-1.5 text-xs font-medium text-stone-500 hover:text-stone-700 hover:bg-stone-100 rounded-md transition-colors"
+              >
+                Clear
+              </button>
+            )}
             <button
-              onClick={handleClearHistory}
+              onClick={handleLogout}
               className="px-3 py-1.5 text-xs font-medium text-stone-500 hover:text-stone-700 hover:bg-stone-100 rounded-md transition-colors"
             >
-              Clear
+              Logout
             </button>
-          )}
+          </div>
         </div>
       </header>
 

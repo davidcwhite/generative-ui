@@ -5,6 +5,7 @@ services:
       - "3000:3000"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - APP_PASSWORD=${APP_PASSWORD}
       - CORS_ORIGIN=http://localhost:5173
     
   client:
