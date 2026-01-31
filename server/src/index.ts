@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import { streamText } from 'ai';
 import { openai } from '@ai-sdk/openai';
-import { tools } from './tools.js';
+import { tools, displayTools } from './tools.js';
 import { dcmTools } from './mcp/client.js';
 import { registry } from './data/registry.js';
 
@@ -48,6 +48,7 @@ ALWAYS call resolve_entity first when the user mentions a company name.
 
 ## Available Tools
 
+### DCM Data Tools
 1. **resolve_entity**: Resolve company names to canonical IDs. ALWAYS CALL THIS FIRST.
 2. **get_issuer_deals**: Get bond issuance history for an issuer
 3. **get_peer_comparison**: Compare issuer vs sector peers
@@ -55,6 +56,11 @@ ALWAYS call resolve_entity first when the user mentions a company name.
 5. **get_performance**: Get secondary market performance for a bond
 6. **get_participation_history**: Get investor participation across issuer deals
 7. **generate_mandate_brief**: Generate exportable mandate brief with provenance
+
+### Display Tools (for custom views)
+8. **show_table**: Display data in a custom table format. Use when user asks for "a table" or "table view".
+9. **show_chart**: Display data as a chart (bar, line, pie, area). Use when user asks for "a chart" or visualization.
+10. **confirm_action**: Present action buttons for user choices or confirmations.
 
 ## UI Component Guidelines
 
@@ -81,12 +87,40 @@ User: "We're pitching BMW for a mandate"
 4. Call get_allocations({ dealId: "most-recent-deal-id" })
 5. Offer: "Would you like me to generate a mandate brief for export?"
 
+## Follow-up View Requests (CRITICAL)
+
+When the user asks to see data in a different format, you MUST call the appropriate display tool:
+
+**"Show me in a table" / "table view" / "as a table":**
+→ Call show_table with the data from your previous tool result
+→ Format: show_table({ title: "...", columns: [...], rowsJson: "[...]" })
+
+**"Show me a chart" / "line chart" / "bar chart" / "visualize":**
+→ Call show_chart with aggregated data
+→ Format: show_chart({ title: "...", type: "line", dataJson: "[...]", xKey: "...", yKey: "..." })
+
+**IMPORTANT: When the user asks for a different view, CALL THE TOOL. Do NOT just describe what you would show.**
+
+### Example - Multi-turn conversation:
+
+Turn 1 - User: "Show me Volkswagen's deals"
+→ You call get_issuer_deals, UI renders IssuerTimeline
+
+Turn 2 - User: "Show me this in a table"  
+→ You call show_table with the deal data formatted as rows
+→ WRONG: Saying "The UI will display a table..." without calling the tool
+
+Turn 3 - User: "Can I see a line chart of spreads over time?"
+→ You call show_chart with spread data
+→ WRONG: Describing what a chart would show
+
 ## Important Rules
 
 - NEVER make up data - always use tools
 - ALWAYS resolve entities before querying
 - Keep responses concise - the UI shows the details
-- Offer logical next steps based on context`;
+- Offer logical next steps based on context
+- When user asks for a view change, CALL THE DISPLAY TOOL`;
 }
 
 // Build dynamic system prompt based on registered data sources (original)
@@ -247,6 +281,14 @@ const allTools = {
   ...dcmTools,
 };
 
+// DCM tools + display tools for the DCM endpoint
+const dcmCombinedTools = {
+  ...dcmTools,
+  show_table: displayTools.show_table,
+  show_chart: displayTools.show_chart,
+  confirm_action: displayTools.confirm_action,
+};
+
 // Helper to stream response
 async function streamResponse(res: express.Response, result: { toDataStreamResponse: (opts?: { getErrorMessage?: (error: unknown) => string }) => Response }) {
   const response = result.toDataStreamResponse({
@@ -303,7 +345,7 @@ app.post('/api/dcm/chat', async (req, res) => {
       model: openai('gpt-4o'),
       system: buildDCMSystemPrompt(),
       messages,
-      tools: dcmTools,
+      tools: dcmCombinedTools,
       maxSteps: 10, // More steps for complex DCM workflows
     });
 
@@ -317,5 +359,5 @@ app.post('/api/dcm/chat', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`Data sources: ${registry.getNames().join(', ')}`);
-  console.log(`DCM tools: ${Object.keys(dcmTools).join(', ')}`);
+  console.log(`DCM tools: ${Object.keys(dcmCombinedTools).join(', ')}`);
 });

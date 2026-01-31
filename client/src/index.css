@@ -127,9 +127,9 @@ body {
   color: #44403c; /* stone-700 */
 }
 
-/* User message markdown (light text on dark bg) */
+/* User message markdown (dark text on light bg) */
 .markdown-content-user {
-  color: #e7e5e4; /* stone-200 */
+  color: #44403c; /* stone-700 */
 }
 
 .markdown-content-user h1,
@@ -137,34 +137,35 @@ body {
 .markdown-content-user h3,
 .markdown-content-user h4,
 .markdown-content-user strong {
-  color: #fafaf9; /* stone-50 */
+  color: #1c1917; /* stone-900 */
 }
 
 .markdown-content-user code {
-  background: rgba(255, 255, 255, 0.15);
-  color: #fafaf9; /* stone-50 */
+  background: rgba(0, 0, 0, 0.08);
+  color: #292524; /* stone-800 */
 }
 
 .markdown-content-user pre {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.08);
 }
 
 .markdown-content-user a {
-  color: #93c5fd; /* blue-300 */
+  color: #57534e; /* stone-600 */
+  text-decoration: underline;
 }
 
 .markdown-content-user blockquote {
-  border-left-color: rgba(255, 255, 255, 0.4);
-  color: #d6d3d1; /* stone-300 */
+  border-left-color: #a8a29e; /* stone-400 */
+  color: #57534e; /* stone-600 */
 }
 
 .markdown-content-user th,
 .markdown-content-user td {
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(0, 0, 0, 0.1);
 }
 
 .markdown-content-user th {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fafaf9;
+  background: rgba(0, 0, 0, 0.04);
+  color: #292524; /* stone-800 */
 }

@@ -100,72 +100,60 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-full bg-white">
-      {/* Header */}
-      <header className="px-6 py-4 bg-gradient-to-r from-blue-900 to-indigo-900 text-white border-b border-blue-800">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-xl font-semibold">DCM Bond Issuance</h1>
-            <p className="text-sm text-blue-200 mt-0.5">AI-powered mandate pitching and deal analysis</p>
-          </div>
+    <div className="flex flex-col h-screen w-full bg-stone-50">
+      {/* Header - Minimal */}
+      <header className="px-4 py-3 bg-white border-b border-stone-100">
+        <div className="max-w-4xl mx-auto flex justify-between items-center">
+          <h1 className="text-lg font-semibold text-stone-800">DCM</h1>
           {messages.length > 0 && (
             <button
               onClick={handleClearHistory}
-              className="px-4 py-2 text-xs font-medium bg-blue-800/50 text-blue-100 border border-blue-700 rounded-md hover:bg-blue-700 hover:text-white transition-colors"
+              className="px-3 py-1.5 text-xs font-medium text-stone-500 hover:text-stone-700 hover:bg-stone-100 rounded-md transition-colors"
             >
-              Clear History
+              Clear
             </button>
           )}
         </div>
       </header>
 
       {/* Messages */}
-      <main className="flex-1 overflow-auto p-4 bg-stone-50">
-        <div className="flex flex-col gap-4">
+      <main className="flex-1 overflow-auto">
+        <div className="max-w-4xl mx-auto px-4 py-6 flex flex-col gap-5">
           {messages.length === 0 && (
-            <div className="bg-white p-6 rounded-xl border border-stone-200 shadow-sm">
-              <h2 className="text-lg font-semibold text-stone-800 mb-3">DCM Bond Issuance Assistant</h2>
-              <p className="text-stone-600 mb-4">I can help with mandate pitching, deal analysis, and investor insights.</p>
-              <h3 className="text-sm font-semibold text-stone-700 mb-2">Try asking:</h3>
-              <ul className="space-y-2 text-stone-600">
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                  "We're pitching BMW for a mandate"
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                  "Show me Volkswagen's issuance history"
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                  "Compare Mercedes-Benz to auto sector peers"
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                  "Who were the top investors in Porsche's last deal?"
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                  "Generate a mandate brief for Siemens"
-                </li>
-              </ul>
+            <div className="text-center py-12">
+              <h2 className="text-2xl font-semibold text-stone-800 mb-2">DCM Bond Issuance</h2>
+              <p className="text-stone-500 mb-8">AI-powered mandate pitching and deal analysis</p>
+              <div className="inline-flex flex-col gap-2 text-left">
+                {[
+                  "We're pitching BMW for a mandate",
+                  "Show me Volkswagen's issuance history",
+                  "Compare Mercedes-Benz to auto sector peers",
+                  "Generate a mandate brief for Siemens",
+                ].map((suggestion, i) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      const event = { target: { value: suggestion } } as React.ChangeEvent<HTMLInputElement>;
+                      handleInputChange(event);
+                    }}
+                    className="px-4 py-2.5 text-sm text-stone-600 bg-white border border-stone-200 rounded-lg hover:border-stone-300 hover:bg-stone-50 transition-colors text-left"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           
           {messages.map((message) => (
             <div
               key={message.id}
-              className={`px-4 py-3 rounded-xl max-w-[90%] ${
+              className={`rounded-2xl ${
                 message.role === 'user'
-                  ? 'self-end bg-stone-800 text-stone-100'
-                  : 'self-start bg-white text-stone-700 border border-stone-200 shadow-sm'
+                  ? 'self-end bg-stone-100 text-stone-800 px-4 py-2.5 max-w-[80%]'
+                  : 'self-start text-stone-700 w-full'
               }`}
             >
-              <div className={`text-xs font-semibold mb-1 ${
-                message.role === 'user' ? 'text-stone-400' : 'text-stone-500'
-              }`}>
-                {message.role === 'user' ? 'You' : 'Assistant'}
-              </div>
               <div className="text-sm leading-relaxed">
                 {message.parts.map((part, index) => {
                   // Text content - render as markdown
@@ -341,9 +329,9 @@ export default function App() {
                         if (result.matches?.length === 1) {
                           const issuer = result.matches[0];
                           return (
-                            <div key={callId} className="mt-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm">
-                              <span className="text-blue-700 font-medium">{issuer.shortName}</span>
-                              <span className="text-blue-500 ml-2">({issuer.sector}, {issuer.country})</span>
+                            <div key={callId} className="mt-2 px-3 py-2 bg-stone-100 rounded-lg text-sm inline-block">
+                              <span className="text-stone-800 font-medium">{issuer.shortName}</span>
+                              <span className="text-stone-500 ml-2">({issuer.sector}, {issuer.country})</span>
                             </div>
                           );
                         }
@@ -552,32 +540,44 @@ export default function App() {
           ))}
           
           {isLoading && (
-            <div className="self-start px-4 py-3 bg-white rounded-xl border border-stone-200 shadow-sm">
-              <span className="text-stone-500 italic text-sm">Thinking...</span>
+            <div className="self-start flex items-center gap-2 text-stone-400 text-sm">
+              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>Thinking...</span>
             </div>
           )}
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="px-6 py-4 bg-white border-t border-stone-200">
-        <form onSubmit={handleSubmit} className="flex gap-3">
-          <input
-            type="text"
-            value={input}
-            onChange={handleInputChange}
-            placeholder="Ask about issuers, deals, or mandates..."
-            disabled={isLoading}
-            className="flex-1 px-4 py-3 text-sm border border-stone-300 rounded-full outline-none focus:border-stone-400 focus:ring-2 focus:ring-stone-200 transition-all disabled:bg-stone-50 disabled:text-stone-400"
-          />
-          <button
-            type="submit"
-            disabled={isLoading || !input.trim()}
-            className="px-6 py-3 text-sm font-semibold bg-blue-600 text-white rounded-full hover:bg-blue-700 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:bg-stone-300 disabled:cursor-not-allowed"
+      {/* Input Area - No divider, modern design */}
+      <footer className="px-4 pb-4 pt-2 bg-stone-50">
+        <div className="max-w-4xl mx-auto">
+          <form
+            onSubmit={handleSubmit}
+            className="relative flex items-center bg-white border border-stone-200 rounded-xl shadow-sm hover:shadow-md focus-within:shadow-md focus-within:border-stone-300 transition-all"
           >
-            Send
-          </button>
-        </form>
+            <input
+              type="text"
+              value={input}
+              onChange={handleInputChange}
+              placeholder="Ask about issuers, deals, or mandates..."
+              disabled={isLoading}
+              className="flex-1 px-4 py-3.5 text-sm bg-transparent outline-none placeholder-stone-400 disabled:text-stone-400"
+            />
+            <button
+              type="submit"
+              disabled={isLoading || !input.trim()}
+              className="mr-2 p-2 rounded-lg bg-stone-800 text-white hover:bg-stone-700 transition-colors disabled:bg-stone-200 disabled:text-stone-400 disabled:cursor-not-allowed"
+              aria-label="Send message"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                <path d="M3.105 2.289a.75.75 0 00-.826.95l1.414 4.925A1.5 1.5 0 005.135 9.25h6.115a.75.75 0 010 1.5H5.135a1.5 1.5 0 00-1.442 1.086l-1.414 4.926a.75.75 0 00.826.95 28.896 28.896 0 0015.293-7.154.75.75 0 000-1.115A28.897 28.897 0 003.105 2.289z" />
+              </svg>
+            </button>
+          </form>
+        </div>
       </footer>
     </div>
   );
