@@ -434,7 +434,7 @@ app.post('/api/chat', async (req, res) => {
     const { messages } = req.body;
 
     const result = streamText({
-      model: openai('gpt-4o'),
+      model: openai('gpt-5-mini'),
       system: buildSystemPrompt(),
       messages,
       tools,
@@ -454,7 +454,7 @@ app.post('/api/dcm/chat', async (req, res) => {
     const { messages } = req.body;
 
     const result = streamText({
-      model: openai('gpt-4o'),
+      model: openai('gpt-5.1'),
       system: buildDCMSystemPrompt(),
       messages,
       tools: dcmCombinedTools,

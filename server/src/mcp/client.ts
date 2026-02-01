@@ -48,9 +48,9 @@ export const get_issuer_deals = tool({
   description: 'Get all bond deals for a specific issuer, including summary statistics. Use after resolving the issuer.',
   parameters: z.object({
     issuerId: z.string().describe('The canonical issuer ID (e.g., "bmw-ag")'),
-    limit: z.number().optional().describe('Maximum number of deals to return'),
+    limit: z.number().describe('Maximum number of deals to return (use 10 for default)'),
   }),
-  execute: async ({ issuerId, limit }) => {
+  execute: async ({ issuerId, limit = 10 }) => {
     const issuer = getIssuerById(issuerId);
     if (!issuer) {
       return { error: 'Issuer not found', issuerId };
@@ -77,9 +77,9 @@ export const get_peer_comparison = tool({
   description: 'Compare an issuer\'s issuance metrics against sector peers',
   parameters: z.object({
     issuerId: z.string().describe('The canonical issuer ID to compare'),
-    sector: z.string().optional().describe('Override sector for comparison'),
+    sector: z.string().describe('Sector for comparison (use empty string "" to use issuer default sector)'),
   }),
-  execute: async ({ issuerId, sector }) => {
+  execute: async ({ issuerId, sector = '' }) => {
     const issuer = getIssuerById(issuerId);
     if (!issuer) {
       return { error: 'Issuer not found', issuerId };
@@ -170,7 +170,7 @@ export const get_performance = tool({
   description: 'Get secondary market performance for a bond (price, spread, volume over time)',
   parameters: z.object({
     isin: z.string().describe('The ISIN of the bond'),
-    days: z.number().optional().describe('Number of days of performance data (default: 30)'),
+    days: z.number().describe('Number of days of performance data (use 30 for default)'),
   }),
   execute: async ({ isin, days = 30 }) => {
     const { deals } = await import('./data/deals.js');
@@ -238,7 +238,7 @@ export const generate_mandate_brief = tool({
   description: 'Generate a comprehensive mandate brief document for an issuer with full data provenance. Use this when the user wants to export or create a pitch document.',
   parameters: z.object({
     issuerId: z.string().describe('The issuer ID to generate the brief for'),
-    sections: z.array(z.string()).optional().describe('Sections: "overview", "issuance_history", "peer_comparison", "investor_analysis", "secondary_performance"'),
+    sections: z.array(z.string()).describe('Sections to include: "overview", "issuance_history", "peer_comparison", "investor_analysis", "secondary_performance"'),
   }),
   execute: async ({ issuerId, sections = ['overview', 'issuance_history', 'peer_comparison', 'investor_analysis', 'secondary_performance'] }) => {
     const issuer = getIssuerById(issuerId);
@@ -332,11 +332,11 @@ export const generate_mandate_brief = tool({
 export const get_market_deals = tool({
   description: 'Get recent bond deals across all issuers. Use when user asks for market overview, all issuance, supply data, or recent deals WITHOUT specifying a specific issuer. Does NOT require an issuer name.',
   parameters: z.object({
-    limit: z.number().optional().describe('Number of deals to return (default: 10, max: 50)'),
-    sector: z.string().optional().describe('Filter by sector (e.g., "Automotive", "Energy", "Industrial")'),
-    currency: z.string().optional().describe('Filter by currency (e.g., "EUR", "USD")'),
+    limit: z.number().describe('Number of deals to return (use 10 for default, max: 50)'),
+    sector: z.string().describe('Filter by sector (use empty string "" for all sectors)'),
+    currency: z.string().describe('Filter by currency (use empty string "" for all currencies)'),
   }),
-  execute: async ({ limit = 10, sector, currency }) => {
+  execute: async ({ limit = 10, sector = '', currency = '' }) => {
     const dealList = getAllDeals({
       limit: Math.min(limit, 50),
       sector,

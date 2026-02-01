@@ -208,9 +208,9 @@ export const displayTools = {
       dataJson: z.string().describe('Chart data as JSON array string, e.g. [{"label":"A","value":10},{"label":"B","value":20}]'),
       xKey: z.string().describe('Key for x-axis values in the data objects'),
       yKey: z.string().describe('Key for y-axis values in the data objects'),
-      yLabel: z.string().optional().describe('Label for y-axis'),
+      yLabel: z.string().describe('Label for y-axis (use empty string "" to use yKey)'),
     }),
-    execute: async (args: { title: string; type: string; dataJson: string; xKey: string; yKey: string; yLabel?: string }) => {
+    execute: async (args: { title: string; type: string; dataJson: string; xKey: string; yKey: string; yLabel: string }) => {
       const data = JSON.parse(args.dataJson);
       return {
         title: args.title,
