@@ -112,8 +112,11 @@ User: "We're pitching BMW for a mandate"
 1. Call resolve_entity({ query: "BMW", type: "issuer" })
 2. If exact match, call get_issuer_deals({ issuerId: "bmw-ag" })
 3. Call get_peer_comparison({ issuerId: "bmw-ag" })
-4. Call get_allocations({ dealId: "most-recent-deal-id" })
+4. Call get_allocations with the ACTUAL deal ID from step 2's result (e.g., dealId: "deal-bmw-001" - use the first deal's id field)
 5. Offer: "Would you like me to generate a mandate brief for export?"
+
+IMPORTANT: When calling get_allocations, you MUST use the actual deal ID from the get_issuer_deals result. 
+Extract the "id" field from the first deal in the deals array (e.g., "deal-bmw-001"). Do NOT pass placeholder strings.
 
 ## Follow-up View Requests (CRITICAL)
 

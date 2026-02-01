@@ -146,9 +146,9 @@ export default function App() {
   // Password screen
   if (!isAuthenticated) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen w-full bg-stone-50">
+      <div className="flex flex-col items-center justify-center h-screen w-full bg-[#FAFAF8]">
         <div className="w-full max-w-sm px-6">
-          <h1 className="text-2xl font-semibold text-stone-800 text-center mb-2">DCM</h1>
+          <h1 className="text-2xl font-semibold text-stone-800 text-center mb-2">Primary Flow</h1>
           <p className="text-stone-500 text-center mb-8">Enter password to continue</p>
           
           <form onSubmit={handleLogin} className="space-y-4">
@@ -179,55 +179,99 @@ export default function App() {
   }
 
   return (
-    <div className="flex flex-col h-screen w-full bg-stone-50">
-      {/* Header - Minimal */}
-      <header className="px-4 py-3 bg-white border-b border-stone-100">
-        <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <h1 className="text-lg font-semibold text-stone-800">DCM</h1>
-          <div className="flex items-center gap-2">
-            {messages.length > 0 && (
-              <button
-                onClick={handleClearHistory}
-                className="px-3 py-1.5 text-xs font-medium text-stone-500 hover:text-stone-700 hover:bg-stone-100 rounded-md transition-colors"
-              >
-                Clear
-              </button>
-            )}
-            <button
-              onClick={handleLogout}
-              className="px-3 py-1.5 text-xs font-medium text-stone-500 hover:text-stone-700 hover:bg-stone-100 rounded-md transition-colors"
-            >
-              Logout
-            </button>
-          </div>
+    <div className="flex h-screen w-full bg-[#FAFAF8]">
+      {/* Sidebar */}
+      <aside className="w-16 flex flex-col items-center py-4 border-r border-[#E5E5E3] bg-[#F5F5F3]">
+        {/* Logo */}
+        <div className="w-10 h-10 rounded-lg bg-[#1A1A1A] flex items-center justify-center mb-6">
+          <span className="text-white font-bold text-sm">PF</span>
         </div>
-      </header>
+        
+        {/* Nav items */}
+        <nav className="flex-1 flex flex-col items-center gap-2">
+          <button className="w-10 h-10 rounded-lg hover:bg-[#E5E5E3] flex items-center justify-center transition-colors" title="New chat">
+            <svg className="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+          <button className="w-10 h-10 rounded-lg hover:bg-[#E5E5E3] flex items-center justify-center transition-colors" title="History">
+            <svg className="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+          <button className="w-10 h-10 rounded-lg hover:bg-[#E5E5E3] flex items-center justify-center transition-colors" title="Workflows">
+            <svg className="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+            </svg>
+          </button>
+        </nav>
+        
+        {/* Bottom actions */}
+        <div className="flex flex-col items-center gap-2">
+          {messages.length > 0 && (
+            <button 
+              onClick={handleClearHistory}
+              className="w-10 h-10 rounded-lg hover:bg-[#E5E5E3] flex items-center justify-center transition-colors" 
+              title="Clear history"
+            >
+              <svg className="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          )}
+          <button 
+            onClick={handleLogout}
+            className="w-10 h-10 rounded-lg hover:bg-[#E5E5E3] flex items-center justify-center transition-colors" 
+            title="Logout"
+          >
+            <svg className="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+          </button>
+        </div>
+      </aside>
 
-      {/* Messages */}
-      <main className="flex-1 overflow-auto">
-        <div className="max-w-4xl mx-auto px-4 py-6 flex flex-col gap-5">
+      {/* Main content */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <header className="px-6 py-4 border-b border-[#E5E5E3]">
+          <div className="max-w-4xl mx-auto flex justify-between items-center">
+            <h1 className="text-lg font-semibold text-[#1A1A1A]">Primary Flow</h1>
+          </div>
+        </header>
+
+        {/* Messages */}
+        <main className="flex-1 overflow-auto">
+        <div className="max-w-3xl mx-auto px-6 py-8 flex flex-col gap-5">
           {messages.length === 0 && (
-            <div className="text-center py-12">
-              <h2 className="text-2xl font-semibold text-stone-800 mb-2">DCM Bond Issuance</h2>
-              <p className="text-stone-500 mb-8">AI-powered mandate pitching and deal analysis</p>
-              <div className="inline-flex flex-col gap-2 text-left">
-                {[
-                  "We're pitching BMW for a mandate",
-                  "Show me Volkswagen's issuance history",
-                  "Compare Mercedes-Benz to auto sector peers",
-                  "Generate a mandate brief for Siemens",
-                ].map((suggestion, i) => (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      const event = { target: { value: suggestion } } as React.ChangeEvent<HTMLInputElement>;
-                      handleInputChange(event);
-                    }}
-                    className="px-4 py-2.5 text-sm text-stone-600 bg-white border border-stone-200 rounded-lg hover:border-stone-300 hover:bg-stone-50 transition-colors text-left"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
+            <div className="flex flex-col items-center justify-center min-h-[60vh]">
+              <h2 className="text-3xl font-semibold text-[#1A1A1A] mb-3">Primary Flow</h2>
+              <p className="text-stone-500 mb-12 text-base">Intelligent workflow orchestration for bond issuance</p>
+              
+              <div className="w-full max-w-xl">
+                <p className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-3">Try asking</p>
+                <div className="flex flex-col gap-2">
+                  {[
+                    "We're pitching BMW for a mandate",
+                    "Show me Volkswagen's issuance history",
+                    "Compare Mercedes-Benz to auto sector peers",
+                    "Generate a mandate brief for Siemens",
+                  ].map((suggestion, i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        const event = { target: { value: suggestion } } as React.ChangeEvent<HTMLInputElement>;
+                        handleInputChange(event);
+                      }}
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-stone-600 bg-white border border-[#E5E5E3] rounded-xl hover:border-stone-300 hover:bg-stone-50 transition-colors text-left group"
+                    >
+                      <svg className="w-4 h-4 text-stone-400 group-hover:text-stone-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                      </svg>
+                      <span>{suggestion}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -667,34 +711,53 @@ export default function App() {
         </div>
       </main>
 
-      {/* Input Area - No divider, modern design */}
-      <footer className="px-4 pb-4 pt-2 bg-stone-50">
-        <div className="max-w-4xl mx-auto">
-          <form
-            onSubmit={handleSubmit}
-            className="relative flex items-center bg-white border border-stone-200 rounded-xl shadow-sm hover:shadow-md focus-within:shadow-md focus-within:border-stone-300 transition-all"
-          >
-            <input
-              type="text"
-              value={input}
-              onChange={handleInputChange}
-              placeholder="Ask about issuers, deals, or mandates..."
-              disabled={isLoading}
-              className="flex-1 px-4 py-3.5 text-sm bg-transparent outline-none placeholder-stone-400 disabled:text-stone-400"
-            />
-            <button
-              type="submit"
-              disabled={isLoading || !input.trim()}
-              className="mr-2 p-2 rounded-lg bg-stone-800 text-white hover:bg-stone-700 transition-colors disabled:bg-stone-200 disabled:text-stone-400 disabled:cursor-not-allowed"
-              aria-label="Send message"
+        {/* Input Area */}
+        <footer className="px-6 pb-6 pt-3">
+          <div className="max-w-3xl mx-auto">
+            <form
+              onSubmit={handleSubmit}
+              className="relative flex items-center bg-white border border-[#E5E5E3] rounded-2xl shadow-sm focus-within:shadow-md focus-within:border-[#D5D5D3] transition-all"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                <path d="M3.105 2.289a.75.75 0 00-.826.95l1.414 4.925A1.5 1.5 0 005.135 9.25h6.115a.75.75 0 010 1.5H5.135a1.5 1.5 0 00-1.442 1.086l-1.414 4.926a.75.75 0 00.826.95 28.896 28.896 0 0015.293-7.154.75.75 0 000-1.115A28.897 28.897 0 003.105 2.289z" />
-              </svg>
-            </button>
-          </form>
-        </div>
-      </footer>
+              {/* Left icons */}
+              <div className="flex items-center gap-1 pl-4">
+                <button type="button" className="p-2 rounded-lg hover:bg-stone-100 transition-colors" title="Search">
+                  <svg className="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </button>
+              </div>
+              
+              <input
+                type="text"
+                value={input}
+                onChange={handleInputChange}
+                placeholder="Ask a question..."
+                disabled={isLoading}
+                className="flex-1 px-3 py-4 text-sm bg-transparent outline-none placeholder-stone-400 disabled:text-stone-400"
+              />
+              
+              {/* Right icons */}
+              <div className="flex items-center gap-1 pr-3">
+                <button type="button" className="p-2 rounded-lg hover:bg-stone-100 transition-colors" title="Attach">
+                  <svg className="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                  </svg>
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading || !input.trim()}
+                  className="p-2 rounded-full bg-[#1A1A1A] text-white hover:bg-stone-700 transition-colors disabled:bg-stone-200 disabled:text-stone-400 disabled:cursor-not-allowed"
+                  aria-label="Send message"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                  </svg>
+                </button>
+              </div>
+            </form>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }

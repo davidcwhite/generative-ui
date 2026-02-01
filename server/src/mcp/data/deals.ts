@@ -413,9 +413,10 @@ export function getDealsByIssuerId(issuerId: string, limit?: number): Deal[] {
   return limit ? issuerDeals.slice(0, limit) : issuerDeals;
 }
 
-// Helper to get deal by ID
+// Helper to get deal by ID (case-insensitive, trims whitespace)
 export function getDealById(dealId: string): Deal | undefined {
-  return deals.find(d => d.id === dealId);
+  const normalizedId = dealId.trim().toLowerCase();
+  return deals.find(d => d.id.toLowerCase() === normalizedId);
 }
 
 // Calculate summary stats for deals
