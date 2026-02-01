@@ -537,7 +537,7 @@ export default function App() {
         {/* New Chat Button */}
         <button 
           onClick={handleNewChat}
-          className="w-10 h-10 rounded-lg bg-[#E5E5E3] hover:bg-[#DCDCDA] flex items-center justify-center transition-colors mb-4"
+          className="w-10 h-10 rounded-lg hover:bg-[#E5E5E3] flex items-center justify-center transition-colors mb-4"
           title="New chat"
         >
           <svg className="w-5 h-5 text-stone-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -555,7 +555,7 @@ export default function App() {
           >
             <button 
               onClick={() => setActiveView('chat')}
-              className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${isHistoryHovered || activeView === 'chat' ? 'bg-[#E5E5E3]' : 'hover:bg-[#E5E5E3]'}`}
+              className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${isHistoryHovered ? 'bg-[#E5E5E3]' : 'hover:bg-[#E5E5E3]'}`}
               title="History"
             >
               <svg className={`w-5 h-5 ${activeView === 'chat' ? 'text-[#1A1A1A]' : 'text-stone-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
