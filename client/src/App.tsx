@@ -130,6 +130,7 @@ export default function App() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(false);
   const [activeView, setActiveView] = useState<'chat' | 'dashboard'>('chat');
   const [isHistoryHovered, setIsHistoryHovered] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const { messages, input, handleInputChange, handleSubmit, addToolResult, isLoading, setMessages } = useChat({
     api: API_URL,
@@ -363,9 +364,126 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen w-full bg-[#FAFAF8]">
-      {/* Rail Sidebar */}
-      <aside className="w-16 flex flex-col items-center py-4 border-r border-[#E5E5E3] bg-[#F5F5F3] relative z-40">
+    <div className="flex flex-col md:flex-row h-screen w-full bg-[#FAFAF8]">
+      {/* Mobile Header */}
+      <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-[#E5E5E3] bg-[#F5F5F3]">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-[#1A1A1A] flex items-center justify-center">
+            <span className="text-white font-bold text-xs">PF</span>
+          </div>
+          <span className="font-semibold text-[#1A1A1A]">Primary Flow</span>
+        </div>
+        <button 
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="p-2 rounded-lg hover:bg-[#E5E5E3] transition-colors"
+          title="Menu"
+        >
+          <svg className="w-6 h-6 text-stone-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Mobile Slide-Out Menu */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50" 
+            onClick={() => setIsMobileMenuOpen(false)} 
+          />
+          {/* Drawer */}
+          <div className="absolute left-0 top-0 h-full w-64 bg-white shadow-xl flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-4 border-b border-[#E5E5E3]">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-[#1A1A1A] flex items-center justify-center">
+                  <span className="text-white font-bold text-xs">PF</span>
+                </div>
+                <span className="font-semibold text-[#1A1A1A]">Primary Flow</span>
+              </div>
+              <button 
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-2 rounded-lg hover:bg-stone-100 transition-colors"
+              >
+                <svg className="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            {/* Menu Items */}
+            <div className="flex-1 overflow-y-auto py-2">
+              {/* New Chat */}
+              <button 
+                onClick={() => { handleNewChat(); setIsMobileMenuOpen(false); }}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-stone-50 transition-colors"
+              >
+                <svg className="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span className="text-sm font-medium text-stone-700">New Chat</span>
+              </button>
+              
+              {/* Chat / History */}
+              <button 
+                onClick={() => { setActiveView('chat'); setIsMobileMenuOpen(false); }}
+                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-stone-50 transition-colors ${activeView === 'chat' ? 'bg-stone-100' : ''}`}
+              >
+                <svg className="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm font-medium text-stone-700">Chat</span>
+              </button>
+              
+              {/* Recent Chats */}
+              {sessions.length > 0 && (
+                <div className="px-4 py-2">
+                  <span className="text-xs font-medium text-stone-400 uppercase tracking-wide">Recent</span>
+                  <div className="mt-2 flex flex-col gap-1">
+                    {sessions.slice(0, 5).map(session => (
+                      <button 
+                        key={session.id}
+                        onClick={() => { switchToSession(session.id); setIsMobileMenuOpen(false); }}
+                        className={`w-full text-left text-sm text-stone-600 py-2 px-2 rounded-lg hover:bg-stone-50 truncate ${session.id === activeSessionId ? 'bg-stone-100' : ''}`}
+                      >
+                        {session.title}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Data Viewer */}
+              <button 
+                onClick={() => { setActiveView('dashboard'); setIsMobileMenuOpen(false); }}
+                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-stone-50 transition-colors ${activeView === 'dashboard' ? 'bg-stone-100' : ''}`}
+              >
+                <svg className="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                <span className="text-sm font-medium text-stone-700">Data Viewer</span>
+              </button>
+            </div>
+            
+            {/* Bottom - Logout */}
+            <div className="border-t border-[#E5E5E3] p-4">
+              <button 
+                onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}
+                className="w-full flex items-center gap-3 px-2 py-2 hover:bg-stone-50 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span className="text-sm font-medium text-stone-700">Logout</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rail Sidebar - hidden on mobile */}
+      <aside className="hidden md:flex w-16 flex-col items-center py-4 border-r border-[#E5E5E3] bg-[#F5F5F3] relative z-40">
         {/* Logo */}
         <div className="w-10 h-10 rounded-lg bg-[#1A1A1A] flex items-center justify-center mb-8">
           <span className="text-white font-bold text-sm">PF</span>
@@ -432,10 +550,10 @@ export default function App() {
         </div>
       </aside>
 
-      {/* Secondary Sidebar - History Panel (Overlay) */}
+      {/* Secondary Sidebar - History Panel (Overlay) - hidden on mobile */}
       {isHistoryHovered && (
         <div 
-          className="absolute left-16 top-0 w-64 h-full bg-white border-r border-[#E5E5E3] shadow-lg flex flex-col z-50"
+          className="hidden md:flex absolute left-16 top-0 w-64 h-full bg-white border-r border-[#E5E5E3] shadow-lg flex-col z-50"
           onMouseEnter={() => setIsHistoryHovered(true)}
           onMouseLeave={() => setIsHistoryHovered(false)}
         >
@@ -507,14 +625,14 @@ export default function App() {
           {/* Scrollable content area */}
           <div className="flex-1 overflow-auto">
             {/* Header */}
-            <header className="px-6 pt-4 pb-4 border-b border-[#E5E5E3] bg-[#FAFAF8]/80 backdrop-blur-sm sticky top-0 z-10">
+            <header className="px-4 md:px-6 pt-4 pb-4 border-b border-[#E5E5E3] bg-[#FAFAF8]/80 backdrop-blur-sm sticky top-0 z-10">
               <div className="flex items-center h-10">
                 <h1 className="text-lg font-semibold text-[#1A1A1A]">Primary Flow</h1>
               </div>
             </header>
 
             {/* Messages */}
-        <div className="max-w-3xl mx-auto px-6 py-8 flex flex-col gap-5">
+        <div className="max-w-3xl mx-auto px-4 md:px-6 py-8 flex flex-col gap-5">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center min-h-[60vh]">
               <h2 className="text-3xl font-semibold text-[#1A1A1A] mb-3">Primary Flow</h2>
@@ -984,7 +1102,7 @@ export default function App() {
           </div>
 
           {/* Input Area */}
-          <footer className="px-6 pb-6 pt-3">
+          <footer className="px-4 md:px-6 pb-6 pt-3">
           <div className="max-w-3xl mx-auto">
             <form
               onSubmit={handleSubmit}
