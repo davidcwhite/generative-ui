@@ -628,14 +628,12 @@ export default function App() {
                   {sessions.map(session => (
                     <div 
                       key={session.id}
+                      onClick={() => switchToSession(session.id)}
                       className={`flex items-center gap-2 px-4 py-2.5 hover:bg-stone-50 cursor-pointer group/item ${session.id === activeSessionId ? 'bg-stone-100' : ''}`}
                     >
-                      <button 
-                        onClick={() => switchToSession(session.id)}
-                        className="flex-1 text-sm text-left text-stone-700 truncate"
-                      >
+                      <span className="flex-1 text-sm text-left text-stone-700 truncate">
                         {session.title}
-                      </button>
+                      </span>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
