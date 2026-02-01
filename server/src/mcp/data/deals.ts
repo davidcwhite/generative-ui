@@ -462,9 +462,18 @@ export function getAllDeals(options?: {
   limit?: number;
   sector?: string;
   currency?: string;
+  issuer?: string;
   sortBy?: 'date' | 'size' | 'spread';
 }): Deal[] {
   let result = [...deals];
+  
+  // Apply issuer filter
+  if (options?.issuer) {
+    result = result.filter(d => {
+      const dealIssuer = getIssuerById(d.issuerId);
+      return dealIssuer && dealIssuer.shortName.toLowerCase().includes(options.issuer!.toLowerCase());
+    });
+  }
   
   // Apply sector filter
   if (options?.sector) {
@@ -553,5 +562,31 @@ export function getMarketSummary(dealList: Deal[]): MarketSummary {
     avgNip: Math.round(avgNip * 10) / 10,
     bySector,
     byCurrency,
+  };
+}
+
+// Get unique filter values from a list of deals
+export function getAvailableFilters(dealList: Deal[]): {
+  sectors: string[];
+  currencies: string[];
+  issuers: string[];
+} {
+  const sectors = new Set<string>();
+  const currencies = new Set<string>();
+  const issuers = new Set<string>();
+  
+  for (const deal of dealList) {
+    const issuer = getIssuerById(deal.issuerId);
+    if (issuer) {
+      sectors.add(issuer.sector);
+      issuers.add(issuer.shortName);
+    }
+    currencies.add(deal.currency);
+  }
+  
+  return {
+    sectors: Array.from(sectors).sort(),
+    currencies: Array.from(currencies).sort(),
+    issuers: Array.from(issuers).sort(),
   };
 }

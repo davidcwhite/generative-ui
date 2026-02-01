@@ -132,11 +132,56 @@ export default function App() {
   const [isHistoryHovered, setIsHistoryHovered] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  const { messages, input, handleInputChange, handleSubmit, addToolResult, isLoading, setMessages, stop } = useChat({
+  const { messages, input, setInput, handleInputChange, addToolResult, isLoading, setMessages, stop, append } = useChat({
     api: API_URL,
     maxSteps: 5,
     initialMessages: getInitialMessages(),
   });
+
+  // Find all pending tool calls that require user input (forms, approval buttons)
+  const getPendingInteractiveTools = useCallback(() => {
+    const pendingTools: { toolCallId: string; toolName: string }[] = [];
+    
+    for (const message of messages) {
+      if (message.role === 'assistant' && message.toolInvocations) {
+        for (const tool of message.toolInvocations) {
+          if (
+            tool.state === 'call' &&
+            (tool.toolName === 'collect_filters' || tool.toolName === 'confirm_action')
+          ) {
+            pendingTools.push({
+              toolCallId: tool.toolCallId,
+              toolName: tool.toolName,
+            });
+          }
+        }
+      }
+    }
+    return pendingTools;
+  }, [messages]);
+
+  // Wrap handleSubmit to auto-cancel pending interactive tools before sending new message
+  const handleSubmitWithCancel = useCallback((e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    
+    if (!input.trim()) return;
+    
+    // Cancel any pending interactive tools so the AI can process the new message
+    const pendingTools = getPendingInteractiveTools();
+    for (const tool of pendingTools) {
+      addToolResult({
+        toolCallId: tool.toolCallId,
+        result: tool.toolName === 'collect_filters' 
+          ? { values: {}, skipped: true }
+          : { cancelled: true, skipped: true },
+      });
+    }
+    
+    // Use append to send the message directly (works better than handleSubmit with modified event)
+    const messageContent = input;
+    setInput('');
+    append({ role: 'user', content: messageContent });
+  }, [input, getPendingInteractiveTools, addToolResult, setInput, append]);
 
   // Save messages to active session when they change
   useEffect(() => {
@@ -778,9 +823,15 @@ export default function App() {
                         );
                       }
                       if (toolInvocation.state === 'result') {
+                        const values = toolInvocation.result.values || {};
+                        const filterText = Object.entries(values)
+                          .filter(([, v]) => v && v !== 'All')
+                          .map(([k, v]) => `${k}: ${v}`)
+                          .join(', ') || 'No filters applied';
+                        
                         return (
                           <div key={callId} className="mt-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700">
-                            Filters applied: {JSON.stringify(toolInvocation.result.values)}
+                            {filterText !== 'No filters applied' ? `Filtered by ${filterText}` : filterText}
                           </div>
                         );
                       }
@@ -1114,7 +1165,7 @@ export default function App() {
           <footer className="px-4 md:px-6 pb-6 pt-3">
           <div className="max-w-3xl mx-auto">
             <form
-              onSubmit={handleSubmit}
+              onSubmit={handleSubmitWithCancel}
               className="relative flex items-center bg-white border border-[#E5E5E3] rounded-2xl shadow-sm focus-within:shadow-md focus-within:border-[#D5D5D3] transition-all"
             >
               {/* Left icons */}

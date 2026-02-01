@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 // Import data layer directly (in production, these would be MCP server calls)
 import { searchIssuers, getIssuerById, getIssuersBySector } from './data/issuers.js';
-import { getDealsByIssuerId, getDealById, calculateDealSummary, getPeerDeals, getAllDeals, getMarketSummary } from './data/deals.js';
+import { getDealsByIssuerId, getDealById, calculateDealSummary, getPeerDeals, getAllDeals, getMarketSummary, getAvailableFilters } from './data/deals.js';
 import { generateAllocationsForDeal, getParticipationHistory, calculateFlipScore, investors, getInvestorById } from './data/investors.js';
 import { generateSecondaryPerformance, calculateSpreadDrift, generateSectorCurve, getPerformanceSummary } from './data/secondary.js';
 import type { ResolveEntityResult, PeerComparison, AllocationBreakdown, MandateBrief, MandateBriefSection, Provenance } from './types.js';
@@ -330,17 +330,24 @@ export const generate_mandate_brief = tool({
 // === Market Overview Tools ===
 
 export const get_market_deals = tool({
-  description: 'Get recent bond deals across all issuers. Use when user asks for market overview, all issuance, supply data, or recent deals WITHOUT specifying a specific issuer. Does NOT require an issuer name.',
+  description: 'Get recent bond deals across all issuers. Use when user asks for market overview, all issuance, supply data, or recent deals. Can filter by issuer, sector, or currency.',
   parameters: z.object({
     limit: z.number().optional().describe('Number of deals to return (default: 10, max: 50)'),
     sector: z.string().optional().describe('Filter by sector (e.g., "Automotive", "Energy", "Industrial")'),
     currency: z.string().optional().describe('Filter by currency (e.g., "EUR", "USD")'),
+    issuer: z.string().optional().describe('Filter by issuer name (e.g., "Mercedes-Benz", "BMW")'),
   }),
-  execute: async ({ limit = 10, sector, currency }) => {
+  execute: async ({ limit = 10, sector, currency, issuer }) => {
+    // Get ALL deals first to compute available filter options
+    const allDeals = getAllDeals({ sortBy: 'date' });
+    const availableFilters = getAvailableFilters(allDeals);
+    
+    // Then get filtered deals
     const dealList = getAllDeals({
       limit: Math.min(limit, 50),
       sector,
       currency,
+      issuer,
       sortBy: 'date',
     });
 
@@ -352,8 +359,10 @@ export const get_market_deals = tool({
       filters: {
         sector: sector || 'All',
         currency: currency || 'All',
+        issuer: issuer || 'All',
         showing: dealList.length,
       },
+      availableFilters,
     };
   },
 });
