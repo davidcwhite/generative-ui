@@ -716,16 +716,17 @@ export default function App() {
                     if (toolInvocation.toolName === 'show_chart') {
                       if (toolInvocation.state === 'result') {
                         return (
-                          <ChartCard
-                            key={callId}
-                            title={toolInvocation.result.title}
-                            type={toolInvocation.result.type}
-                            data={toolInvocation.result.data}
-                            xKey={toolInvocation.result.xKey}
-                            yKey={toolInvocation.result.yKey}
-                            yLabel={toolInvocation.result.yLabel}
-                            color={toolInvocation.result.color}
-                          />
+                          <div key={callId} className="mb-4">
+                            <ChartCard
+                              title={toolInvocation.result.title}
+                              type={toolInvocation.result.type}
+                              data={toolInvocation.result.data}
+                              xKey={toolInvocation.result.xKey}
+                              yKey={toolInvocation.result.yKey}
+                              yLabel={toolInvocation.result.yLabel}
+                              color={toolInvocation.result.color}
+                            />
+                          </div>
                         );
                       }
                       if (toolInvocation.state === 'call') {
@@ -741,12 +742,13 @@ export default function App() {
                     if (toolInvocation.toolName === 'show_table') {
                       if (toolInvocation.state === 'result') {
                         return (
-                          <TableCard
-                            key={callId}
-                            title={toolInvocation.result.title}
-                            columns={toolInvocation.result.columns}
-                            rows={toolInvocation.result.rows}
-                          />
+                          <div key={callId} className="mb-4">
+                            <TableCard
+                              title={toolInvocation.result.title}
+                              columns={toolInvocation.result.columns}
+                              rows={toolInvocation.result.rows}
+                            />
+                          </div>
                         );
                       }
                       if (toolInvocation.state === 'call') {
@@ -886,12 +888,13 @@ export default function App() {
                           );
                         }
                         return (
-                          <MarketIssuance
-                            key={callId}
-                            deals={result.deals || []}
-                            summary={result.summary || { totalDeals: 0, totalVolume: 0, avgSpread: 0, avgNip: 0, bySector: [], byCurrency: [] }}
-                            filters={result.filters || { sector: 'All', currency: 'All', showing: 0 }}
-                          />
+                          <div key={callId} className="mb-4">
+                            <MarketIssuance
+                              deals={result.deals || []}
+                              summary={result.summary || { totalDeals: 0, totalVolume: 0, avgSpread: 0, avgNip: 0, bySector: [], byCurrency: [] }}
+                              filters={result.filters || { sector: 'All', currency: 'All', showing: 0 }}
+                            />
+                          </div>
                         );
                       }
                     }
@@ -915,12 +918,13 @@ export default function App() {
                           );
                         }
                         return (
-                          <IssuerTimeline
-                            key={callId}
-                            issuerName={result.issuer?.name || 'Issuer'}
-                            deals={result.deals || []}
-                            summary={result.summary || { totalDeals: 0, totalRaised: 0, avgTenor: 'N/A', avgNip: 0, avgOversubscription: 0 }}
-                          />
+                          <div key={callId} className="mb-4">
+                            <IssuerTimeline
+                              issuerName={result.issuer?.name || 'Issuer'}
+                              deals={result.deals || []}
+                              summary={result.summary || { totalDeals: 0, totalRaised: 0, avgTenor: 'N/A', avgNip: 0, avgOversubscription: 0 }}
+                            />
+                          </div>
                         );
                       }
                     }
@@ -944,14 +948,15 @@ export default function App() {
                           );
                         }
                         return (
-                          <ComparableDealsPanel
-                            key={callId}
-                            issuer={result.issuer}
-                            issuerSummary={result.issuerSummary}
-                            issuerDeals={result.issuerDeals || []}
-                            peers={result.peers || []}
-                            comparison={result.comparison || { nipVsPeers: 'N/A' }}
-                          />
+                          <div key={callId} className="mb-4">
+                            <ComparableDealsPanel
+                              issuer={result.issuer}
+                              issuerSummary={result.issuerSummary}
+                              issuerDeals={result.issuerDeals || []}
+                              peers={result.peers || []}
+                              comparison={result.comparison || { nipVsPeers: 'N/A' }}
+                            />
+                          </div>
                         );
                       }
                     }
@@ -975,13 +980,14 @@ export default function App() {
                           );
                         }
                         return (
-                          <AllocationBreakdown
-                            key={callId}
-                            deal={result.deal}
-                            allocations={result.allocations || []}
-                            breakdown={result.breakdown || { byType: [], byGeography: [] }}
-                            summary={result.summary || { totalInvestors: 0, totalAllocated: 0, avgFillRate: 0 }}
-                          />
+                          <div key={callId} className="mb-4">
+                            <AllocationBreakdown
+                              deal={result.deal}
+                              allocations={result.allocations || []}
+                              breakdown={result.breakdown || { byType: [], byGeography: [] }}
+                              summary={result.summary || { totalInvestors: 0, totalAllocated: 0, avgFillRate: 0 }}
+                            />
+                          </div>
                         );
                       }
                     }
@@ -1005,14 +1011,15 @@ export default function App() {
                           );
                         }
                         return (
-                          <SecondaryPerformanceView
-                            key={callId}
-                            bond={result.bond}
-                            performance={result.performance || []}
-                            drift={result.drift || 0}
-                            summary={result.summary}
-                            analysis={result.analysis || { trend: 'Stable', interpretation: '' }}
-                          />
+                          <div key={callId} className="mb-4">
+                            <SecondaryPerformanceView
+                              bond={result.bond}
+                              performance={result.performance || []}
+                              drift={result.drift || 0}
+                              summary={result.summary}
+                              analysis={result.analysis || { trend: 'Stable', interpretation: '' }}
+                            />
+                          </div>
                         );
                       }
                     }
@@ -1031,18 +1038,19 @@ export default function App() {
                         // Render as a simple table for now
                         const participations = result.participations || [];
                         return (
-                          <TableCard
-                            key={callId}
-                            title="Investor Participation History"
-                            columns={['Deal', 'Investor', 'Allocated', 'Fill Rate', 'Behaviour']}
-                            rows={participations.slice(0, 10).map((p: { dealName: string; issuerName: string; allocatedSize: number; fillRate: number; behaviour: string }) => ({
-                              'Deal': p.dealName,
-                              'Investor': p.issuerName,
-                              'Allocated': `€${p.allocatedSize}M`,
-                              'Fill Rate': `${Math.round(p.fillRate * 100)}%`,
-                              'Behaviour': p.behaviour,
-                            }))}
-                          />
+                          <div key={callId} className="mb-4">
+                            <TableCard
+                              title="Investor Participation History"
+                              columns={['Deal', 'Investor', 'Allocated', 'Fill Rate', 'Behaviour']}
+                              rows={participations.slice(0, 10).map((p: { dealName: string; issuerName: string; allocatedSize: number; fillRate: number; behaviour: string }) => ({
+                                'Deal': p.dealName,
+                                'Investor': p.issuerName,
+                                'Allocated': `€${p.allocatedSize}M`,
+                                'Fill Rate': `${Math.round(p.fillRate * 100)}%`,
+                                'Behaviour': p.behaviour,
+                              }))}
+                            />
+                          </div>
                         );
                       }
                     }
@@ -1066,11 +1074,12 @@ export default function App() {
                           );
                         }
                         return (
-                          <ExportPanel
-                            key={callId}
-                            brief={result.brief}
-                            exportFormats={result.exportFormats || ['pdf', 'pptx', 'xlsx', 'email']}
-                          />
+                          <div key={callId} className="mb-4">
+                            <ExportPanel
+                              brief={result.brief}
+                              exportFormats={result.exportFormats || ['pdf', 'pptx', 'xlsx', 'email']}
+                            />
+                          </div>
                         );
                       }
                     }
