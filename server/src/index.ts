@@ -7,6 +7,9 @@ import { openai } from '@ai-sdk/openai';
 import { tools, displayTools } from './tools.js';
 import { dcmTools } from './mcp/client.js';
 import { registry } from './data/registry.js';
+import { deals } from './mcp/data/deals.js';
+import { generateAllocationsForDeal } from './mcp/data/investors.js';
+import { generateSecondaryPerformance } from './mcp/data/secondary.js';
 
 console.log('Imports loaded');
 const app = express();
@@ -32,6 +35,84 @@ app.post('/api/auth/verify', (req, res) => {
   }
   
   return res.status(401).json({ success: false, error: 'Invalid password' });
+});
+
+// Dashboard API endpoints
+app.get('/api/data/deals', (req, res) => {
+  // Get all deals sorted by date
+  const sortedDeals = [...deals]
+    .sort((a, b) => new Date(b.pricingDate).getTime() - new Date(a.pricingDate).getTime())
+    .slice(0, 20); // Limit to 20 most recent
+  
+  res.json({ deals: sortedDeals });
+});
+
+app.get('/api/data/allocations', (req, res) => {
+  // Get allocation summaries for recent deals
+  const recentDeals = [...deals]
+    .sort((a, b) => new Date(b.pricingDate).getTime() - new Date(a.pricingDate).getTime())
+    .slice(0, 6);
+  
+  const allocations = recentDeals.map(deal => {
+    const allocs = generateAllocationsForDeal(deal.id, deal.size);
+    const byTypeMap = new Map<string, number>();
+    let total = 0;
+    
+    for (const alloc of allocs) {
+      byTypeMap.set(alloc.investorType, (byTypeMap.get(alloc.investorType) || 0) + alloc.allocatedSize);
+      total += alloc.allocatedSize;
+    }
+    
+    const topInvestorTypes = Array.from(byTypeMap.entries())
+      .map(([type, amount]) => ({ type, percentage: Math.round((amount / total) * 100) }))
+      .sort((a, b) => b.percentage - a.percentage)
+      .slice(0, 3);
+    
+    return {
+      dealId: deal.id,
+      issuerName: deal.issuerName,
+      size: deal.size,
+      oversubscription: deal.oversubscription,
+      topInvestorTypes,
+    };
+  });
+  
+  res.json({ allocations });
+});
+
+app.get('/api/data/secondary', (req, res) => {
+  // Get secondary performance for recent deals
+  const recentDeals = [...deals]
+    .sort((a, b) => new Date(b.pricingDate).getTime() - new Date(a.pricingDate).getTime())
+    .slice(0, 10);
+  
+  const secondary = recentDeals.map(deal => {
+    const perfHistory = generateSecondaryPerformance(deal.isin, 30);
+    const latest = perfHistory[perfHistory.length - 1];
+    const latestSpread = latest?.spread || deal.spread;
+    const spreadDrift = latestSpread - deal.spread;
+    
+    // Calculate average volume
+    const avgVolume = perfHistory.length > 0 
+      ? perfHistory.reduce((sum, p) => sum + p.volumeTraded, 0) / perfHistory.length 
+      : 0;
+    
+    let trend: 'Tightening' | 'Widening' | 'Stable' = 'Stable';
+    if (spreadDrift < -3) trend = 'Tightening';
+    else if (spreadDrift > 3) trend = 'Widening';
+    
+    return {
+      isin: deal.isin,
+      issuerName: deal.issuerName,
+      issueSpread: deal.spread,
+      currentSpread: latestSpread,
+      spreadDrift,
+      trend,
+      avgVolume,
+    };
+  });
+  
+  res.json({ secondary });
 });
 
 // DCM Bond Issuance System Prompt

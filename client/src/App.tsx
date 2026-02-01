@@ -14,6 +14,7 @@ import {
   ExportPanel,
   MarketIssuance,
 } from './components/dcm';
+import { Dashboard } from './components/Dashboard';
 
 const STORAGE_KEY = 'dcm-chat-history';
 const MAX_STORED_MESSAGES = 50;
@@ -55,6 +56,7 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [isCheckingAuth, setIsCheckingAuth] = useState(false);
+  const [activeView, setActiveView] = useState<'chat' | 'dashboard'>('chat');
   
   const { messages, input, handleInputChange, handleSubmit, addToolResult, isLoading, setMessages } = useChat({
     api: API_URL,
@@ -189,19 +191,27 @@ export default function App() {
         
         {/* Nav items */}
         <nav className="flex-1 flex flex-col items-center gap-2">
-          <button className="w-10 h-10 rounded-lg hover:bg-[#E5E5E3] flex items-center justify-center transition-colors" title="New chat">
-            <svg className="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          <button 
+            onClick={() => setActiveView('chat')}
+            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${activeView === 'chat' ? 'bg-[#E5E5E3]' : 'hover:bg-[#E5E5E3]'}`} 
+            title="Chat"
+          >
+            <svg className={`w-5 h-5 ${activeView === 'chat' ? 'text-[#1A1A1A]' : 'text-stone-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+          </button>
+          <button 
+            onClick={() => setActiveView('dashboard')}
+            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${activeView === 'dashboard' ? 'bg-[#E5E5E3]' : 'hover:bg-[#E5E5E3]'}`} 
+            title="Data Viewer"
+          >
+            <svg className={`w-5 h-5 ${activeView === 'dashboard' ? 'text-[#1A1A1A]' : 'text-stone-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </button>
           <button className="w-10 h-10 rounded-lg hover:bg-[#E5E5E3] flex items-center justify-center transition-colors" title="History">
             <svg className="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </button>
-          <button className="w-10 h-10 rounded-lg hover:bg-[#E5E5E3] flex items-center justify-center transition-colors" title="Workflows">
-            <svg className="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
             </svg>
           </button>
         </nav>
@@ -232,16 +242,19 @@ export default function App() {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <header className="px-6 py-4 border-b border-[#E5E5E3]">
-          <div className="max-w-4xl mx-auto flex justify-between items-center">
-            <h1 className="text-lg font-semibold text-[#1A1A1A]">Primary Flow</h1>
-          </div>
-        </header>
+      {activeView === 'dashboard' ? (
+        <Dashboard />
+      ) : (
+        <div className="flex-1 flex flex-col">
+          {/* Header */}
+          <header className="px-6 py-4 border-b border-[#E5E5E3]">
+            <div className="max-w-4xl mx-auto flex justify-between items-center">
+              <h1 className="text-lg font-semibold text-[#1A1A1A]">Primary Flow</h1>
+            </div>
+          </header>
 
-        {/* Messages */}
-        <main className="flex-1 overflow-auto">
+          {/* Messages */}
+          <main className="flex-1 overflow-auto">
         <div className="max-w-3xl mx-auto px-6 py-8 flex flex-col gap-5">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -757,7 +770,8 @@ export default function App() {
             </form>
           </div>
         </footer>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
