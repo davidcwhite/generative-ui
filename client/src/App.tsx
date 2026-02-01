@@ -670,7 +670,7 @@ export default function App() {
             {/* Header */}
             <header className="px-4 md:px-6 pt-4 pb-4 border-b border-[#E5E5E3] bg-[#FAFAF8]/80 backdrop-blur-sm sticky top-0 z-10">
               <div className="flex items-center h-10">
-                <h1 className="text-lg font-semibold text-[#1A1A1A]">Primary Flow</h1>
+                <h1 className="text-lg font-semibold text-[#1A1A1A]">Primary Flow <span className="font-normal italic">Canvas</span></h1>
               </div>
             </header>
 
@@ -678,8 +678,8 @@ export default function App() {
         <div className="max-w-3xl mx-auto px-4 md:px-6 py-8 flex flex-col gap-5">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center min-h-[60vh]">
-              <h2 className="text-3xl font-semibold text-[#1A1A1A] mb-3">Primary Flow</h2>
-              <p className="text-stone-500 mb-12 text-base">Intelligent workflow orchestration for bond issuance</p>
+              
+              <p className="text-stone-500 mb-12 text-base max-w-md text-center">Component-first flow. Less wall of text, more get things done.</p>
               
               <div className="w-full max-w-xl">
                 <p className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-3">Try asking</p>
