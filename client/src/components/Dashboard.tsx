@@ -15,14 +15,14 @@ export function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabId>('issuance');
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 overflow-auto">
       {/* Header with tabs */}
-      <header className="px-6 py-4 border-b border-[#E5E5E3]">
-        <div className="max-w-5xl mx-auto">
-          <h1 className="text-lg font-semibold text-[#1A1A1A] mb-4">Data Viewer</h1>
+      <header className="px-6 pt-4 pb-4 border-b border-[#E5E5E3] bg-[#FAFAF8]/80 backdrop-blur-sm sticky top-0 z-10">
+        <div className="relative flex items-center h-10">
+          <h1 className="text-lg font-semibold text-[#1A1A1A]">Data Viewer</h1>
           
-          {/* Tabs */}
-          <div className="flex gap-1">
+          {/* Tabs - centered */}
+          <div className="absolute left-1/2 -translate-x-1/2 flex gap-1">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -41,13 +41,11 @@ export function Dashboard() {
       </header>
 
       {/* Tab content */}
-      <main className="flex-1 overflow-auto">
-        <div className="max-w-5xl mx-auto px-6 py-6">
-          {activeTab === 'issuance' && <IssuanceView />}
-          {activeTab === 'allocations' && <AllocationsView />}
-          {activeTab === 'secondary' && <SecondaryView />}
-        </div>
-      </main>
+      <div className="max-w-5xl mx-auto px-6 py-6">
+        {activeTab === 'issuance' && <IssuanceView />}
+        {activeTab === 'allocations' && <AllocationsView />}
+        {activeTab === 'secondary' && <SecondaryView />}
+      </div>
     </div>
   );
 }

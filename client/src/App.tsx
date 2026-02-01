@@ -16,16 +16,44 @@ import {
 } from './components/dcm';
 import { Dashboard } from './components/Dashboard';
 
-const STORAGE_KEY = 'dcm-chat-history';
 const MAX_STORED_MESSAGES = 50;
+const MAX_SESSIONS = 20;
 const AUTH_KEY = 'dcm-authenticated';
+const SESSIONS_KEY = 'pf-chat-sessions';
+const ACTIVE_SESSION_KEY = 'pf-active-session';
 const API_URL = import.meta.env.VITE_API_URL || '/api/dcm/chat';
 const API_BASE = API_URL.replace('/api/dcm/chat', '');
 
-// Load messages from localStorage
-function loadStoredMessages(): Message[] {
+// Chat session type
+interface ChatSession {
+  id: string;
+  title: string;
+  messages: Message[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+// Generate unique session ID
+function generateSessionId(): string {
+  return `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+// Generate session title from first user message
+function generateSessionTitle(messages: Message[]): string {
+  const firstUserMessage = messages.find(m => m.role === 'user');
+  if (firstUserMessage && firstUserMessage.content) {
+    const content = typeof firstUserMessage.content === 'string' 
+      ? firstUserMessage.content 
+      : '';
+    return content.slice(0, 40) + (content.length > 40 ? '...' : '');
+  }
+  return 'New Chat';
+}
+
+// Load sessions from localStorage
+function loadStoredSessions(): ChatSession[] {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(SESSIONS_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
       if (Array.isArray(parsed)) {
@@ -33,23 +61,67 @@ function loadStoredMessages(): Message[] {
       }
     }
   } catch (e) {
-    console.warn('Failed to load chat history:', e);
+    console.warn('Failed to load chat sessions:', e);
   }
   return [];
 }
 
-// Save messages to localStorage
-function saveMessages(messages: Message[]) {
+// Save sessions to localStorage
+function saveSessions(sessions: ChatSession[]) {
   try {
-    const toStore = messages.slice(-MAX_STORED_MESSAGES);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+    const toStore = sessions.slice(0, MAX_SESSIONS);
+    localStorage.setItem(SESSIONS_KEY, JSON.stringify(toStore));
   } catch (e) {
-    console.warn('Failed to save chat history:', e);
+    console.warn('Failed to save chat sessions:', e);
+  }
+}
+
+// Load active session ID
+function loadActiveSessionId(): string | null {
+  try {
+    return localStorage.getItem(ACTIVE_SESSION_KEY);
+  } catch (e) {
+    return null;
+  }
+}
+
+// Save active session ID
+function saveActiveSessionId(id: string | null) {
+  try {
+    if (id) {
+      localStorage.setItem(ACTIVE_SESSION_KEY, id);
+    } else {
+      localStorage.removeItem(ACTIVE_SESSION_KEY);
+    }
+  } catch (e) {
+    console.warn('Failed to save active session ID:', e);
   }
 }
 
 export default function App() {
-  const [initialMessages] = useState<Message[]>(() => loadStoredMessages());
+  // Session management state
+  const [sessions, setSessions] = useState<ChatSession[]>(() => loadStoredSessions());
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(() => {
+    const storedId = loadActiveSessionId();
+    const existingSessions = loadStoredSessions();
+    // Validate that the stored session exists
+    if (storedId && existingSessions.some(s => s.id === storedId)) {
+      return storedId;
+    }
+    return null;
+  });
+  
+  // Get initial messages from active session
+  const getInitialMessages = useCallback((): Message[] => {
+    if (activeSessionId) {
+      const session = sessions.find(s => s.id === activeSessionId);
+      if (session) {
+        return session.messages;
+      }
+    }
+    return [];
+  }, [activeSessionId, sessions]);
+
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return localStorage.getItem(AUTH_KEY) === 'true';
   });
@@ -57,23 +129,133 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [isCheckingAuth, setIsCheckingAuth] = useState(false);
   const [activeView, setActiveView] = useState<'chat' | 'dashboard'>('chat');
+  const [isHistoryHovered, setIsHistoryHovered] = useState(false);
   
   const { messages, input, handleInputChange, handleSubmit, addToolResult, isLoading, setMessages } = useChat({
     api: API_URL,
     maxSteps: 15,
-    initialMessages,
+    initialMessages: getInitialMessages(),
   });
 
+  // Save messages to active session when they change
   useEffect(() => {
     if (messages.length > 0) {
-      saveMessages(messages);
+      if (activeSessionId) {
+        // Update existing session
+        setSessions(prevSessions => {
+          const updatedSessions = prevSessions.map(session => {
+            if (session.id === activeSessionId) {
+              return {
+                ...session,
+                messages: messages.slice(-MAX_STORED_MESSAGES),
+                title: generateSessionTitle(messages),
+                updatedAt: Date.now(),
+              };
+            }
+            return session;
+          });
+          saveSessions(updatedSessions);
+          return updatedSessions;
+        });
+      } else {
+        // Auto-create a new session when user sends first message
+        const newSession: ChatSession = {
+          id: generateSessionId(),
+          title: generateSessionTitle(messages),
+          messages: messages.slice(-MAX_STORED_MESSAGES),
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        
+        setSessions(prevSessions => {
+          const updated = [newSession, ...prevSessions].slice(0, MAX_SESSIONS);
+          saveSessions(updated);
+          return updated;
+        });
+        
+        setActiveSessionId(newSession.id);
+        saveActiveSessionId(newSession.id);
+      }
     }
-  }, [messages]);
+  }, [messages, activeSessionId]);
 
-  const handleClearHistory = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
+  // Create new chat session
+  const handleNewChat = useCallback(() => {
+    // Save current session if it has messages
+    if (activeSessionId && messages.length > 0) {
+      setSessions(prevSessions => {
+        const updated = prevSessions.map(s => 
+          s.id === activeSessionId 
+            ? { ...s, messages: messages.slice(-MAX_STORED_MESSAGES), title: generateSessionTitle(messages), updatedAt: Date.now() }
+            : s
+        );
+        saveSessions(updated);
+        return updated;
+      });
+    }
+    
+    // Create new session
+    const newSession: ChatSession = {
+      id: generateSessionId(),
+      title: 'New Chat',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    
+    setSessions(prevSessions => {
+      const updated = [newSession, ...prevSessions].slice(0, MAX_SESSIONS);
+      saveSessions(updated);
+      return updated;
+    });
+    
+    setActiveSessionId(newSession.id);
+    saveActiveSessionId(newSession.id);
     setMessages([]);
-  }, [setMessages]);
+    setActiveView('chat');
+  }, [activeSessionId, messages, setMessages]);
+
+  // Switch to a different session
+  const switchToSession = useCallback((sessionId: string) => {
+    // Save current session first
+    if (activeSessionId && messages.length > 0) {
+      setSessions(prevSessions => {
+        const updated = prevSessions.map(s => 
+          s.id === activeSessionId 
+            ? { ...s, messages: messages.slice(-MAX_STORED_MESSAGES), title: generateSessionTitle(messages), updatedAt: Date.now() }
+            : s
+        );
+        saveSessions(updated);
+        return updated;
+      });
+    }
+    
+    // Load target session
+    const targetSession = sessions.find(s => s.id === sessionId);
+    if (targetSession) {
+      setActiveSessionId(sessionId);
+      saveActiveSessionId(sessionId);
+      setMessages(targetSession.messages);
+      setActiveView('chat');
+    }
+  }, [activeSessionId, messages, sessions, setMessages]);
+
+  // Delete a session
+  const deleteSession = useCallback((sessionId: string) => {
+    setSessions(prevSessions => {
+      const updated = prevSessions.filter(s => s.id !== sessionId);
+      saveSessions(updated);
+      
+      // If we deleted the active session, clear messages
+      if (sessionId === activeSessionId) {
+        setActiveSessionId(null);
+        saveActiveSessionId(null);
+        setMessages([]);
+      }
+      
+      return updated;
+    });
+  }, [activeSessionId, setMessages]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,53 +364,62 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-full bg-[#FAFAF8]">
-      {/* Sidebar */}
-      <aside className="w-16 flex flex-col items-center py-4 border-r border-[#E5E5E3] bg-[#F5F5F3]">
+      {/* Rail Sidebar */}
+      <aside className="w-16 flex flex-col items-center py-4 border-r border-[#E5E5E3] bg-[#F5F5F3] relative z-40">
         {/* Logo */}
-        <div className="w-10 h-10 rounded-lg bg-[#1A1A1A] flex items-center justify-center mb-6">
+        <div className="w-10 h-10 rounded-lg bg-[#1A1A1A] flex items-center justify-center mb-8">
           <span className="text-white font-bold text-sm">PF</span>
         </div>
         
+        {/* New Chat Button */}
+        <button 
+          onClick={handleNewChat}
+          className="w-10 h-10 rounded-lg bg-[#E5E5E3] hover:bg-[#DCDCDA] flex items-center justify-center transition-colors mb-4"
+          title="New chat"
+        >
+          <svg className="w-5 h-5 text-stone-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
+        
         {/* Nav items */}
         <nav className="flex-1 flex flex-col items-center gap-2">
-          <button 
-            onClick={() => setActiveView('chat')}
-            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${activeView === 'chat' ? 'bg-[#E5E5E3]' : 'hover:bg-[#E5E5E3]'}`} 
-            title="Chat"
+          {/* History button */}
+          <div 
+            className="relative"
+            onMouseEnter={() => setIsHistoryHovered(true)}
+            onMouseLeave={() => setIsHistoryHovered(false)}
           >
-            <svg className={`w-5 h-5 ${activeView === 'chat' ? 'text-[#1A1A1A]' : 'text-stone-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-          </button>
+            <button 
+              onClick={() => setActiveView('chat')}
+              className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${isHistoryHovered || activeView === 'chat' ? 'bg-[#E5E5E3]' : 'hover:bg-[#E5E5E3]'}`}
+              title="History"
+            >
+              <svg className={`w-5 h-5 ${activeView === 'chat' ? 'text-[#1A1A1A]' : 'text-stone-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+            
+            {/* Invisible bridge to flyover - extends hover zone to the right */}
+            {isHistoryHovered && (
+              <div className="absolute left-full top-0 w-4 h-full" />
+            )}
+          </div>
+          
+          {/* Data Viewer button */}
           <button 
             onClick={() => setActiveView('dashboard')}
-            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${activeView === 'dashboard' ? 'bg-[#E5E5E3]' : 'hover:bg-[#E5E5E3]'}`} 
+            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${activeView === 'dashboard' ? 'bg-[#E5E5E3]' : 'hover:bg-[#E5E5E3]'}`}
             title="Data Viewer"
           >
             <svg className={`w-5 h-5 ${activeView === 'dashboard' ? 'text-[#1A1A1A]' : 'text-stone-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </button>
-          <button className="w-10 h-10 rounded-lg hover:bg-[#E5E5E3] flex items-center justify-center transition-colors" title="History">
-            <svg className="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </button>
         </nav>
         
         {/* Bottom actions */}
         <div className="flex flex-col items-center gap-2">
-          {messages.length > 0 && (
-            <button 
-              onClick={handleClearHistory}
-              className="w-10 h-10 rounded-lg hover:bg-[#E5E5E3] flex items-center justify-center transition-colors" 
-              title="Clear history"
-            >
-              <svg className="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
-          )}
           <button 
             onClick={handleLogout}
             className="w-10 h-10 rounded-lg hover:bg-[#E5E5E3] flex items-center justify-center transition-colors" 
@@ -241,20 +432,88 @@ export default function App() {
         </div>
       </aside>
 
+      {/* Secondary Sidebar - History Panel (Overlay) */}
+      {isHistoryHovered && (
+        <div 
+          className="absolute left-16 top-0 w-64 h-full bg-white border-r border-[#E5E5E3] shadow-lg flex flex-col z-50"
+          onMouseEnter={() => setIsHistoryHovered(true)}
+          onMouseLeave={() => setIsHistoryHovered(false)}
+        >
+          {/* Header */}
+          <div className="px-4 pt-4 pb-4">
+            <div className="flex items-center justify-between h-10">
+              <span className="font-medium text-[#1A1A1A]">History</span>
+              <button 
+                className="p-1.5 rounded-lg hover:bg-stone-100 transition-colors"
+                title="Pin sidebar"
+              >
+                <svg className="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          {/* Recent section */}
+          <div className="flex-1 overflow-y-auto">
+            {sessions.length > 0 ? (
+              <>
+                <div className="px-4 py-2">
+                  <span className="text-xs font-medium text-stone-400 uppercase tracking-wide">Recent</span>
+                </div>
+                <div className="flex flex-col">
+                  {sessions.map(session => (
+                    <div 
+                      key={session.id}
+                      className={`flex items-center gap-2 px-4 py-2.5 hover:bg-stone-50 cursor-pointer group/item ${session.id === activeSessionId ? 'bg-stone-100' : ''}`}
+                    >
+                      <button 
+                        onClick={() => switchToSession(session.id)}
+                        className="flex-1 text-sm text-left text-stone-700 truncate"
+                      >
+                        {session.title}
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteSession(session.id);
+                        }}
+                        className="opacity-0 group-hover/item:opacity-100 p-1 hover:bg-stone-200 rounded transition-opacity"
+                        title="Delete chat"
+                      >
+                        <svg className="w-3.5 h-3.5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="px-4 py-8 text-center">
+                <p className="text-sm text-stone-400">No chat history yet</p>
+                <p className="text-xs text-stone-400 mt-1">Start a new conversation</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Main content */}
       {activeView === 'dashboard' ? (
         <Dashboard />
       ) : (
-        <div className="flex-1 flex flex-col">
-          {/* Header */}
-          <header className="px-6 py-4 border-b border-[#E5E5E3]">
-            <div className="max-w-4xl mx-auto flex justify-between items-center">
-              <h1 className="text-lg font-semibold text-[#1A1A1A]">Primary Flow</h1>
-            </div>
-          </header>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Scrollable content area */}
+          <div className="flex-1 overflow-auto">
+            {/* Header */}
+            <header className="px-6 pt-4 pb-4 border-b border-[#E5E5E3] bg-[#FAFAF8]/80 backdrop-blur-sm sticky top-0 z-10">
+              <div className="flex items-center h-10">
+                <h1 className="text-lg font-semibold text-[#1A1A1A]">Primary Flow</h1>
+              </div>
+            </header>
 
-          {/* Messages */}
-          <main className="flex-1 overflow-auto">
+            {/* Messages */}
         <div className="max-w-3xl mx-auto px-6 py-8 flex flex-col gap-5">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -721,11 +980,11 @@ export default function App() {
               <span>Thinking...</span>
             </div>
           )}
-        </div>
-      </main>
+          </div>
+          </div>
 
-        {/* Input Area */}
-        <footer className="px-6 pb-6 pt-3">
+          {/* Input Area */}
+          <footer className="px-6 pb-6 pt-3">
           <div className="max-w-3xl mx-auto">
             <form
               onSubmit={handleSubmit}
