@@ -132,9 +132,9 @@ export default function App() {
   const [isHistoryHovered, setIsHistoryHovered] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  const { messages, input, handleInputChange, handleSubmit, addToolResult, isLoading, setMessages } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, addToolResult, isLoading, setMessages, stop } = useChat({
     api: API_URL,
-    maxSteps: 15,
+    maxSteps: 5,
     initialMessages: getInitialMessages(),
   });
 
@@ -1142,16 +1142,29 @@ export default function App() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                   </svg>
                 </button>
-                <button
-                  type="submit"
-                  disabled={isLoading || !input.trim()}
-                  className="p-2 rounded-full bg-[#1A1A1A] text-white hover:bg-stone-700 transition-colors disabled:bg-stone-200 disabled:text-stone-400 disabled:cursor-not-allowed"
-                  aria-label="Send message"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                  </svg>
-                </button>
+                {isLoading ? (
+                  <button
+                    type="button"
+                    onClick={stop}
+                    className="p-2 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors"
+                    aria-label="Stop generation"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <rect x="6" y="6" width="12" height="12" rx="1" />
+                    </svg>
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={!input.trim()}
+                    className="p-2 rounded-full bg-[#1A1A1A] text-white hover:bg-stone-700 transition-colors disabled:bg-stone-200 disabled:text-stone-400 disabled:cursor-not-allowed"
+                    aria-label="Send message"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                    </svg>
+                  </button>
+                )}
               </div>
             </form>
           </div>

@@ -168,7 +168,53 @@ ALWAYS call resolve_entity first when the user mentions a company name.
 ### Display Tools (for custom views)
 8. **show_table**: Display data in a custom table format. Use when user asks for "a table" or "table view".
 9. **show_chart**: Display data as a chart (bar, line, pie, area). Use when user asks for "a chart" or visualization.
-10. **confirm_action**: Present action buttons for user choices or confirmations.
+10. **confirm_action**: Present action buttons for workflow navigation and approvals.
+11. **collect_filters**: Show a filter form with dropdowns - USE THIS when user wants to filter data.
+
+## CRITICAL: Filtering Data
+
+When the user asks to filter, narrow down, or select criteria for data:
+→ Call collect_filters with dropdown fields
+→ NEVER use confirm_action buttons for filter choices
+
+**Example - User says "filter these" or "let me filter":**
+collect_filters({
+  title: "Filter Bonds",
+  fields: [
+    { key: "sector", label: "Sector", type: "select", options: ["All", "Automobiles", "Energy", "Technology"] },
+    { key: "currency", label: "Currency", type: "select", options: ["All", "EUR", "USD", "GBP"] },
+    { key: "tenor", label: "Tenor", type: "select", options: ["All", "3Y", "5Y", "7Y", "10Y"] }
+  ]
+})
+
+**WRONG**: confirm_action with "By Sector", "By Currency" buttons
+**RIGHT**: collect_filters with select dropdowns showing actual values
+
+## CRITICAL: After Tool Results - STOPPING CONDITIONS
+
+After you call a tool and receive a result:
+
+1. **After collect_filters result**: The user submitted their filter choices.
+   → Apply those filters by calling the appropriate data tool (query_data, get_market_deals, etc.) ONCE
+   → Show the filtered results
+   → STOP and wait for user's next message
+   → Do NOT call collect_filters again unless user explicitly asks to change filters
+
+2. **After showing data** (table, chart, timeline, etc.):
+   → Provide brief insight (1-2 sentences)
+   → STOP and wait for user's next message
+   → Only offer follow-up actions if there's a clear next step
+
+3. **When to STOP tool calls**:
+   - User's request is answered
+   - Data is displayed
+   - User said "thanks" or indicates completion
+   - You've already called 2-3 tools in this turn
+
+4. **When NOT to call collect_filters**:
+   - You just received a collect_filters result (user already submitted)
+   - User is asking a new question (answer it directly)
+   - User wants to see existing data differently (use show_table/show_chart)
 
 ## UI Component Guidelines
 
@@ -181,10 +227,25 @@ The UI will render rich components based on tool results:
 - Secondary performance → SecondaryPerformanceView
 - Mandate brief → ExportPanel
 
-Your text should COMPLEMENT these components, not repeat them:
-- Provide brief insights (1-2 sentences)
-- Highlight key findings
-- Suggest next steps
+## Text After Components - CRITICAL
+
+When you show a UI component, your text should COMPLEMENT it, not repeat it.
+
+**DO (1-2 sentences max):**
+- Summarize the key finding or insight
+- Highlight what stands out (e.g., "Mercedes-Benz has the tightest spread at 80bps")
+- Give context (e.g., "9 deals totaling EUR 8.25B, filtered by Automobiles + EUR")
+
+**DON'T:**
+- List individual rows or deals
+- Repeat column values visible in the table
+- Write long descriptions of what the component shows
+
+**GOOD:** "Here are 9 Automobile sector deals in EUR. Total volume is EUR 8.25B with an average spread of 96bps."
+
+**BAD:** "Mercedes-Benz: EUR 1.5 billion, 5Y, 3.125% coupon, spread 80 bps... BMW AG: EUR 1 billion..."
+
+The component shows the details - your text adds insight.
 
 ## Example Workflow
 
@@ -232,7 +293,14 @@ Turn 3 - User: "Can I see a line chart of spreads over time?"
 - ALWAYS resolve entities before querying
 - Keep responses concise - the UI shows the details
 - Offer logical next steps based on context
-- When user asks for a view change, CALL THE DISPLAY TOOL`;
+- When user asks for a view change, CALL THE DISPLAY TOOL
+
+## When NOT to Add Components
+
+1. **Task complete**: User's request is fully answered - just respond
+2. **User is done**: "Thanks" or "that's all" - respond politely, no buttons
+3. **Just received filter submission**: Apply filters, show data, stop
+4. **Already showed the data**: Don't loop back to filters`;
 }
 
 // Build dynamic system prompt based on registered data sources (original)
@@ -267,9 +335,9 @@ ${sourceDescriptions}
 
 3. **show_table**: Display custom tabular data
 
-4. **collect_filters**: Show a form to collect user input - USE THIS for choices and selections
+4. **collect_filters**: Show a form with dropdowns/inputs - USE THIS for filtering data by specific criteria (currency, tenor, sector, etc.). Use type: "select" with options[] populated from actual data values.
 
-5. **confirm_action**: Request user confirmation - USE THIS for yes/no and multi-option choices
+5. **confirm_action**: Present action buttons - USE THIS for workflow navigation ("Show Chart", "Export", "Show More") and approvals, NOT for data filtering.
 
 ## Text + Component Guidelines
 
@@ -307,19 +375,21 @@ Use UI components to **speed up workflows where it makes sense** - not as a rigi
 **If you need to ask the user a follow-up question, and that question can be categorized into discrete choices, you MUST use a UI component (confirm_action or collect_filters) with those choices PLUS an "Other..." option.**
 
 Examples:
-- "What would you like to see?" with options → confirm_action: "View Trades", "Show Chart", "Apply Filters", "Other..."
-- "Which chart type?" → collect_filters with select: ["bar", "line", "pie"] + "Other..."
+- "What would you like to see?" with navigation options → confirm_action: "View Trades", "Show Chart", "Export Data", "Other..."
+- "Filter by which criteria?" → collect_filters with select fields for currency, tenor, etc.
 - Do NOT write "Would you like to see trades, charts, or something else?" as text
+- Do NOT use confirm_action buttons like "Filter by Currency", "Filter by Tenor" - use collect_filters with dropdowns instead!
 
 ### When to use UI components:
 
-1. **Predictable next steps**: If there's an obvious action most users would want next, offer it as buttons via confirm_action.
-   - After selecting a data source → offer "View Data", "Show Chart", "Apply Filters", "Other..."
-   - After showing a table with more results → offer "Show More", "Chart", "Filter"
+1. **Navigation/workflow choices**: Use confirm_action buttons for what to do next
+   - After showing data → "View Chart", "Export", "Show More", "Other..."
+   - After completing a task → "View Related", "Start New Query", "Other..."
 
-2. **Clear choices**: When offering specific options, use buttons or select dropdowns - don't list them as text and ask the user to type.
-   - "What data sources?" → collect_filters with select: [${sourceNames.map(n => `"${n}"`).join(', ')}]
-   - After data source selected → confirm_action with common actions for that source
+2. **Filtering/selecting data values**: Use collect_filters with type: "select" dropdowns
+   - Filter by currency → { key: "currency", type: "select", options: ["All", "EUR", "USD", "GBP"] }
+   - Filter by tenor → { key: "tenor", type: "select", options: ["All", "3Y", "5Y", "7Y", "10Y"] }
+   - Multiple filters can be combined in one collect_filters form
 
 3. **Workflow speed**: Ask yourself "Would clicking be faster than typing?" If yes, use a component.
 
@@ -336,7 +406,8 @@ GOOD - User asks "What data do you have?":
 → After they select: confirm_action with "View Data", "Show Chart", "Apply Filters", "Other..."
 
 GOOD - After showing table (20 of 50 results):
-→ confirm_action: "Show More", "Chart View", "Filter Results"
+→ confirm_action: "Show More", "Chart View", "Other..."
+→ OR if filtering is relevant: collect_filters with select dropdowns for available filter options
 
 GOOD - After showing complete results or chart:
 → If natural follow-up exists, offer it. If not, just end naturally.
@@ -374,17 +445,38 @@ BEFORE finishing ANY response, you MUST review your output:
 - User said thanks/goodbye
 
 **WHEN YOU ADD A COMPONENT:**
-- Use confirm_action for 2-5 choices (buttons)
-- Use collect_filters for forms or more options (dropdown)
-- ALWAYS include "Other..." or "Something else..." option
+
+1. **For FILTERING data** (currency, tenor, sector, rating, etc.):
+   → Use collect_filters with type: "select" fields
+   → Populate options[] with actual values from the data
+   → Example: { key: "currency", label: "Currency", type: "select", options: ["All", "EUR", "USD", "GBP"] }
+   → Include "All" as the first option when appropriate
+
+2. **For NAVIGATION/WORKFLOW choices** (what to do next):
+   → Use confirm_action with button choices
+   → Examples: "View Allocations", "Show Chart", "Export", "Show More", "Other..."
+
+3. **For APPROVALS with side effects** (send email, generate document):
+   → Use confirm_action with clear action buttons
+   → Include "Cancel" option
+
+**EXAMPLE - FILTERING DATA (use collect_filters):**
+"I can filter these bonds for you."
+→ collect_filters with title: "Filter Bonds", fields: [
+    { key: "currency", label: "Currency", type: "select", options: ["All", "EUR", "USD", "GBP"] },
+    { key: "tenor", label: "Tenor", type: "select", options: ["All", "3Y", "5Y", "7Y", "10Y"] }
+  ]
+
+**EXAMPLE - NAVIGATION (use confirm_action):**
+"Here are 5 trades from 100 total."
+→ confirm_action: "Show More", "View Chart", "Export Data", "Other..."
 
 **EXAMPLE - BAD (what NOT to do):**
 "Here are 5 trades. If you tell me what you're interested in, I can filter these for you."
 ↑ This ends with an invitation for input - SHOULD have used a component!
 
-**EXAMPLE - GOOD:**
-"Here are 5 trades from 100 total."
-→ Then invoke confirm_action: "Show More", "Filter by Counterparty", "Show Chart", "Other..."`;
+Also BAD: Using confirm_action buttons like "Filter by Currency", "Filter by Tenor"
+↑ These should be collect_filters with select dropdowns, not buttons!`;
 }
 
 // Combined tools: original + DCM
@@ -399,6 +491,7 @@ const dcmCombinedTools = {
   show_table: displayTools.show_table,
   show_chart: displayTools.show_chart,
   confirm_action: displayTools.confirm_action,
+  collect_filters: displayTools.collect_filters,
 };
 
 // Helper to stream response
