@@ -1,4 +1,5 @@
 // Allocation Breakdown - Investor distribution charts
+import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 
 interface BreakdownItem {
@@ -39,7 +40,7 @@ interface AllocationBreakdownProps {
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'];
 
-export function AllocationBreakdown({ deal, allocations, breakdown, summary }: AllocationBreakdownProps) {
+export const AllocationBreakdown = React.memo(function AllocationBreakdown({ deal, allocations, breakdown, summary }: AllocationBreakdownProps) {
   const typeData = breakdown.byType.map((item, i) => ({
     name: item.type,
     value: item.amount,
@@ -93,6 +94,7 @@ export function AllocationBreakdown({ deal, allocations, breakdown, summary }: A
                   outerRadius={70}
                   paddingAngle={2}
                   dataKey="value"
+                  isAnimationActive={false}
                 >
                   {typeData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
@@ -123,7 +125,7 @@ export function AllocationBreakdown({ deal, allocations, breakdown, summary }: A
                 <XAxis type="number" tickFormatter={(v) => `€${v}M`} fontSize={10} />
                 <YAxis type="category" dataKey="name" fontSize={10} width={40} />
                 <Tooltip formatter={(value) => [`€${value}M`, 'Allocated']} />
-                <Bar dataKey="value" fill="#3B82F6" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="value" fill="#3B82F6" radius={[0, 4, 4, 0]} isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -150,4 +152,4 @@ export function AllocationBreakdown({ deal, allocations, breakdown, summary }: A
       </div>
     </div>
   );
-}
+});

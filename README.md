@@ -1,6 +1,13 @@
-# DCM Bond Issuance Assistant
+# Primary Flow
 
-AI-powered assistant for Debt Capital Markets professionals. Supports mandate pitching, deal analysis, peer comparison, and market surveillance through a conversational interface with rich UI components.
+Component-first AI interactions for Debt Capital Markets. Less wall of text, more getting things done.
+
+Primary Flow replaces traditional chat-heavy LLM interfaces with structured UI components—forms, tables, charts, and approval gates—that let you accomplish tasks efficiently.
+
+## Products
+
+- **Primary Flow Canvas** - Conversational assistant with rich UI components for mandate pitching, deal analysis, and market surveillance
+- **Primary Flow Data** - Dashboard views for browsing issuance, allocations, and secondary performance
 
 ## Who It's For
 
@@ -10,6 +17,7 @@ AI-powered assistant for Debt Capital Markets professionals. Supports mandate pi
 
 ## Features
 
+### Canvas (Chat)
 - **Entity Resolution** - Disambiguate issuer names to canonical entities
 - **Deal History** - View issuer bond issuance timelines with pricing metrics
 - **Peer Comparison** - Compare issuers against sector peers
@@ -17,7 +25,18 @@ AI-powered assistant for Debt Capital Markets professionals. Supports mandate pi
 - **Secondary Performance** - Track spread drift and price performance
 - **Mandate Briefs** - Generate exportable pitch documents
 - **Market Overview** - Browse recent deals across the market
+- **Data-driven Filtering** - Dynamic dropdown filters populated from actual data
+- **Chat History** - Persistent sessions with sidebar navigation
+
+### Data (Dashboard)
+- **Issuance View** - Recent deals table with filtering
+- **Allocations View** - Investor breakdown charts
+- **Secondary View** - Performance tracking
+
+### Platform
+- **Mobile Responsive** - Full functionality on mobile with hamburger menu
 - **Password Protection** - Secure access with shared password
+- **Component-first UX** - Structured interactions over free-form text
 
 ## Quick Start
 
@@ -76,6 +95,7 @@ Open http://localhost:5173
 - "Show secondary performance for BMW's March 2024 bond"
 - "Generate a mandate brief for Porsche"
 - "Show recent EUR deals in the auto sector"
+- "Filter these by currency" (triggers dynamic filter dropdowns)
 
 ## Documentation
 

@@ -1,4 +1,5 @@
 // Comparable Deals Panel - Peer comparison view
+import React from 'react';
 
 interface DealSummary {
   totalDeals: number;
@@ -42,7 +43,7 @@ interface ComparableDealsPanelProps {
   };
 }
 
-export function ComparableDealsPanel({ issuer, issuerSummary, issuerDeals, peers, comparison }: ComparableDealsPanelProps) {
+export const ComparableDealsPanel = React.memo(function ComparableDealsPanel({ issuer, issuerSummary, issuerDeals, peers, comparison }: ComparableDealsPanelProps) {
   const formatCurrency = (value: number) => `€${value.toLocaleString()}M`;
 
   return (
@@ -115,4 +116,4 @@ export function ComparableDealsPanel({ issuer, issuerSummary, issuerDeals, peers
       </div>
     </div>
   );
-}
+});

@@ -960,10 +960,10 @@ export default function App() {
                       }
                       if (toolInvocation.state === 'result') {
                         const result = toolInvocation.result;
-                        if (result.error) {
+                        if (result.error || !result.issuer || !result.deals) {
                           return (
                             <div key={callId} className="mt-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                              {result.error}
+                              {result.error || 'Failed to load issuance history'}
                             </div>
                           );
                         }
@@ -990,10 +990,10 @@ export default function App() {
                       }
                       if (toolInvocation.state === 'result') {
                         const result = toolInvocation.result;
-                        if (result.error) {
+                        if (result.error || !result.issuer) {
                           return (
                             <div key={callId} className="mt-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                              {result.error}
+                              {result.error || 'Failed to load peer comparison'}
                             </div>
                           );
                         }
@@ -1022,10 +1022,10 @@ export default function App() {
                       }
                       if (toolInvocation.state === 'result') {
                         const result = toolInvocation.result;
-                        if (result.error) {
+                        if (result.error || !result.deal) {
                           return (
                             <div key={callId} className="mt-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                              {result.error}
+                              {result.error || 'Failed to load allocation data'}
                             </div>
                           );
                         }
@@ -1053,10 +1053,10 @@ export default function App() {
                       }
                       if (toolInvocation.state === 'result') {
                         const result = toolInvocation.result;
-                        if (result.error) {
+                        if (result.error || !result.bond || !result.summary) {
                           return (
                             <div key={callId} className="mt-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                              {result.error}
+                              {result.error || 'Failed to load performance data'}
                             </div>
                           );
                         }

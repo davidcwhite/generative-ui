@@ -1,4 +1,5 @@
 // Issuer Timeline - Vertical timeline of bond issuances
+import React from 'react';
 
 interface Deal {
   id: string;
@@ -26,7 +27,7 @@ interface IssuerTimelineProps {
   };
 }
 
-export function IssuerTimeline({ issuerName, deals, summary }: IssuerTimelineProps) {
+export const IssuerTimeline = React.memo(function IssuerTimeline({ issuerName, deals, summary }: IssuerTimelineProps) {
   const formatCurrency = (value: number, currency: string = 'EUR') => {
     const symbol = currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : '$';
     return `${symbol}${value.toLocaleString()}M`;
@@ -104,4 +105,4 @@ export function IssuerTimeline({ issuerName, deals, summary }: IssuerTimelinePro
       </div>
     </div>
   );
-}
+});

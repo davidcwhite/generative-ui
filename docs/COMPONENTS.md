@@ -1,5 +1,61 @@
 # UI Components
 
+## Layout Components
+
+### Rail Bar
+
+**Location**: `client/src/App.tsx`
+
+**Purpose**: Left navigation sidebar with icon buttons
+
+**Elements**:
+- **PF Logo** - Brand icon at top
+- **New Chat (+)** - Creates new chat session
+- **History (clock)** - Triggers history flyover on hover
+- **Dashboard (chart)** - Switches to Data view
+
+**Behavior**: Fixed position, 64px wide. Icons show hover states. History button triggers flyover.
+
+---
+
+### History Flyover
+
+**Location**: `client/src/App.tsx`
+
+**Purpose**: Overlay sidebar showing chat history
+
+**Trigger**: Hover over History icon in rail bar
+
+**Elements**:
+- Header with "History" title and bookmark icon
+- "Recent" section label
+- List of chat sessions (title + delete button)
+- Empty state when no history
+
+**Behavior**: 
+- Appears on hover, stays open while mouse is inside
+- Clicking session switches to it
+- Delete button removes session with confirmation
+
+---
+
+### Mobile Menu
+
+**Location**: `client/src/App.tsx`
+
+**Purpose**: Hamburger menu for mobile devices
+
+**Trigger**: Click hamburger icon (visible on small screens)
+
+**Elements**:
+- Full-screen overlay
+- PF logo and close button
+- Chat navigation
+- Recent sessions list
+- Dashboard link
+
+---
+
 ## DCM Components
 
 ### EntityPicker
@@ -174,7 +230,7 @@
 **Data Shape**:
 ```typescript
 {
-  filters: { sector?: string; currency?: string };
+  filters: { sector?: string; currency?: string; issuer?: string };
   summary: {
     totalDeals: number;
     totalVolume: number;
@@ -192,6 +248,11 @@
     nip: number;
     oversubscription: number;
   }>;
+  availableFilters: {
+    sectors: string[];
+    currencies: string[];
+    issuers: string[];
+  };
 }
 ```
 
@@ -237,16 +298,53 @@
 
 **Trigger**: `collect_filters` tool call
 
-**Purpose**: Collect structured user input
+**Purpose**: Collect structured user input via form
 
 **Props**: `title`, `fields` (text/select/date inputs)
 
-**Behavior**: User submits form, values returned to assistant.
+**Data-driven Options**: When used after `get_market_deals`, dropdown options are populated from `availableFilters` in the response, ensuring filter values match actual data.
+
+**Behavior**: User submits form, values returned to assistant. If user sends a new message while form is pending, form is auto-cancelled.
+
+---
+
+## Dashboard Views
+
+### IssuanceView
+
+**Location**: `client/src/components/dashboard/IssuanceView.tsx`
+
+**Purpose**: Browse recent bond issuance
+
+**Elements**: Deals table with issuer, date, size, tenor, spread, NIP columns
+
+---
+
+### AllocationsView
+
+**Location**: `client/src/components/dashboard/AllocationsView.tsx`
+
+**Purpose**: Aggregated allocation analytics
+
+**Elements**: Charts showing investor type and geography breakdowns
+
+---
+
+### SecondaryView
+
+**Location**: `client/src/components/dashboard/SecondaryView.tsx`
+
+**Purpose**: Secondary market overview
+
+**Elements**: Performance metrics and trend charts
 
 ---
 
 ## Component Location
 
-All DCM components: `client/src/components/dcm/`
-
-Generic components: `client/src/components/`
+| Category | Path |
+|----------|------|
+| DCM Components | `client/src/components/dcm/` |
+| Dashboard Views | `client/src/components/dashboard/` |
+| Generic Components | `client/src/components/` |
+| Layout (Rail, History) | `client/src/App.tsx` |

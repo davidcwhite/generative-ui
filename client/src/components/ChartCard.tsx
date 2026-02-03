@@ -61,7 +61,7 @@ export function ChartCard({ title, type, data, xKey, yKey, yLabel, color = '#3b8
                 }}
               />
               <Legend />
-              <Bar dataKey={yKey} fill={color} name={yLabel || yKey} isAnimationActive={false} />
+              <Bar dataKey={yKey} fill={color} name={yLabel || yKey} isAnimationActive={true} animationDuration={500} animationBegin={0} />
             </BarChart>
           </ResponsiveContainer>
         );
@@ -91,7 +91,7 @@ export function ChartCard({ title, type, data, xKey, yKey, yLabel, color = '#3b8
                 }}
               />
               <Legend />
-              <Line type="monotone" dataKey={yKey} stroke={color} name={yLabel || yKey} strokeWidth={2} isAnimationActive={false} />
+              <Line type="monotone" dataKey={yKey} stroke={color} name={yLabel || yKey} strokeWidth={2} isAnimationActive={true} animationDuration={500} animationBegin={0} />
             </LineChart>
           </ResponsiveContainer>
         );
@@ -121,7 +121,7 @@ export function ChartCard({ title, type, data, xKey, yKey, yLabel, color = '#3b8
                 }}
               />
               <Legend />
-              <Area type="monotone" dataKey={yKey} fill={color} stroke={color} name={yLabel || yKey} fillOpacity={0.6} isAnimationActive={false} />
+              <Area type="monotone" dataKey={yKey} fill={color} stroke={color} name={yLabel || yKey} fillOpacity={0.6} isAnimationActive={true} animationDuration={500} animationBegin={0} />
             </AreaChart>
           </ResponsiveContainer>
         );
@@ -139,7 +139,9 @@ export function ChartCard({ title, type, data, xKey, yKey, yLabel, color = '#3b8
                 outerRadius={100}
                 dataKey={yKey}
                 nameKey={xKey}
-                isAnimationActive={false}
+                isAnimationActive={true}
+                animationDuration={500}
+                animationBegin={0}
               >
                 {data.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

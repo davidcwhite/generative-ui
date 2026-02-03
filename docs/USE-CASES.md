@@ -138,7 +138,45 @@ User Query
 
 ---
 
-## 5. Investor Analysis
+## 5. Data-driven Filtering
+
+**User**: "Filter these by currency" (after seeing market deals)
+
+```
+User Query
+    │
+    ▼
+┌──────────────────┐
+│ collect_filters  │ ──▶ Show filter form with dropdowns
+│ (uses available  │     populated from availableFilters
+│  Filters data)   │
+└────────┬─────────┘
+         │ User submits form
+         ▼
+┌──────────────────┐
+│  FilterForm      │ ──▶ Dropdown options from real data
+└────────┬─────────┘
+         │ {currency: "EUR", issuer: "BMW"}
+         ▼
+┌──────────────────┐
+│ get_market_deals │ ──▶ Fetch filtered deals
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│  MarketIssuance  │ ──▶ Filtered results table
+└──────────────────┘
+```
+
+**Key Feature**: Filter dropdown options come from `availableFilters` in the previous `get_market_deals` response, ensuring users can only select values that exist in the data.
+
+**Tools**: `collect_filters` → `get_market_deals`
+
+**Components**: FilterForm → MarketIssuance
+
+---
+
+## 6. Investor Analysis
 
 **User**: "Which investors participated in Volkswagen deals?"
 
@@ -167,6 +205,66 @@ User Query
 
 ---
 
+## 7. Using the Data Dashboard
+
+**User**: Clicks Dashboard icon in rail bar
+
+```
+Click Dashboard Icon
+    │
+    ▼
+┌──────────────────┐
+│  Dashboard View  │ ──▶ Tabbed interface loads
+└────────┬─────────┘
+         │
+    ┌────┴────┬──────────┐
+    ▼         ▼          ▼
+┌────────┐ ┌──────────┐ ┌───────────┐
+│Issuance│ │Allocations│ │Secondary │
+│  View  │ │   View    │ │   View   │
+└────────┘ └──────────┘ └───────────┘
+```
+
+**No AI involved** - Direct data views without conversational interface.
+
+**Tabs**:
+- **Issuance**: Recent deals table
+- **Allocations**: Investor breakdown charts
+- **Secondary**: Performance tracking
+
+---
+
+## 8. Multi-session Chat History
+
+**User**: Hovers over History icon in rail bar
+
+```
+Hover History Icon
+    │
+    ▼
+┌──────────────────┐
+│ History Flyover  │ ──▶ Shows recent chat sessions
+└────────┬─────────┘
+         │ User clicks a session
+         ▼
+┌──────────────────┐
+│  Load Session    │ ──▶ Restores messages from localStorage
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│  Canvas View     │ ──▶ Previous conversation displayed
+└──────────────────┘
+```
+
+**Features**:
+- Sessions auto-saved on message changes
+- Title auto-generated from first user message
+- Delete sessions individually
+- Max 20 sessions retained
+
+---
+
 ## Tool-to-Component Mapping
 
 | Tool | Primary Component | Purpose |
@@ -179,6 +277,7 @@ User Query
 | `get_participation_history` | TableCard | Investor participation |
 | `generate_mandate_brief` | ExportPanel | Document export |
 | `get_market_deals` | MarketIssuance | Market overview |
+| `collect_filters` | FilterForm | Dynamic filter dropdowns |
 | `show_table` | TableCard | Generic tables |
 | `show_chart` | ChartCard | Generic charts |
 | `confirm_action` | ApprovalCard | User confirmation |

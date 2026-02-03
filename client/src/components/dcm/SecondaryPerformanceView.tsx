@@ -1,4 +1,5 @@
 // Secondary Performance View - Post-pricing spread/price performance
+import React from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 interface PerformancePoint {
@@ -36,7 +37,7 @@ interface SecondaryPerformanceViewProps {
   };
 }
 
-export function SecondaryPerformanceView({ bond, performance, drift: _drift, summary, analysis }: SecondaryPerformanceViewProps) {
+export const SecondaryPerformanceView = React.memo(function SecondaryPerformanceView({ bond, performance, drift: _drift, summary, analysis }: SecondaryPerformanceViewProps) {
   // Note: drift is available as _drift if needed for future enhancements
   const chartData = performance.map(p => ({
     date: p.date.split('-').slice(1).join('/'), // MM/DD format
@@ -149,6 +150,7 @@ export function SecondaryPerformanceView({ bond, performance, drift: _drift, sum
                     stroke="#8B5CF6"
                     strokeWidth={2}
                     dot={false}
+                    isAnimationActive={false}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -177,6 +179,7 @@ export function SecondaryPerformanceView({ bond, performance, drift: _drift, sum
                     stroke="#10B981"
                     strokeWidth={2}
                     dot={false}
+                    isAnimationActive={false}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -189,4 +192,4 @@ export function SecondaryPerformanceView({ bond, performance, drift: _drift, sum
       </div>
     </div>
   );
-}
+});

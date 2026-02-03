@@ -1,4 +1,5 @@
 // Market Issuance - Display aggregate market bond issuance data
+import React from 'react';
 
 interface Deal {
   id: string;
@@ -33,7 +34,7 @@ interface MarketIssuanceProps {
   };
 }
 
-export function MarketIssuance({ deals, summary, filters }: MarketIssuanceProps) {
+export const MarketIssuance = React.memo(function MarketIssuance({ deals, summary, filters }: MarketIssuanceProps) {
   const formatCurrency = (value: number, currency: string = 'EUR') => {
     const symbol = currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : '$';
     return `${symbol}${value.toLocaleString()}M`;
@@ -150,4 +151,4 @@ export function MarketIssuance({ deals, summary, filters }: MarketIssuanceProps)
       )}
     </div>
   );
-}
+});
