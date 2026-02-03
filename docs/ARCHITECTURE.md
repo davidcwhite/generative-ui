@@ -33,12 +33,19 @@
 │  └─────────────┘          └────────┬────────┘  └────────┬────────┘  │
 │                                    │                    │            │
 │                           ┌────────▼────────────────────▼───────┐   │
-│                           │           Tool Handler              │   │
+│                           │           Tool Handlers             │   │
+│                           │                                     │   │
+│                           │  DCM Tools (/api/dcm/chat):         │   │
 │                           │  resolve_entity | get_issuer_deals  │   │
 │                           │  get_peer_comparison | get_allocations│  │
 │                           │  get_performance | generate_mandate  │   │
-│                           │  get_market_deals | collect_filters  │   │
-│                           │  show_table | show_chart | confirm   │   │
+│                           │  get_market_deals                   │   │
+│                           │                                     │   │
+│                           │  Data Tools (/api/chat):            │   │
+│                           │  query_data | show_chart | show_table│  │
+│                           │                                     │   │
+│                           │  Shared (both endpoints):           │   │
+│                           │  collect_filters | confirm_action   │   │
 │                           └─────────────────────────────────────┘   │
 └──────────────────────────────────────────────────────────────────────┘
 ```
@@ -118,12 +125,23 @@ Client maps tool names to React components:
 ```typescript
 // Simplified pattern
 switch (toolName) {
+  // DCM Tools
   case 'resolve_entity': return <EntityPicker {...result} />;
   case 'get_issuer_deals': return <IssuerTimeline {...result} />;
   case 'get_peer_comparison': return <ComparableDealsPanel {...result} />;
+  case 'get_allocations': return <AllocationBreakdown {...result} />;
+  case 'get_performance': return <SecondaryPerformanceView {...result} />;
+  case 'generate_mandate_brief': return <ExportPanel {...result} />;
   case 'get_market_deals': return <MarketIssuance {...result} />;
-  case 'collect_filters': return <FilterForm {...args} />;
-  // ...
+  
+  // Data Tools
+  case 'query_data': return <TableCard {...result} />;
+  case 'show_chart': return <ChartCard {...result} />;
+  case 'show_table': return <TableCard {...result} />;
+  
+  // Interactive Tools
+  case 'collect_filters': return <FilterForm {...args} onSubmit={...} />;
+  case 'confirm_action': return <ApprovalCard {...args} onAction={...} />;
 }
 ```
 

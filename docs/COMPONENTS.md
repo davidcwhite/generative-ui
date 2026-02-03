@@ -70,15 +70,18 @@
   query: string;
   matches: Array<{
     id: string;
+    lei: string;
     name: string;
+    shortName: string;
     sector: string;
     country: string;
-    ratings: { sp?: string; moodys?: string; fitch?: string };
+    ratings: Array<{ agency: string; rating: string }>;
   }>;
+  onSelect: (issuerId: string) => void;
 }
 ```
 
-**Behavior**: User clicks a card to select the correct issuer. Selection feeds back to assistant.
+**Behavior**: User clicks a card to select the correct issuer. Selection feeds back to assistant via `onSelect` callback.
 
 ---
 
@@ -91,10 +94,13 @@
 **Data Shape**:
 ```typescript
 {
-  issuer: { name: string; sector: string };
+  issuerName: string;
   deals: Array<{
+    id: string;
+    issuerName: string;
     isin: string;
     pricingDate: string;
+    currency: string;
     size: number;
     tenor: string;
     coupon: number;
@@ -105,6 +111,7 @@
   summary: {
     totalDeals: number;
     totalRaised: number;
+    avgTenor: string;
     avgNip: number;
     avgOversubscription: number;
   };
@@ -124,22 +131,34 @@
 **Data Shape**:
 ```typescript
 {
-  issuer: { id: string; name: string };
-  sector: string;
-  peers: Array<{
-    id: string;
-    name: string;
-    dealCount: number;
+  issuer: { id: string; name: string; sector: string };
+  issuerSummary: {
+    totalDeals: number;
     totalRaised: number;
-    avgTenor: number;
+    avgTenor: string;
     avgNip: number;
     avgOversubscription: number;
+  };
+  issuerDeals: Deal[];
+  peers: Array<{
+    issuerId: string;
+    issuerName: string;
+    deals: Deal[];
+    summary: {
+      totalDeals: number;
+      totalRaised: number;
+      avgTenor: string;
+      avgNip: number;
+      avgOversubscription: number;
+    };
   }>;
-  insight: string;
+  comparison: {
+    nipVsPeers: string;
+  };
 }
 ```
 
-**Visual**: Table with issuer row highlighted. Indigo gradient header.
+**Visual**: Table with issuer row highlighted. Indigo gradient header. Shows recent deals preview.
 
 ---
 
@@ -152,24 +171,34 @@
 **Data Shape**:
 ```typescript
 {
-  deal: { isin: string; issuer: string };
-  summary: {
-    totalInvestors: number;
+  deal: {
+    id: string;
+    issuer: string;
+    size: number;
     oversubscription: number;
-    avgFillRate: number;
   };
-  byType: Array<{ name: string; value: number }>;
-  byGeography: Array<{ name: string; value: number }>;
-  topInvestors: Array<{
-    name: string;
-    type: string;
-    allocation: number;
+  allocations: Array<{
+    investorId: string;
+    investorName: string;
+    investorType: string;
+    geography: string;
+    orderSize: number;
+    allocatedSize: number;
     fillRate: number;
   }>;
+  breakdown: {
+    byType: Array<{ type: string; amount: number; percentage: number }>;
+    byGeography: Array<{ geography: string; amount: number; percentage: number }>;
+  };
+  summary: {
+    totalInvestors: number;
+    totalAllocated: number;
+    avgFillRate: number;
+  };
 }
 ```
 
-**Visual**: Pie chart (by type) + bar chart (by geography) + top investors list. Emerald gradient header.
+**Visual**: Pie chart (by type) + bar chart (by geography) + top investors list (from allocations). Emerald gradient header.
 
 ---
 
@@ -182,19 +211,40 @@
 **Data Shape**:
 ```typescript
 {
-  deal: { isin: string; issuer: string; issueSpread: number; reofferPrice: number };
-  trend: 'Tightening' | 'Widening' | 'Stable';
-  metrics: {
-    currentSpread: number;
-    spreadDrift: number;
-    avgVolume: number;
+  bond: {
+    isin: string;
+    issuer: string;
+    coupon: number;
+    tenor: string;
+    issueSpread: number;
+    issuePrice: number;
   };
-  spreadHistory: Array<{ date: string; spread: number }>;
-  priceHistory: Array<{ date: string; price: number }>;
+  performance: Array<{
+    date: string;
+    price: number;
+    spread: number;
+    yieldToMaturity: number;
+    volumeTraded: number;
+    daysFromPricing: number;
+  }>;
+  drift: number;
+  summary: {
+    currentSpread: number;
+    issueSpread: number;
+    drift: number;
+    currentPrice: number;
+    issuePrice: number;
+    priceChange: number;
+    avgDailyVolume: number;
+  } | null;
+  analysis: {
+    trend: 'Tightening' | 'Widening' | 'Stable';
+    interpretation: string;
+  };
 }
 ```
 
-**Visual**: Two line charts (spread over time, price over time) with reference lines. Violet gradient header. Drift color-coded.
+**Visual**: Two line charts (spread over time, price over time) with reference lines at issue values. Violet gradient header. Drift color-coded (green for tightening, red for widening).
 
 ---
 
@@ -207,17 +257,27 @@
 **Data Shape**:
 ```typescript
 {
-  sections: string[];
-  formats: Array<{ id: string; label: string }>;
-  provenance: {
+  brief: {
+    issuerId: string;
+    issuerName: string;
     generatedAt: string;
-    dataSources: string[];
-    queryContext: string;
+    sections: Array<{
+      title: string;
+      content: string;
+      dataPoints?: Record<string, string | number>[];
+    }>;
+    provenance: {
+      sources: string[];
+      timestamp: string;
+      queryContext: string;
+    };
   };
+  exportFormats: string[];  // e.g. ['pdf', 'pptx', 'xlsx', 'email']
+  onExport?: (format: string) => void;
 }
 ```
 
-**Visual**: Section badges, format buttons (PDF, PPT, Excel, Email). Amber gradient header.
+**Visual**: Section badges, format buttons (PDF, PPT, Excel, Email). Amber gradient header. Shows export confirmation and data provenance.
 
 ---
 
@@ -230,33 +290,38 @@
 **Data Shape**:
 ```typescript
 {
-  filters: { sector?: string; currency?: string; issuer?: string };
+  deals: Array<{
+    id: string;
+    issuerName: string;
+    isin: string;
+    pricingDate: string;
+    currency: string;
+    size: number;
+    tenor: string;
+    coupon: number;
+    spread: number;
+    nip: number;
+    oversubscription: number;
+  }>;
   summary: {
     totalDeals: number;
     totalVolume: number;
     avgSpread: number;
     avgNip: number;
+    bySector: Array<{ sector: string; count: number; volume: number }>;
+    byCurrency: Array<{ currency: string; count: number; volume: number }>;
   };
-  sectorBreakdown: Array<{ sector: string; count: number }>;
-  deals: Array<{
-    date: string;
-    issuer: string;
-    isin: string;
-    size: number;
-    tenor: string;
-    spread: number;
-    nip: number;
-    oversubscription: number;
-  }>;
-  availableFilters: {
-    sectors: string[];
-    currencies: string[];
-    issuers: string[];
+  filters: {
+    sector: string;
+    currency: string;
+    showing: number;
   };
 }
 ```
 
-**Visual**: Summary stats, sector badges, scrollable deals table.
+**Note**: The `availableFilters` for dropdowns (sectors, currencies, issuers) are returned by the `get_market_deals` tool response but not passed directly to this component. They are used by the AI to populate `collect_filters` form options.
+
+**Visual**: Summary stats, sector badges, scrollable deals table with NIP color-coded.
 
 ---
 
