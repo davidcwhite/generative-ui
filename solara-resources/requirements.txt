@@ -1,0 +1,30 @@
+# Core framework
+solara>=1.35.0
+
+# NL query engine — pin to 2.3.x for API stability
+pandasai==2.3.*
+
+# LLM provider integration
+langchain-anthropic>=0.3.0
+langchain>=0.3.0
+
+# Data handling
+pandas>=2.0.0
+pyarrow>=14.0.0        # Parquet support
+
+# Visualization
+plotly>=5.20.0
+matplotlib>=3.8.0
+
+# PDF export (for dashboard export feature)
+weasyprint>=61.0
+
+# HTTP client (async data loading)
+httpx>=0.27.0
+
+# Development / Jupyter compatibility
+ipywidgets>=8.0.0
+jupyter>=1.0.0
+
+# Environment variable management
+python-dotenv>=1.0.0
