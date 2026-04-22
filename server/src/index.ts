@@ -1,16 +1,31 @@
-console.log('Starting server...');
-import 'dotenv/config';
+import './env.js';
 import express from 'express';
 import cors from 'cors';
+import { randomUUID } from 'node:crypto';
 import { streamText } from 'ai';
 import { openai } from '@ai-sdk/openai';
-import { tools, displayTools } from './tools.js';
+import { tools, displayTools, buildSandboxTools } from './tools.js';
 import { dcmTools } from './mcp/client.js';
 import { registry } from './data/registry.js';
 import { deals } from './mcp/data/deals.js';
 import { generateAllocationsForDeal } from './mcp/data/investors.js';
 import { generateSecondaryPerformance } from './mcp/data/secondary.js';
+import { registerUploadedFile, unregisterUploadedFile, getUploadedFiles, type UploadedFileData } from './data/userFiles.js';
+import { createArtifactFromUpload, deleteArtifact, getArtifactPreview, listSessionArtifacts } from './artifacts/service.js';
+import type { ArtifactUploadPayload, RunRecord } from './agent/types.js';
+import { insertRun, getRunById, listRunsBySession } from './runs/repository.js';
+import { executeRun } from './runs/orchestrator.js';
+import { listEventsForRun, publishRunEvent, subscribeToRunEvents } from './events/service.js';
+import { 
+  isE2BConfigured, 
+  executeCode, 
+  runTerminalCommand, 
+  getSandboxInfo,
+  writeSandboxFile,
+  listSandboxFiles 
+} from './sandbox/e2b-client.js';
 
+console.log('Starting server...');
 console.log('Imports loaded');
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -19,7 +34,7 @@ console.log(`PORT: ${PORT}`);
 app.use(cors({
   origin: process.env.CORS_ORIGIN || '*',
 }));
-app.use(express.json());
+app.use(express.json({ limit: '100mb' }));
 
 // Password verification endpoint
 app.post('/api/auth/verify', (req, res) => {
@@ -35,6 +50,128 @@ app.post('/api/auth/verify', (req, res) => {
   }
   
   return res.status(401).json({ success: false, error: 'Invalid password' });
+});
+
+// ============================================================
+// Agent Run Architecture: artifacts, runs, and event streaming
+// ============================================================
+
+app.post('/api/artifacts/upload', (req, res) => {
+  try {
+    const payload = req.body as ArtifactUploadPayload;
+    if (!payload.sessionId || !payload.fileName || !payload.base64) {
+      return res.status(400).json({ error: 'sessionId, fileName, and base64 are required' });
+    }
+
+    const artifact = createArtifactFromUpload(payload);
+    return res.json({ artifact });
+  } catch (error) {
+    console.error('Artifact upload error:', error);
+    return res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+app.get('/api/artifacts', (req, res) => {
+  const sessionId = String(req.query.sessionId || '');
+  if (!sessionId) {
+    return res.status(400).json({ error: 'sessionId is required' });
+  }
+
+  return res.json({
+    artifacts: listSessionArtifacts(sessionId),
+  });
+});
+
+app.get('/api/artifacts/:artifactId/preview', (req, res) => {
+  const preview = getArtifactPreview(req.params.artifactId);
+  if (!preview) {
+    return res.status(404).json({ error: 'Artifact not found' });
+  }
+
+  return res.json({ preview });
+});
+
+app.delete('/api/artifacts/:artifactId', (req, res) => {
+  const removed = deleteArtifact(req.params.artifactId);
+  if (!removed) {
+    return res.status(404).json({ error: 'Artifact not found' });
+  }
+
+  return res.json({ success: true });
+});
+
+app.post('/api/runs', (req, res) => {
+  const { sessionId, prompt, artifactIds } = req.body as {
+    sessionId?: string;
+    prompt?: string;
+    artifactIds?: string[];
+  };
+
+  if (!sessionId || !prompt) {
+    return res.status(400).json({ error: 'sessionId and prompt are required' });
+  }
+
+  const run: RunRecord = {
+    id: randomUUID(),
+    sessionId,
+    status: 'queued',
+    prompt,
+    artifactIds: Array.isArray(artifactIds) ? artifactIds : [],
+    runtimeSessionId: null,
+    error: null,
+    startedAt: null,
+    completedAt: null,
+    createdAt: Date.now(),
+  };
+
+  insertRun(run);
+  publishRunEvent(run.id, 'run_created', { runId: run.id });
+  setTimeout(() => {
+    void executeRun(run.id);
+  }, 0);
+
+  return res.json({ run });
+});
+
+app.get('/api/runs', (req, res) => {
+  const sessionId = String(req.query.sessionId || '');
+  if (!sessionId) {
+    return res.status(400).json({ error: 'sessionId is required' });
+  }
+
+  return res.json({
+    runs: listRunsBySession(sessionId),
+  });
+});
+
+app.get('/api/runs/:runId', (req, res) => {
+  const run = getRunById(req.params.runId);
+  if (!run) {
+    return res.status(404).json({ error: 'Run not found' });
+  }
+
+  return res.json({ run });
+});
+
+app.get('/api/runs/:runId/events', (req, res) => {
+  const run = getRunById(req.params.runId);
+  if (!run) {
+    return res.status(404).json({ error: 'Run not found' });
+  }
+
+  return res.json({
+    events: listEventsForRun(req.params.runId),
+  });
+});
+
+app.get('/api/runs/:runId/stream', (req, res) => {
+  const run = getRunById(req.params.runId);
+  if (!run) {
+    return res.status(404).json({ error: 'Run not found' });
+  }
+
+  const unsubscribe = subscribeToRunEvents(req.params.runId, res);
+  req.on('close', unsubscribe);
 });
 
 // Dashboard API endpoints
@@ -115,22 +252,185 @@ app.get('/api/data/secondary', (req, res) => {
   res.json({ secondary });
 });
 
+// File upload endpoint - register uploaded data as queryable source
+app.post('/api/files/register', (req, res) => {
+  try {
+    const fileData: UploadedFileData = req.body;
+    
+    if (!fileData.fileId || !fileData.fileName || !fileData.sheets) {
+      return res.status(400).json({ error: 'Invalid file data' });
+    }
+    
+    const sourceName = registerUploadedFile(fileData);
+    
+    res.json({ 
+      success: true, 
+      sourceName,
+      message: `Registered ${fileData.fileName} as data source '${sourceName}' with ${fileData.totalRows} rows`,
+    });
+  } catch (error) {
+    console.error('File registration error:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Delete an uploaded file
+app.delete('/api/files/:fileId', (req, res) => {
+  const { fileId } = req.params;
+  const removed = unregisterUploadedFile(fileId);
+  if (removed) {
+    res.json({ success: true, message: `File ${fileId} unregistered` });
+  } else {
+    res.status(404).json({ error: 'File not found' });
+  }
+});
+
+// Get list of uploaded files
+app.get('/api/files', (req, res) => {
+  const files = getUploadedFiles();
+  res.json({ 
+    files: files.map(f => ({
+      fileId: f.fileId,
+      fileName: f.fileName,
+      totalRows: f.totalRows,
+      sheets: f.sheets.length,
+      uploadedAt: f.uploadedAt,
+    }))
+  });
+});
+
+// Sandbox endpoints - E2B Code Execution
+
+// Check if E2B is configured
+app.get('/api/sandbox/status', (req, res) => {
+  res.json({ 
+    configured: isE2BConfigured(),
+    message: isE2BConfigured() 
+      ? 'E2B sandbox is available' 
+      : 'E2B_API_KEY not configured - sandbox features disabled'
+  });
+});
+
+// Execute code in sandbox
+app.post('/api/sandbox/execute', async (req, res) => {
+  if (!isE2BConfigured()) {
+    return res.status(503).json({ error: 'E2B not configured. Set E2B_API_KEY env variable.' });
+  }
+
+  const { sessionId, code, language } = req.body;
+  
+  if (!sessionId || !code) {
+    return res.status(400).json({ error: 'sessionId and code are required' });
+  }
+
+  try {
+    const result = await executeCode(sessionId, code, language || 'python');
+    res.json(result);
+  } catch (error) {
+    console.error('Code execution error:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Run terminal command in sandbox
+app.post('/api/sandbox/terminal', async (req, res) => {
+  if (!isE2BConfigured()) {
+    return res.status(503).json({ error: 'E2B not configured. Set E2B_API_KEY env variable.' });
+  }
+
+  const { sessionId, command } = req.body;
+  
+  if (!sessionId || !command) {
+    return res.status(400).json({ error: 'sessionId and command are required' });
+  }
+
+  try {
+    const result = await runTerminalCommand(sessionId, command);
+    res.json(result);
+  } catch (error) {
+    console.error('Terminal command error:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Get sandbox info
+app.get('/api/sandbox/info/:sessionId', (req, res) => {
+  const info = getSandboxInfo(req.params.sessionId);
+  if (info) {
+    res.json(info);
+  } else {
+    res.json({ active: false, message: 'No active sandbox for this session' });
+  }
+});
+
+// Write file to sandbox
+app.post('/api/sandbox/files/write', async (req, res) => {
+  if (!isE2BConfigured()) {
+    return res.status(503).json({ error: 'E2B not configured' });
+  }
+
+  const { sessionId, path, content } = req.body;
+  
+  if (!sessionId || !path || content === undefined) {
+    return res.status(400).json({ error: 'sessionId, path, and content are required' });
+  }
+
+  const success = await writeSandboxFile(sessionId, path, content);
+  res.json({ success });
+});
+
+// List files in sandbox
+app.get('/api/sandbox/files/list/:sessionId', async (req, res) => {
+  if (!isE2BConfigured()) {
+    return res.status(503).json({ error: 'E2B not configured' });
+  }
+
+  const path = req.query.path as string || '/home/user';
+  const files = await listSandboxFiles(req.params.sessionId, path);
+  res.json({ files, path });
+});
+
 // DCM Bond Issuance System Prompt
+// Helper to list uploaded files for the system prompt, including column names and sandbox paths
+function getUploadedFilesList(): string {
+  const files = getUploadedFiles();
+  if (files.length === 0) {
+    return '(No files currently uploaded.)';
+  }
+  return files.map(f => {
+    const sourceName = 'uploaded_' + f.fileName.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+    const baseName = f.fileName.replace(/\.[^.]+$/, '');
+    const sandboxPath = `/home/user/${baseName}.csv`;
+    const sheet = f.sheets[0];
+    const columns = sheet ? sheet.headers.join(', ') : 'unknown';
+    return `- **${sourceName}**: ${f.fileName} (${f.totalRows} rows)
+  Sandbox path: ${sandboxPath}
+  Columns: ${columns}`;
+  }).join('\n');
+}
+
 function buildDCMSystemPrompt(): string {
   return `You are a DCM (Debt Capital Markets) AI assistant for bond issuance and syndicate operations.
 You help DCM originators, syndicate bankers, and credit sales professionals with mandate pitching, deal execution, and post-deal analysis.
 
 ## Your Workflow
 
-When a user mentions a company or issuer, ALWAYS follow this workflow:
+### Priority: User-Uploaded Files
+If the user has uploaded files (see "Currently uploaded files" below) and asks to analyze, explore, or work with that data:
+→ DO NOT ask for more details. Just start working with the uploaded files immediately.
+→ Use execute_code with pandas to load the CSV files from /home/user/
+→ Call plan_steps first if doing multi-step analysis
 
-### Step 1: Entity Resolution (REQUIRED FIRST)
+### DCM Workflow
+When a user mentions a company or issuer (and is NOT referring to uploaded files), follow this workflow:
+
+#### Step 1: Entity Resolution (REQUIRED FIRST)
 ALWAYS call resolve_entity first when the user mentions a company name.
 - If confidence is "exact": proceed to step 2
 - If confidence is "ambiguous": the UI will show a picker - wait for selection
 - If no matches: inform the user
 
-### Step 2: Based on user intent, gather relevant data
+#### Step 2: Based on user intent, gather relevant data
 
 **For Market Overview** ("all issuance", "all deals", "market supply", "recent deals", "show me bond issuance"):
 → Call get_market_deals - does NOT require an issuer name first
@@ -170,6 +470,36 @@ ALWAYS call resolve_entity first when the user mentions a company name.
 9. **show_chart**: Display data as a chart (bar, line, pie, area). Use when user asks for "a chart" or visualization.
 10. **confirm_action**: Present action buttons for workflow navigation and approvals.
 11. **collect_filters**: Show a filter form with dropdowns - USE THIS when user wants to filter data.
+
+### Sandbox Tools (for code execution and data analysis)
+12. **execute_code**: Run Python or JavaScript code in a secure sandbox. The sandbox has pandas, numpy, matplotlib, seaborn, plotly, scipy, sklearn, etc. pre-installed. User-uploaded files are automatically synced as CSV to /home/user/.
+13. **run_terminal**: Run shell commands in the sandbox (ls, pip install, etc.).
+14. **list_sandbox_files**: List files in the E2B sandbox environment.
+15. **plan_steps**: Show a task plan checklist in the workspace panel. Call BEFORE multi-step sandbox work.
+
+### User Uploaded Data
+16. **query_data**: Quick lookup/filter on uploaded files (returns an interactive table).
+
+**Currently uploaded files:**
+${getUploadedFilesList()}
+
+## CRITICAL: How to handle uploaded file data
+
+When the user has uploaded files (listed above), you have TWO ways to work with them:
+
+**Use query_data for**: simple lookups, filtering rows, showing data in a table
+- Example: "Show me the data" → query_data
+
+**Use execute_code for**: analysis, calculations, correlations, statistics, visualizations, transformations, or anything the user calls "analyze"
+- The uploaded files are automatically synced as CSV to the sandbox
+- Load them with pandas: \`pd.read_csv('/home/user/filename.csv')\`
+- Use the "Sandbox path" from the file list above for the exact path
+
+**IMPORTANT:**
+- When user says "analyze", "analyze the data", "run analysis", "look at the data", "what patterns", "visualize", "chart this" → USE execute_code, NOT query_data
+- When files are uploaded, DO NOT ask the user to upload files or specify more details — just start working with what's available
+- For multi-step analysis, call plan_steps FIRST then execute each step with execute_code
+- Example plan_steps: plan_steps({ title: "Analyze allocations", steps: [{ id: "load", label: "Load and inspect data", tool: "execute_code" }, { id: "analyze", label: "Run statistical analysis", tool: "execute_code" }, { id: "visualize", label: "Create visualization", tool: "execute_code" }] })
 
 ## CRITICAL: Filtering Data
 
@@ -308,6 +638,7 @@ Turn 3 - User: "Can I see a line chart of spreads over time?"
 - Keep responses concise - the UI shows the details
 - Offer logical next steps based on context
 - When user asks for a view change, CALL THE DISPLAY TOOL
+- When user asks to see uploaded data, SHOW IT IMMEDIATELY (no clarifying questions)
 
 ## When NOT to Add Components
 
@@ -499,8 +830,8 @@ const allTools = {
   ...dcmTools,
 };
 
-// DCM tools + display tools for the DCM endpoint
-const dcmCombinedTools = {
+// DCM tools + display tools (sandbox tools are built per-request with sessionId)
+const dcmStaticTools = {
   ...dcmTools,
   show_table: displayTools.show_table,
   show_chart: displayTools.show_chart,
@@ -558,14 +889,26 @@ app.post('/api/chat', async (req, res) => {
 // DCM Bond Issuance chat endpoint
 app.post('/api/dcm/chat', async (req, res) => {
   try {
-    const { messages } = req.body;
+    const { messages, sessionId } = req.body;
+    const resolvedSessionId = sessionId || `session-${Date.now()}`;
+
+    const perRequestSandbox = buildSandboxTools(resolvedSessionId);
+
+    const dcmPerRequestTools = {
+      ...dcmTools,
+      show_table: displayTools.show_table,
+      show_chart: displayTools.show_chart,
+      confirm_action: displayTools.confirm_action,
+      collect_filters: displayTools.collect_filters,
+      ...perRequestSandbox,
+    };
 
     const result = streamText({
       model: openai('gpt-4o'),
       system: buildDCMSystemPrompt(),
       messages,
-      tools: dcmCombinedTools,
-      maxSteps: 10, // More steps for complex DCM workflows
+      tools: dcmPerRequestTools,
+      maxSteps: 10,
     });
 
     await streamResponse(res, result);
@@ -579,5 +922,5 @@ const HOST = '0.0.0.0';
 app.listen(Number(PORT), HOST, () => {
   console.log(`Server running on http://${HOST}:${PORT}`);
   console.log(`Data sources: ${registry.getNames().join(', ')}`);
-  console.log(`DCM tools: ${Object.keys(dcmCombinedTools).join(', ')}`);
+  console.log(`DCM tools: ${Object.keys(dcmStaticTools).join(', ')}, execute_code, run_terminal, list_sandbox_files`);
 });

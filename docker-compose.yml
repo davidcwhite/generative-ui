@@ -7,6 +7,7 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - APP_PASSWORD=${APP_PASSWORD}
       - CORS_ORIGIN=http://localhost:5173
+      - E2B_API_KEY=${E2B_API_KEY}
     
   client:
     build:

@@ -32,6 +32,10 @@ class DataSourceRegistry {
     this.sources.set(source.name, source as DataSource);
   }
 
+  unregister(name: string): boolean {
+    return this.sources.delete(name);
+  }
+
   get(name: string): DataSource | undefined {
     return this.sources.get(name);
   }

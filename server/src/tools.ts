@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { registry } from './data/registry.js';
+import { executeCode, runTerminalCommand, listSandboxFiles, isE2BConfigured } from './sandbox/e2b-client.js';
 
 // Import data sources to register them
 import './data/bondTrades.js';
@@ -50,11 +51,26 @@ Returns matching records as a table. Pass filters as a JSON string.`,
         const filters = args.filtersJson && args.filtersJson !== '{}' ? JSON.parse(args.filtersJson) : {};
         const source = registry.get(args.dataSource);
         if (!source) {
-          throw new Error(`Unknown data source: ${args.dataSource}`);
+          // Return structured error with available sources list
+          const availableSources = registry.getNames();
+          if (availableSources.length === 0) {
+            return {
+              error: true,
+              message: 'No data sources available. The user needs to upload files in the Files view first.',
+              availableSources: [],
+              suggestion: 'Tell the user to go to the Files view and upload their data files.',
+            };
+          }
+          return {
+            error: true,
+            message: `Data source "${args.dataSource}" not found.`,
+            availableSources: availableSources,
+            suggestion: `Available sources: ${availableSources.join(', ')}. Use one of these exact names.`,
+          };
         }
         
         const data = source.query(filters);
-        const limited = data.slice(0, args.limit || 20);
+        const limited = data.slice(0, args.limit || 100);
         const summary = source.getSummary(data);
         
         // Format data for table display
@@ -106,7 +122,15 @@ Specify aggregation as "dataSource:aggregationType" (e.g., "employees:byDepartme
         const source = registry.get(sourceName);
         
         if (!source) {
-          throw new Error(`Unknown data source: ${sourceName}`);
+          const availableSources = registry.getNames();
+          return {
+            error: true,
+            message: `Data source "${sourceName}" not found.`,
+            availableSources: availableSources,
+            suggestion: availableSources.length > 0 
+              ? `Available sources: ${availableSources.join(', ')}` 
+              : 'No data sources available. User needs to upload files first.',
+          };
         }
         
         const aggConfig = source.chartAggregations.find(a => a.key === aggType);
@@ -253,3 +277,116 @@ export const displayTools = {
     // No execute - client-side tool
   },
 };
+
+// ============================================================
+// Sandbox Tools (E2B Code Execution)
+// Built per-request with sessionId injected via closure
+// ============================================================
+
+import { syncFilesToSandbox } from './sandbox/e2b-client.js';
+
+export function buildSandboxTools(sessionId: string) {
+  return {
+    execute_code: {
+      description: `Execute Python or JavaScript code in a secure sandboxed environment. 
+Use this tool when you need to:
+- Process, analyze, or transform data
+- Perform calculations
+- Generate visualizations with matplotlib/plotly (returns as image)
+- Work with uploaded files (available at /home/user/)
+- Run any Python or JavaScript code
+
+The sandbox has common packages pre-installed: pandas, numpy, matplotlib, plotly, etc.
+Files uploaded by the user are automatically synced to /home/user/ directory.`,
+      parameters: z.object({
+        code: z.string().describe('The code to execute'),
+        language: z.enum(['python', 'javascript']).describe('Programming language (default: python)'),
+      }),
+      execute: async (args: { code: string; language: 'python' | 'javascript' }) => {
+        if (!isE2BConfigured()) {
+          return {
+            success: false,
+            error: 'Code execution is not available. E2B_API_KEY not configured.',
+            output: '',
+            logs: [],
+            executionTime: 0,
+          };
+        }
+
+        await syncFilesToSandbox(sessionId);
+        return executeCode(sessionId, args.code, args.language);
+      },
+    },
+
+    run_terminal: {
+      description: `Run a terminal command in the sandboxed environment.
+Use this tool when you need to:
+- List files (ls)
+- Check file contents (cat, head, tail)
+- Install packages (pip install, npm install)
+- Run shell scripts
+- Manage files (mv, cp, rm)
+- Check system info
+
+The working directory is /home/user/ where uploaded files are stored.`,
+      parameters: z.object({
+        command: z.string().describe('The terminal command to execute'),
+      }),
+      execute: async (args: { command: string }) => {
+        if (!isE2BConfigured()) {
+          return {
+            success: false,
+            output: '',
+            error: 'Terminal is not available. E2B_API_KEY not configured.',
+            exitCode: 1,
+          };
+        }
+
+        await syncFilesToSandbox(sessionId);
+        return runTerminalCommand(sessionId, args.command);
+      },
+    },
+
+    list_sandbox_files: {
+      description: 'List files in the sandbox directory. Use to see what files are available for processing.',
+      parameters: z.object({
+        path: z.string().describe('Directory path to list (default: /home/user)'),
+      }),
+      execute: async (args: { path: string }) => {
+        if (!isE2BConfigured()) {
+          return {
+            success: false,
+            files: [],
+            path: args.path,
+            error: 'Sandbox is not available. E2B_API_KEY not configured.',
+          };
+        }
+
+        const files = await listSandboxFiles(sessionId, args.path || '/home/user');
+        return {
+          success: true,
+          files,
+          path: args.path || '/home/user',
+        };
+      },
+    },
+
+    plan_steps: {
+      description: `Show the user a structured task plan. Use this BEFORE starting multi-step work (especially sandbox code execution). 
+It renders a checklist in the workspace panel so the user can see what you're doing.
+Call this once to lay out your plan, then proceed to execute each step. 
+The UI will automatically mark steps as done when corresponding tool calls complete.`,
+      parameters: z.object({
+        title: z.string().describe('Short title for the plan (e.g. "Analyze allocations data")'),
+        steps: z.array(z.object({
+          id: z.string().describe('Unique step ID (e.g. "load-data", "clean", "analyze")'),
+          label: z.string().describe('Human-readable step description'),
+          tool: z.string().optional().describe('Tool that will be called for this step (e.g. "execute_code", "run_terminal"). Used to auto-update status.'),
+        })).describe('Ordered list of steps'),
+      }),
+      execute: async (args: { title: string; steps: Array<{ id: string; label: string; tool?: string }> }) => {
+        return { title: args.title, steps: args.steps.map(s => ({ ...s, status: 'pending' as const })) };
+      },
+    },
+  };
+}

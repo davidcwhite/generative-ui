@@ -1,0 +1,101 @@
+Allocation_ID,Deal_ID,Investor_Name,Investor_Type,Geography,Order_Size_M,Allocated_Size_M,Fill_Rate,Behaviour,Order_Date
+A001,D001,BlackRock,Asset Manager,US,150,120,80%,Price Sensitive,2025-11-14
+A002,D001,PIMCO,Asset Manager,US,100,85,85%,Anchor,2025-11-13
+A003,D001,Allianz GI,Insurance,Germany,80,75,94%,Loyal,2025-11-14
+A004,D001,Amundi,Asset Manager,France,120,90,75%,Price Sensitive,2025-11-14
+A005,D001,DWS,Asset Manager,Germany,60,55,92%,Loyal,2025-11-13
+A006,D001,Fidelity,Asset Manager,US,90,70,78%,Opportunistic,2025-11-14
+A007,D001,Vanguard,Asset Manager,US,80,65,81%,Price Sensitive,2025-11-13
+A008,D001,State Street,Asset Manager,US,70,60,86%,Anchor,2025-11-14
+A009,D001,AXA IM,Insurance,France,65,60,92%,Loyal,2025-11-13
+A010,D001,BNP Paribas AM,Asset Manager,France,55,50,91%,Loyal,2025-11-14
+A011,D002,BlackRock,Asset Manager,US,100,80,80%,Price Sensitive,2025-11-09
+A012,D002,Capital Group,Asset Manager,US,85,70,82%,Anchor,2025-11-08
+A013,D002,UBS AM,Asset Manager,Switzerland,70,60,86%,Loyal,2025-11-09
+A014,D002,Credit Suisse AM,Asset Manager,Switzerland,60,50,83%,Opportunistic,2025-11-08
+A015,D002,Generali,Insurance,Italy,55,50,91%,Loyal,2025-11-09
+A016,D002,Zurich Insurance,Insurance,Switzerland,50,45,90%,Loyal,2025-11-08
+A017,D002,Swiss Re,Insurance,Switzerland,45,40,89%,Anchor,2025-11-09
+A018,D002,Legal & General,Insurance,UK,40,35,88%,Loyal,2025-11-08
+A019,D002,Aviva,Insurance,UK,35,30,86%,Opportunistic,2025-11-09
+A020,D002,Prudential,Insurance,UK,30,28,93%,Loyal,2025-11-08
+A021,D003,PIMCO,Asset Manager,US,120,100,83%,Anchor,2025-11-07
+A022,D003,Wellington,Asset Manager,US,100,85,85%,Price Sensitive,2025-11-06
+A023,D003,T. Rowe Price,Asset Manager,US,80,68,85%,Opportunistic,2025-11-07
+A024,D003,Franklin Templeton,Asset Manager,US,70,60,86%,Loyal,2025-11-06
+A025,D003,Schroders,Asset Manager,UK,65,58,89%,Loyal,2025-11-07
+A026,D003,Aberdeen,Asset Manager,UK,55,48,87%,Opportunistic,2025-11-06
+A027,D003,M&G,Asset Manager,UK,50,45,90%,Loyal,2025-11-07
+A028,D003,Nordea AM,Asset Manager,Nordics,45,42,93%,Loyal,2025-11-06
+A029,D003,SEB AM,Asset Manager,Nordics,40,38,95%,Anchor,2025-11-07
+A030,D003,Handelsbanken,Asset Manager,Nordics,35,33,94%,Loyal,2025-11-06
+A031,D004,Norges Bank,Sovereign Wealth,Norway,100,95,95%,Anchor,2025-11-04
+A032,D004,GIC,Sovereign Wealth,Singapore,90,85,94%,Anchor,2025-11-03
+A033,D004,ADIA,Sovereign Wealth,UAE,80,75,94%,Loyal,2025-11-04
+A034,D004,China Investment Corp,Sovereign Wealth,China,75,70,93%,Opportunistic,2025-11-03
+A035,D004,SAFE,Sovereign Wealth,China,70,65,93%,Loyal,2025-11-04
+A036,D004,Qatar Investment,Sovereign Wealth,Qatar,60,58,97%,Anchor,2025-11-03
+A037,D004,Kuwait Investment,Sovereign Wealth,Kuwait,55,52,95%,Loyal,2025-11-04
+A038,D004,Temasek,Sovereign Wealth,Singapore,50,48,96%,Anchor,2025-11-03
+A039,D004,CDPQ,Pension,Canada,45,43,96%,Loyal,2025-11-04
+A040,D004,CPP Investment,Pension,Canada,40,38,95%,Loyal,2025-11-03
+A041,D005,BlackRock,Asset Manager,US,80,60,75%,Price Sensitive,2025-10-27
+A042,D005,JP Morgan AM,Asset Manager,US,70,55,79%,Opportunistic,2025-10-26
+A043,D005,Goldman Sachs AM,Asset Manager,US,60,48,80%,Price Sensitive,2025-10-27
+A044,D005,Morgan Stanley IM,Asset Manager,US,55,45,82%,Opportunistic,2025-10-26
+A045,D005,Invesco,Asset Manager,US,50,42,84%,Price Sensitive,2025-10-27
+A046,D005,Nuveen,Asset Manager,US,45,38,84%,Loyal,2025-10-26
+A047,D005,AllianceBernstein,Asset Manager,US,40,35,88%,Loyal,2025-10-27
+A048,D005,Legg Mason,Asset Manager,US,35,30,86%,Opportunistic,2025-10-26
+A049,D005,MFS,Asset Manager,US,30,26,87%,Loyal,2025-10-27
+A050,D005,Putnam,Asset Manager,US,25,22,88%,Loyal,2025-10-26
+A051,D006,Norges Bank,Sovereign Wealth,Norway,200,190,95%,Anchor,2025-10-21
+A052,D006,BlackRock,Asset Manager,US,180,150,83%,Price Sensitive,2025-10-20
+A053,D006,PIMCO,Asset Manager,US,160,140,88%,Anchor,2025-10-21
+A054,D006,Vanguard,Asset Manager,US,140,120,86%,Loyal,2025-10-20
+A055,D006,State Street,Asset Manager,US,120,105,88%,Loyal,2025-10-21
+A056,D006,Fidelity,Asset Manager,US,100,85,85%,Opportunistic,2025-10-20
+A057,D006,Capital Group,Asset Manager,US,90,78,87%,Loyal,2025-10-21
+A058,D006,Wellington,Asset Manager,US,80,70,88%,Loyal,2025-10-20
+A059,D006,T. Rowe Price,Asset Manager,US,70,62,89%,Loyal,2025-10-21
+A060,D006,Amundi,Asset Manager,France,65,58,89%,Loyal,2025-10-20
+A061,D007,BlackRock,Asset Manager,US,250,200,80%,Price Sensitive,2025-10-17
+A062,D007,PIMCO,Asset Manager,US,220,185,84%,Anchor,2025-10-16
+A063,D007,Vanguard,Asset Manager,US,200,170,85%,Loyal,2025-10-17
+A064,D007,Fidelity,Asset Manager,US,180,150,83%,Opportunistic,2025-10-16
+A065,D007,State Street,Asset Manager,US,160,140,88%,Loyal,2025-10-17
+A066,D007,Capital Group,Asset Manager,US,140,125,89%,Anchor,2025-10-16
+A067,D007,Wellington,Asset Manager,US,120,105,88%,Loyal,2025-10-17
+A068,D007,T. Rowe Price,Asset Manager,US,100,88,88%,Loyal,2025-10-16
+A069,D007,JP Morgan AM,Asset Manager,US,90,80,89%,Loyal,2025-10-17
+A070,D007,Goldman Sachs AM,Asset Manager,US,80,72,90%,Loyal,2025-10-16
+A071,D008,Allianz GI,Insurance,Germany,80,75,94%,Loyal,2025-10-11
+A072,D008,DWS,Asset Manager,Germany,70,65,93%,Loyal,2025-10-10
+A073,D008,Union Investment,Asset Manager,Germany,60,58,97%,Anchor,2025-10-11
+A074,D008,MEAG,Insurance,Germany,55,52,95%,Loyal,2025-10-10
+A075,D008,Deka,Asset Manager,Germany,50,48,96%,Loyal,2025-10-11
+A076,D008,Helaba Invest,Asset Manager,Germany,45,43,96%,Loyal,2025-10-10
+A077,D008,LBBW AM,Asset Manager,Germany,40,38,95%,Loyal,2025-10-11
+A078,D008,BayernInvest,Asset Manager,Germany,35,34,97%,Anchor,2025-10-10
+A079,D008,Universal Investment,Asset Manager,Germany,30,29,97%,Loyal,2025-10-11
+A080,D008,Metzler AM,Asset Manager,Germany,25,24,96%,Loyal,2025-10-10
+A081,D009,AXA IM,Insurance,France,140,135,96%,Anchor,2025-10-07
+A082,D009,BNP Paribas AM,Asset Manager,France,120,115,96%,Loyal,2025-10-06
+A083,D009,Amundi,Asset Manager,France,110,105,95%,Loyal,2025-10-07
+A084,D009,Natixis IM,Asset Manager,France,90,86,96%,Loyal,2025-10-06
+A085,D009,Carmignac,Asset Manager,France,80,77,96%,Anchor,2025-10-07
+A086,D009,La Francaise,Asset Manager,France,70,68,97%,Loyal,2025-10-06
+A087,D009,Ostrum AM,Asset Manager,France,60,58,97%,Loyal,2025-10-07
+A088,D009,DNCA Finance,Asset Manager,France,50,48,96%,Opportunistic,2025-10-06
+A089,D009,Tikehau,Asset Manager,France,45,44,98%,Loyal,2025-10-07
+A090,D009,Sycomore,Asset Manager,France,40,39,98%,Loyal,2025-10-06
+A091,D010,BlackRock,Asset Manager,US,100,75,75%,Price Sensitive,2025-10-01
+A092,D010,PIMCO,Asset Manager,US,90,70,78%,Price Sensitive,2025-09-30
+A093,D010,Vanguard,Asset Manager,US,80,65,81%,Opportunistic,2025-10-01
+A094,D010,Fidelity,Asset Manager,US,70,55,79%,Price Sensitive,2025-09-30
+A095,D010,State Street,Asset Manager,US,60,48,80%,Opportunistic,2025-10-01
+A096,D010,Amundi,Asset Manager,France,55,45,82%,Price Sensitive,2025-09-30
+A097,D010,DWS,Asset Manager,Germany,50,42,84%,Opportunistic,2025-10-01
+A098,D010,Schroders,Asset Manager,UK,45,38,84%,Price Sensitive,2025-09-30
+A099,D010,UBS AM,Asset Manager,Switzerland,40,34,85%,Opportunistic,2025-10-01
+A100,D010,Credit Suisse AM,Asset Manager,Switzerland,35,30,86%,Price Sensitive,2025-09-30

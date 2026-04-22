@@ -25,3 +25,9 @@ npm-debug.log*
 
 # TypeScript cache
 *.tsbuildinfo
+
+# Local IDE workspace files
+*.code-workspace
+
+# Runtime data (SQLite DB + uploaded artifacts)
+data/runtime/

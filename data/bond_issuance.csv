@@ -1,0 +1,101 @@
+Deal_ID,Issuer,Sector,Currency,Size_M,Tenor,Coupon,Spread_bps,NIP_bps,Oversubscription,Pricing_Date,Rating,Lead_Manager
+D001,Volkswagen AG,Automobiles,EUR,1500,5Y,3.125,85,5,3.2x,2025-11-15,A3,Deutsche Bank
+D002,BMW AG,Automobiles,EUR,1000,7Y,3.375,90,6,2.8x,2025-11-10,A2,BNP Paribas
+D003,Mercedes-Benz,Automobiles,EUR,1250,5Y,3.000,80,4,3.5x,2025-11-08,A2,JP Morgan
+D004,Siemens AG,Industrials,EUR,1000,10Y,3.500,65,3,4.2x,2025-11-05,A1,Citigroup
+D005,BASF SE,Chemicals,EUR,750,7Y,3.625,95,7,2.5x,2025-10-28,A3,HSBC
+D006,TotalEnergies,Energy,EUR,2000,10Y,3.750,70,4,3.8x,2025-10-22,Aa3,Barclays
+D007,Shell plc,Energy,USD,2500,10Y,4.250,75,5,3.5x,2025-10-18,Aa3,Goldman Sachs
+D008,Porsche AG,Automobiles,EUR,750,5Y,3.250,88,6,4.0x,2025-10-12,A2,Morgan Stanley
+D009,Airbus SE,Aerospace,EUR,1500,8Y,3.125,60,3,4.5x,2025-10-08,A2,Credit Agricole
+D010,Stellantis,Automobiles,EUR,1000,5Y,3.500,105,8,2.2x,2025-10-02,Baa1,Societe Generale
+D011,Renault SA,Automobiles,EUR,800,5Y,4.125,135,10,1.8x,2025-09-28,Ba1,BNP Paribas
+D012,Daimler Truck,Automobiles,EUR,600,4Y,3.375,92,5,2.9x,2025-09-22,A3,Deutsche Bank
+D013,Allianz SE,Insurance,EUR,1250,12Y,3.250,55,2,5.2x,2025-09-18,Aa3,JP Morgan
+D014,Munich Re,Insurance,EUR,1000,10Y,3.125,50,2,4.8x,2025-09-12,Aa3,Barclays
+D015,Deutsche Telekom,Telecom,EUR,1500,8Y,3.375,72,4,3.6x,2025-09-08,Baa1,Citigroup
+D016,Orange SA,Telecom,EUR,1000,7Y,3.500,78,5,3.2x,2025-09-02,Baa1,HSBC
+D017,Telefonica,Telecom,EUR,1250,10Y,4.000,95,6,2.4x,2025-08-28,Baa3,Santander
+D018,Enel SpA,Utilities,EUR,1500,8Y,3.625,82,5,3.0x,2025-08-22,Baa1,UniCredit
+D019,Iberdrola,Utilities,EUR,1000,10Y,3.500,75,4,3.4x,2025-08-18,Baa1,BBVA
+D020,EDF,Utilities,EUR,2000,12Y,3.875,88,6,2.8x,2025-08-12,Baa1,Credit Agricole
+D021,Nestle SA,Consumer,CHF,800,6Y,2.250,42,2,5.5x,2025-08-08,Aa2,UBS
+D022,Unilever,Consumer,EUR,1000,7Y,3.125,58,3,4.2x,2025-08-02,A1,HSBC
+D023,Danone SA,Consumer,EUR,750,5Y,3.375,72,4,3.5x,2025-07-28,Baa1,BNP Paribas
+D024,AB InBev,Consumer,EUR,1500,10Y,3.750,85,5,3.0x,2025-07-22,Baa1,JP Morgan
+D025,Heineken,Consumer,EUR,800,7Y,3.500,78,5,3.2x,2025-07-18,Baa1,ING
+D026,LVMH,Luxury,EUR,1250,8Y,2.875,48,2,5.8x,2025-07-12,A1,BNP Paribas
+D027,Kering,Luxury,EUR,750,6Y,3.000,55,3,4.5x,2025-07-08,A3,Societe Generale
+D028,Hermes,Luxury,EUR,500,5Y,2.625,40,2,6.2x,2025-07-02,A1,Credit Agricole
+D029,Richemont,Luxury,CHF,600,7Y,2.375,45,2,5.0x,2025-06-28,A2,UBS
+D030,Sanofi,Healthcare,EUR,1500,10Y,3.250,62,3,4.0x,2025-06-22,A1,JP Morgan
+D031,Novartis,Healthcare,USD,2000,10Y,4.125,68,4,3.8x,2025-06-18,Aa3,Goldman Sachs
+D032,Roche,Healthcare,CHF,1000,8Y,2.500,52,3,4.5x,2025-06-12,Aa3,Credit Suisse
+D033,AstraZeneca,Healthcare,GBP,1250,10Y,4.375,72,4,3.6x,2025-06-08,A3,Barclays
+D034,GSK plc,Healthcare,GBP,1000,7Y,4.500,80,5,3.2x,2025-06-02,Baa1,HSBC
+D035,BP plc,Energy,GBP,1500,10Y,4.750,90,6,2.8x,2025-05-28,A2,Barclays
+D036,Equinor,Energy,USD,1250,8Y,4.375,78,5,3.4x,2025-05-22,Aa2,DNB
+D037,Eni SpA,Energy,EUR,1000,7Y,3.875,88,6,2.6x,2025-05-18,Baa1,UniCredit
+D038,Repsol,Energy,EUR,750,5Y,4.000,98,7,2.2x,2025-05-12,Baa2,Santander
+D039,Continental AG,Automobiles,EUR,600,5Y,3.750,110,8,2.0x,2025-05-08,Baa2,Deutsche Bank
+D040,Valeo,Automobiles,EUR,500,4Y,4.250,125,9,1.8x,2025-05-02,Ba1,BNP Paribas
+D041,Schneider Electric,Industrials,EUR,1000,8Y,3.125,58,3,4.2x,2025-04-28,A3,Credit Agricole
+D042,ABB Ltd,Industrials,CHF,750,6Y,2.375,48,2,4.8x,2025-04-22,A2,UBS
+D043,Siemens Energy,Industrials,EUR,800,5Y,3.875,95,7,2.4x,2025-04-18,Baa2,Deutsche Bank
+D044,Thyssenkrupp,Industrials,EUR,500,4Y,5.250,180,12,1.5x,2025-04-12,Ba2,Commerzbank
+D045,Holcim,Materials,CHF,600,7Y,2.750,65,4,3.5x,2025-04-08,Baa1,UBS
+D046,HeidelbergCement,Materials,EUR,750,6Y,3.625,85,6,2.8x,2025-04-02,Baa2,Deutsche Bank
+D047,CRH plc,Materials,EUR,1000,8Y,3.500,75,5,3.2x,2025-03-28,Baa1,Barclays
+D048,Saint-Gobain,Materials,EUR,800,7Y,3.375,72,4,3.4x,2025-03-22,Baa1,BNP Paribas
+D049,Lafarge,Materials,EUR,600,5Y,3.750,88,6,2.6x,2025-03-18,Baa2,Societe Generale
+D050,ArcelorMittal,Materials,EUR,1000,6Y,4.500,120,8,2.0x,2025-03-12,Baa3,JP Morgan
+D051,Glencore,Materials,USD,1500,7Y,5.000,135,9,1.8x,2025-03-08,Baa1,Citigroup
+D052,Rio Tinto,Materials,AUD,1000,10Y,4.750,82,5,3.5x,2025-03-02,A3,ANZ
+D053,BHP Group,Materials,AUD,1250,8Y,4.500,78,5,3.8x,2025-02-28,A2,Macquarie
+D054,Anglo American,Materials,GBP,800,7Y,4.875,95,6,2.6x,2025-02-22,Baa1,HSBC
+D055,Volvo AB,Automobiles,SEK,5000,5Y,3.875,92,6,2.8x,2025-02-18,A3,SEB
+D056,Scania,Automobiles,EUR,600,4Y,3.500,88,5,3.0x,2025-02-12,A3,Nordea
+D057,MAN SE,Automobiles,EUR,500,5Y,3.625,95,6,2.5x,2025-02-08,Baa1,Deutsche Bank
+D058,Peugeot,Automobiles,EUR,700,5Y,4.000,108,8,2.2x,2025-02-02,Baa2,BNP Paribas
+D059,Fiat Chrysler,Automobiles,EUR,1000,6Y,4.250,115,8,2.0x,2025-01-28,Baa3,UniCredit
+D060,Ferrari,Automobiles,EUR,500,5Y,3.125,62,3,4.5x,2025-01-22,BBB+,JP Morgan
+D061,Aston Martin,Automobiles,GBP,300,4Y,8.500,450,25,1.2x,2025-01-18,B3,Barclays
+D062,JLR,Automobiles,GBP,600,5Y,5.750,185,12,1.6x,2025-01-12,Ba2,HSBC
+D063,Rolls-Royce,Aerospace,GBP,750,7Y,4.250,95,6,2.8x,2025-01-08,Baa3,Barclays
+D064,BAE Systems,Aerospace,GBP,1000,10Y,4.000,72,4,3.6x,2025-01-02,Baa2,HSBC
+D065,Leonardo,Aerospace,EUR,750,7Y,3.875,88,6,2.6x,2024-12-28,Baa3,UniCredit
+D066,Thales,Aerospace,EUR,600,6Y,3.250,68,4,3.4x,2024-12-22,A3,BNP Paribas
+D067,Safran,Aerospace,EUR,800,8Y,3.125,62,3,4.0x,2024-12-18,A3,Credit Agricole
+D068,MTU Aero,Aerospace,EUR,500,5Y,3.375,75,5,3.2x,2024-12-12,Baa1,Deutsche Bank
+D069,Lufthansa,Airlines,EUR,750,5Y,5.500,195,14,1.5x,2024-12-08,Ba2,Deutsche Bank
+D070,Air France-KLM,Airlines,EUR,600,4Y,6.000,220,16,1.3x,2024-12-02,Ba3,BNP Paribas
+D071,IAG,Airlines,GBP,800,5Y,5.250,175,12,1.6x,2024-11-28,Baa3,Barclays
+D072,Ryanair,Airlines,EUR,500,4Y,4.500,125,8,2.2x,2024-11-22,BBB,Citigroup
+D073,easyJet,Airlines,GBP,400,4Y,5.000,145,10,1.8x,2024-11-18,Baa3,HSBC
+D074,Deutsche Post,Logistics,EUR,1000,8Y,3.250,65,3,4.0x,2024-11-12,A3,Deutsche Bank
+D075,DHL Group,Logistics,EUR,750,6Y,3.125,60,3,4.2x,2024-11-08,A3,JP Morgan
+D076,DSV,Logistics,EUR,600,5Y,3.375,72,4,3.5x,2024-11-02,Baa1,Nordea
+D077,Kuehne+Nagel,Logistics,CHF,500,6Y,2.500,55,3,4.5x,2024-10-28,A3,UBS
+D078,Maersk,Logistics,EUR,1000,7Y,3.625,78,5,3.2x,2024-10-22,Baa1,Danske
+D079,CMA CGM,Logistics,EUR,750,5Y,4.250,105,7,2.4x,2024-10-18,Baa3,BNP Paribas
+D080,MSC,Logistics,USD,1500,8Y,4.750,115,8,2.0x,2024-10-12,Baa2,JP Morgan
+D081,Deutsche Bahn,Transport,EUR,1250,12Y,3.000,52,2,5.0x,2024-10-08,Aa1,Deutsche Bank
+D082,SNCF,Transport,EUR,1500,15Y,3.125,55,2,4.8x,2024-10-02,Aa2,Credit Agricole
+D083,Network Rail,Transport,GBP,1000,20Y,4.250,62,3,4.2x,2024-09-28,Aa3,Barclays
+D084,Heathrow,Transport,GBP,750,10Y,4.750,95,6,2.8x,2024-09-22,A3,HSBC
+D085,Fraport,Transport,EUR,500,8Y,3.625,82,5,3.0x,2024-09-18,A3,Deutsche Bank
+D086,Aeroports de Paris,Transport,EUR,600,10Y,3.375,72,4,3.5x,2024-09-12,A+,BNP Paribas
+D087,Getlink,Transport,EUR,500,7Y,4.000,92,6,2.6x,2024-09-08,BBB,Societe Generale
+D088,Ferrovial,Transport,EUR,750,8Y,3.500,78,5,3.2x,2024-09-02,Baa1,Santander
+D089,Vinci,Infrastructure,EUR,1000,10Y,3.250,68,4,3.6x,2024-08-28,A3,BNP Paribas
+D090,Eiffage,Infrastructure,EUR,600,7Y,3.500,75,5,3.2x,2024-08-22,Baa1,Credit Agricole
+D091,Bouygues,Infrastructure,EUR,750,8Y,3.375,72,4,3.4x,2024-08-18,A3,Societe Generale
+D092,Skanska,Infrastructure,SEK,3000,5Y,3.625,78,5,3.0x,2024-08-12,Baa1,SEB
+D093,Strabag,Infrastructure,EUR,400,5Y,3.750,85,6,2.8x,2024-08-08,Baa2,Erste
+D094,Hochtief,Infrastructure,EUR,500,6Y,3.625,82,5,2.9x,2024-08-02,Baa2,Deutsche Bank
+D095,Acciona,Infrastructure,EUR,600,7Y,3.875,88,6,2.6x,2024-07-28,Baa3,BBVA
+D096,FCC,Infrastructure,EUR,400,5Y,4.500,115,8,2.0x,2024-07-22,Ba1,Santander
+D097,ACS Group,Infrastructure,EUR,750,6Y,4.000,95,6,2.4x,2024-07-18,Baa3,BBVA
+D098,Webuild,Infrastructure,EUR,500,5Y,5.000,135,10,1.8x,2024-07-12,Ba2,UniCredit
+D099,Salini,Infrastructure,EUR,350,4Y,5.500,155,12,1.5x,2024-07-08,Ba3,Mediobanca
+D100,Atlantia,Infrastructure,EUR,1000,8Y,3.750,82,5,3.0x,2024-07-02,Baa2,UniCredit
