@@ -15,6 +15,7 @@ import {
   MarketIssuance,
 } from './components/dcm';
 import { Dashboard } from './components/Dashboard';
+import { LabChatView } from './lab/LabChatView';
 
 const MAX_STORED_MESSAGES = 50;
 const MAX_SESSIONS = 20;
@@ -131,6 +132,7 @@ export default function App() {
   const [activeView, setActiveView] = useState<'chat' | 'dashboard'>('chat');
   const [isHistoryHovered, setIsHistoryHovered] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [labMode, setLabMode] = useState<boolean>(false);
   
   const { messages, input, setInput, handleInputChange, addToolResult, isLoading, setMessages, stop, append } = useChat({
     api: API_URL,
@@ -669,11 +671,37 @@ export default function App() {
           <div className="flex-1 overflow-auto">
             {/* Header */}
             <header className="px-4 md:px-6 pt-4 pb-4 border-b border-[#E5E5E3] bg-[#FAFAF8]/80 backdrop-blur-sm sticky top-0 z-10">
-              <div className="flex items-center h-10">
-                <h1 className="text-lg font-semibold text-[#1A1A1A]">Primary Flow <span className="font-normal italic">Canvas</span></h1>
+              <div className="flex items-center justify-between h-10">
+                <h1 className="text-lg font-semibold text-[#1A1A1A]">
+                  {labMode ? (
+                    <>UX Experiments <span className="font-normal italic">Lab</span></>
+                  ) : (
+                    <>Primary Flow <span className="font-normal italic">Canvas</span></>
+                  )}
+                </h1>
+                <button
+                  type="button"
+                  onClick={() => setLabMode((v) => !v)}
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    labMode
+                      ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white hover:bg-stone-800'
+                      : 'border-[#E5E5E3] bg-white text-stone-600 hover:bg-stone-50'
+                  }`}
+                  title="Toggle UX experiments lab"
+                  aria-pressed={labMode}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M14.25 3.104v5.714a2.25 2.25 0 00.659 1.591L19 14.5M9.75 3.104a48.554 48.554 0 014.5 0M5 14.5l-1.27 4.317A1.5 1.5 0 005.166 20.7h13.668a1.5 1.5 0 001.436-1.883L19 14.5M5 14.5h14" />
+                  </svg>
+                  {labMode ? 'Lab on' : 'Lab off'}
+                </button>
               </div>
             </header>
 
+            {labMode ? (
+              <LabChatView />
+            ) : (
+              <>
             {/* Messages */}
         <div className="max-w-3xl mx-auto px-4 md:px-6 py-8 flex flex-col gap-5">
           {messages.length === 0 && (
@@ -1158,9 +1186,11 @@ export default function App() {
             </div>
           )}
           </div>
+              </>
+            )}
           </div>
 
-          {/* Input Area */}
+          {!labMode && (
           <footer className="px-4 md:px-6 pb-6 pt-3">
           <div className="max-w-3xl mx-auto">
             <form
@@ -1219,6 +1249,7 @@ export default function App() {
             </form>
           </div>
         </footer>
+          )}
         </div>
       )}
     </div>

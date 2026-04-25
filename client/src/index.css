@@ -169,3 +169,837 @@ body {
   background: rgba(0, 0, 0, 0.04);
   color: #292524; /* stone-800 */
 }
+
+/* =====================================================================
+ * UX Lab · V5 Immersive Task List — gloop indicator + row choreography.
+ * Scoped under `.lab-gloop` and `.lab-gloop-row` so nothing leaks into
+ * the main chat. All animation honours `prefers-reduced-motion`.
+ * ===================================================================== */
+
+.lab-gloop {
+  line-height: 0;
+}
+
+.lab-gloop svg {
+  overflow: visible;
+}
+
+.lab-gloop__core,
+.lab-gloop__sat {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  transition:
+    r 220ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    fill 200ms ease-out,
+    opacity 180ms ease-out;
+}
+
+/* Pending — small, dim, motionless. Reserves space. */
+.lab-gloop--pending .lab-gloop__core {
+  r: 3;
+  fill: #d6d3d1; /* stone-300 */
+  opacity: 0.7;
+}
+.lab-gloop--pending .lab-gloop__sat {
+  r: 0;
+  fill: #d6d3d1;
+  opacity: 0;
+}
+
+/* Running — amber blob with two orbiting satellites; the goo filter
+ * fuses them into a single breathing shape. */
+.lab-gloop--running .lab-gloop__core {
+  r: 5.5;
+  fill: #f59e0b; /* amber-500 */
+  animation: lab-gloop-breathe 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.lab-gloop--running .lab-gloop__sat {
+  r: 1.8;
+  fill: #f59e0b;
+  opacity: 0.95;
+}
+.lab-gloop--running .lab-gloop__orbit {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  animation: lab-gloop-orbit 1.4s linear infinite;
+}
+
+/* Done — single overshoot squish, colour cross to emerald, tick draws on. */
+.lab-gloop--done .lab-gloop__core {
+  r: 6;
+  fill: #10b981; /* emerald-500 */
+  animation: lab-gloop-squish 360ms cubic-bezier(0.34, 1.56, 0.64, 1) 1;
+}
+.lab-gloop--done .lab-gloop__sat {
+  r: 0;
+  opacity: 0;
+}
+.lab-gloop--done .lab-gloop__tick {
+  stroke-dashoffset: 0; /* baseline so the tick is visible even if the keyframe drops */
+  animation: lab-gloop-draw 260ms cubic-bezier(0.7, 0, 0.2, 1) 180ms 1 backwards;
+}
+
+/* Errored — same choreography in rose, cross instead of tick. */
+.lab-gloop--errored .lab-gloop__core {
+  r: 6;
+  fill: #f43f5e; /* rose-500 */
+  animation: lab-gloop-squish 360ms cubic-bezier(0.34, 1.56, 0.64, 1) 1;
+}
+.lab-gloop--errored .lab-gloop__sat {
+  r: 0;
+  opacity: 0;
+}
+.lab-gloop--errored .lab-gloop__cross {
+  stroke-dashoffset: 0;
+  animation: lab-gloop-draw 260ms cubic-bezier(0.7, 0, 0.2, 1) 180ms 1 backwards;
+}
+
+/* Tick / cross start invisible (dashoffset == pathLength), reveal via animation. */
+.lab-gloop__tick,
+.lab-gloop__cross {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+}
+
+@keyframes lab-gloop-breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.08); }
+}
+
+@keyframes lab-gloop-orbit {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes lab-gloop-squish {
+  0%   { transform: scale(1); }
+  35%  { transform: scaleY(0.55) scaleX(1.18); }
+  100% { transform: scale(1); }
+}
+
+@keyframes lab-gloop-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+/* Row choreography — soft entry, animated connector, caption crossfade. */
+.lab-gloop-row {
+  animation: lab-gloop-row-in 320ms cubic-bezier(0.2, 0.8, 0.2, 1) 1 backwards;
+}
+
+.lab-gloop-row__connector {
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.lab-gloop-row.is-active .lab-gloop-row__connector,
+.lab-gloop-row.is-done .lab-gloop-row__connector,
+.lab-gloop-row.is-errored .lab-gloop-row__connector {
+  transform: scaleY(1);
+}
+
+.lab-gloop-row__title {
+  transition: color 200ms ease-out;
+}
+.lab-gloop-row.is-pending .lab-gloop-row__title {
+  color: #a8a29e; /* stone-400 */
+}
+
+.lab-gloop-row__caption {
+  animation: lab-gloop-fade 220ms ease-out 1 backwards;
+}
+
+@keyframes lab-gloop-row-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes lab-gloop-fade {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lab-gloop *,
+  .lab-gloop-row,
+  .lab-gloop-row * {
+    animation: none !important;
+    transition: none !important;
+  }
+  .lab-gloop__tick,
+  .lab-gloop__cross {
+    stroke-dashoffset: 0;
+  }
+  .lab-gloop-row__connector {
+    transform: scaleY(1);
+  }
+}
+
+/* =====================================================================
+ * UX Lab · V6 Matrix Grid — 5x5 dot tile that pulses while running
+ * and collapses to a check / cross pattern on done / errored. All
+ * motion is "clipped" — cubic-bezier(.7,0,.2,1) eases hard into stop.
+ * ===================================================================== */
+
+.matrix-tile {
+  display: inline-block;
+  padding: 4px;
+  background: #ffffff;
+  border: 1px solid #e7e5e4; /* stone-200 */
+  border-radius: 8px;
+  flex-shrink: 0;
+  transition: border-color 200ms cubic-bezier(0.7, 0, 0.2, 1);
+}
+.matrix-tile--done {
+  border-color: #a7f3d0; /* emerald-200 */
+}
+.matrix-tile--errored {
+  border-color: #fecdd3; /* rose-200 */
+}
+
+.matrix-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(5, 1fr);
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+}
+
+.matrix-dot {
+  display: block;
+  border-radius: 50%;
+  background: #d6d3d1; /* stone-300 */
+  opacity: 0.45;
+  transform: scale(0.85);
+  transition:
+    background 200ms cubic-bezier(0.7, 0, 0.2, 1),
+    opacity 220ms cubic-bezier(0.7, 0, 0.2, 1),
+    transform 220ms cubic-bezier(0.7, 0, 0.2, 1);
+}
+
+.matrix-tile--running .matrix-dot {
+  background: #6366f1; /* indigo-500 */
+  animation: matrix-pulse 1400ms ease-in-out infinite;
+  animation-delay: var(--matrix-delay);
+}
+
+.matrix-tile--done .matrix-dot {
+  opacity: 0;
+  transform: scale(0.5);
+  animation: none;
+}
+.matrix-tile--done .matrix-dot[data-in-check='true'] {
+  opacity: 1;
+  transform: scale(1.1);
+  background: #10b981; /* emerald-500 */
+  animation: matrix-snap 320ms cubic-bezier(0.7, 0, 0.2, 1) 80ms 1 backwards;
+}
+
+.matrix-tile--errored .matrix-dot {
+  opacity: 0;
+  transform: scale(0.5);
+  animation: none;
+}
+.matrix-tile--errored .matrix-dot[data-in-cross='true'] {
+  opacity: 1;
+  transform: scale(1.1);
+  background: #f43f5e; /* rose-500 */
+  animation: matrix-snap 320ms cubic-bezier(0.7, 0, 0.2, 1) 80ms 1 backwards;
+}
+
+@keyframes matrix-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.7); }
+  50%      { opacity: 1;   transform: scale(1.05); }
+}
+
+@keyframes matrix-snap {
+  0%   { opacity: 0; transform: scale(0.4); }
+  60%  { opacity: 1; transform: scale(1.25); }
+  100% { opacity: 1; transform: scale(1.1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .matrix-dot {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* =====================================================================
+ * UX Lab · V7 Terminal Stream — monospaced CLI lines, dark slab.
+ * Spinner glyph is React-state-driven (cycled in JS); the result
+ * text reveals via clip-path with steps() for a chunky "typed" feel
+ * that ends on a hard frame boundary.
+ * ===================================================================== */
+
+.term-shell {
+  /* No card / no background — sits flat on the page like a transcript. */
+  background: transparent;
+  color: #44403c; /* stone-700 */
+  padding: 0;
+  font-family: 'SF Mono', Menlo, Monaco, 'Courier New', monospace;
+  font-size: 12.5px;
+  line-height: 1.65;
+  overflow-x: auto;
+}
+.term-line {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  white-space: nowrap;
+  animation: term-line-in 220ms cubic-bezier(0.7, 0, 0.2, 1) 1 backwards;
+}
+.term-glyph {
+  display: inline-block;
+  width: 14px;
+  text-align: center;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.term-glyph--spin   { color: #d97706; /* amber-600 */ }
+.term-glyph--done   { color: #059669; /* emerald-600 */ }
+.term-glyph--err    { color: #e11d48; /* rose-600 */ }
+.term-glyph--idle   { color: #a8a29e; /* stone-400 */ }
+.term-tool {
+  color: #78716c; /* stone-500 */
+  width: 22ch;
+  flex-shrink: 0;
+}
+.term-tool--active { color: #1c1917; /* stone-900 */ }
+.term-args {
+  color: #a8a29e; /* stone-400 */
+  flex-shrink: 0;
+}
+.term-result {
+  color: #57534e; /* stone-600 */
+  display: inline-block;
+  animation: term-type 700ms steps(28, end) 1 backwards;
+  overflow: hidden;
+}
+.term-result--done { color: #047857; /* emerald-700 */ }
+.term-result--err  { color: #be123c; /* rose-700 */ }
+.term-caret {
+  display: inline-block;
+  width: 6px;
+  height: 11px;
+  background: #d97706; /* amber-600 */
+  margin-left: 2px;
+  animation: term-caret 760ms steps(2, end) infinite;
+  vertical-align: text-bottom;
+}
+
+@keyframes term-line-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes term-type {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0 0 0); }
+}
+@keyframes term-caret {
+  0%, 50%   { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .term-line, .term-result, .term-caret {
+    animation: none !important;
+    clip-path: none !important;
+  }
+}
+
+/* V9 · Terminal Stacked — same vocabulary as V7 but the tool name
+ * lives on a tabbed-in second line beneath the headline. Headline
+ * reads first, meta whispers underneath. */
+
+.term-stacked-line {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  animation: term-line-in 220ms cubic-bezier(0.7, 0, 0.2, 1) 1 backwards;
+}
+.term-stacked-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.term-stacked-result {
+  display: inline-block;
+  font-weight: 500;
+  color: #1c1917; /* stone-900 */
+  /* Smooth fade + tiny slide instead of a typewriter so the green
+     completion text just lands rather than streaming character by
+     character. Same clipped curve as the rest of V9. */
+  animation: term-stacked-result-in 260ms cubic-bezier(0.7, 0, 0.2, 1) 1 backwards;
+}
+.term-stacked-result--running { color: #44403c; /* stone-700 */ font-weight: 400; }
+.term-stacked-result--done    { color: #047857; /* emerald-700 */ }
+.term-stacked-result--err     { color: #be123c; /* rose-700 */ }
+.term-stacked-result--idle    { color: #a8a29e; /* stone-400 */ font-weight: 400; }
+
+@keyframes term-stacked-result-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.term-stacked-meta {
+  /* Tab the meta line so it aligns under the headline text
+     (glyph 14px + gap 10px = 24px). */
+  padding-left: 24px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  /* Reveal once the headline has settled — small slide + clip so it
+     feels like the meta "drops in" rather than appearing. */
+  animation: term-meta-reveal 320ms cubic-bezier(0.7, 0, 0.2, 1) 60ms 1 backwards;
+}
+@keyframes term-meta-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    opacity: 0.85;
+    transform: translateY(0);
+    clip-path: inset(0 0 0 0);
+  }
+}
+.term-stacked-tool { color: #78716c; /* stone-500 */ }
+.term-stacked-sep  { color: #d6d3d1; /* stone-300 */ }
+.term-stacked-args { color: #a8a29e; /* stone-400 */ }
+
+/* =====================================================================
+ * V10 · Terminal Workflow — circular completion ring + JSON-ish sub.
+ * Headline stays as the workflow stage; the tool call/result move to
+ * a compact sub line below. The CircleIndicator is shared with this
+ * variant only for now but lives in components/ for reuse.
+ * ===================================================================== */
+
+.circle-ind {
+  vertical-align: middle;
+  flex-shrink: 0;
+  color: #a8a29e; /* default — overridden per state */
+}
+.circle-ind--pending { color: #d6d3d1; /* stone-300 */ }
+.circle-ind--running { color: #d97706; /* amber-600 */ }
+.circle-ind--done    { color: #059669; /* emerald-600 */ }
+.circle-ind--errored { color: #e11d48; /* rose-600 */ }
+
+/* Indeterminate spinner: only painted while running, rotated by CSS. */
+.circle-ind__spin {
+  display: none;
+  transform-origin: 12px 12px;
+  transform-box: view-box;
+}
+.circle-ind--running .circle-ind__spin {
+  display: block;
+  animation: circle-ind-spin 900ms linear infinite;
+}
+@keyframes circle-ind-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Completion arc — circumference of r=9 is ~56.55. Hidden by default
+ * and only revealed in done/errored. */
+.circle-ind__arc {
+  display: none;
+  stroke-dasharray: 56.55;
+  stroke-dashoffset: 56.55;
+}
+.circle-ind--done .circle-ind__arc,
+.circle-ind--errored .circle-ind__arc {
+  display: block;
+  animation: circle-ind-arc 320ms cubic-bezier(0.7, 0, 0.2, 1) 0ms 1 forwards;
+}
+@keyframes circle-ind-arc {
+  to { stroke-dashoffset: 0; }
+}
+
+/* Inner glyphs — drawn after the arc lands. */
+.circle-ind__check,
+.circle-ind__cross {
+  display: none;
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+}
+.circle-ind--done .circle-ind__check {
+  display: block;
+  stroke-dashoffset: 0;
+  animation: circle-ind-glyph 220ms cubic-bezier(0.7, 0, 0.2, 1) 220ms 1 backwards;
+}
+.circle-ind--errored .circle-ind__cross {
+  display: block;
+  stroke-dashoffset: 0;
+  animation: circle-ind-glyph 220ms cubic-bezier(0.7, 0, 0.2, 1) 220ms 1 backwards;
+}
+@keyframes circle-ind-glyph {
+  from { stroke-dashoffset: 24; }
+  to   { stroke-dashoffset: 0; }
+}
+
+/* The line / row container. */
+.term-v10-line {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+.term-v10-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.term-v10-stage {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1c1917; /* stone-900 */
+  letter-spacing: -0.005em;
+}
+.term-v10-stage--pending { color: #a8a29e; font-weight: 400; }
+.term-v10-stage--running { color: #44403c; }
+
+/* Sub: tabbed under the headline (icon 14 + gap 10 = 24px). Rendered
+ * monospaced so it reads as raw output, dim so it never competes with
+ * the workflow stage above. */
+.term-v10-meta {
+  padding-left: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: 'SF Mono', Menlo, Monaco, 'Courier New', monospace;
+  font-size: 11px;
+  line-height: 1.55;
+  animation: term-meta-reveal 320ms cubic-bezier(0.7, 0, 0.2, 1) 80ms 1 backwards;
+}
+.term-v10-call,
+.term-v10-result {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.term-v10-tool       { color: #57534e; /* stone-600 */ }
+.term-v10-args       { color: #a8a29e; /* stone-400 */ overflow: hidden; text-overflow: ellipsis; }
+.term-v10-arrow      { color: #d6d3d1; /* stone-300 */ }
+.term-v10-result-body{ color: #78716c; /* stone-500 */ overflow: hidden; text-overflow: ellipsis; }
+
+@media (prefers-reduced-motion: reduce) {
+  .circle-ind__spin,
+  .circle-ind__arc,
+  .circle-ind__check,
+  .circle-ind__cross,
+  .term-v10-meta {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+}
+
+/* V11 · Post-response collapse. Summary row is one quiet line; the
+ * full step list lives in a 0fr/1fr grid that slides shut with the
+ * same cubic-bezier the rest of the lab uses. */
+
+.term-v11-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 0 6px;
+  margin-bottom: 2px;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.3;
+  color: #57534e; /* stone-600 */
+  border-radius: 6px;
+  transition: color 0.2s, background 0.2s;
+  /* Plays once when the button first mounts (stream just finished). */
+  animation: term-v11-summary-land 420ms cubic-bezier(0.7, 0, 0.2, 1) 80ms 1 both;
+}
+.term-v11-summary:hover {
+  color: #1c1917;
+  background: rgba(0, 0, 0, 0.02);
+}
+.term-v11-summary-text { flex: 1; }
+.term-v11-chevron {
+  display: inline-flex;
+  color: #a8a29e;
+  transition: transform 320ms cubic-bezier(0.7, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+.term-v11-chevron--open {
+  transform: rotate(90deg);
+}
+@keyframes term-v11-summary-land {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Grid clip — collapses the step list upward into zero height. */
+.term-v11-g {
+  display: grid;
+  transition: grid-template-rows 450ms cubic-bezier(0.7, 0, 0.2, 1);
+}
+.term-v11-g--open {
+  grid-template-rows: 1fr;
+}
+.term-v11-g--closed {
+  grid-template-rows: 0fr;
+  pointer-events: none;
+}
+.term-v11-g__inner {
+  min-height: 0;
+  overflow: hidden;
+  transition:
+    opacity 360ms cubic-bezier(0.7, 0, 0.2, 1),
+    transform 450ms cubic-bezier(0.7, 0, 0.2, 1);
+}
+.term-v11-g--open .term-v11-g__inner {
+  opacity: 1;
+  transform: translateY(0);
+}
+.term-v11-g--closed .term-v11-g__inner {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .term-v11-g,
+  .term-v11-g__inner,
+  .term-v11-chevron,
+  .term-v11-summary {
+    animation: none !important;
+  }
+  .term-v11-g--closed {
+    pointer-events: none;
+  }
+  .term-v11-g--open .term-v11-g__inner,
+  .term-v11-g--closed .term-v11-g__inner {
+    transform: none;
+  }
+  .term-v11-g--closed .term-v11-g__inner {
+    opacity: 0;
+  }
+  .term-v11-g--closed {
+    grid-template-rows: 0fr;
+  }
+}
+
+/* =====================================================================
+ * V12 · Answer reveal — mounts *after* the V11 grid has closed (timing
+ * lives in `V12ResponseBloop.tsx`). Intentionally minimal: fade + a
+ * small upward settle only. No blur/scale/overshoot so the message
+ * reads as plain content. Step collapse (`.term-v11-*`) is unchanged.
+ * ===================================================================== */
+
+.v12-payload--in {
+  animation: v12-payload-in 360ms cubic-bezier(0.7, 0, 0.2, 1) 1 both;
+}
+@keyframes v12-payload-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes v12-payload-in-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v12-payload--in {
+    animation: v12-payload-in-fade 180ms ease-out 1 both;
+  }
+}
+
+/* =====================================================================
+ * V9 / V10 shared payload reveal.
+ * ===================================================================== */
+
+/* Main payload (markdown + brief) — only revealed after every tool
+ * line has settled. Slides up + fades in with the same clipped curve
+ * the rest of V9 uses, so it lands rather than fading. */
+.term-stacked-payload {
+  animation: term-payload-reveal 380ms cubic-bezier(0.7, 0, 0.2, 1) 120ms 1 backwards;
+}
+@keyframes term-payload-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .term-stacked-line,
+  .term-stacked-result,
+  .term-stacked-meta,
+  .term-stacked-payload {
+    animation: none !important;
+    clip-path: none !important;
+    opacity: 1;
+    transform: none !important;
+  }
+  .term-stacked-meta { opacity: 0.85; }
+}
+
+/* =====================================================================
+ * UX Lab · V8 Ribbon Ticker — single Dynamic-Island-style pill that
+ * elastically morphs between tools, plus a thin progress beam under
+ * it that snaps to its final width with a clipped curve.
+ * ===================================================================== */
+
+.ribbon-shell {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  width: 100%;
+}
+.ribbon-stage {
+  display: flex;
+  justify-content: center;
+}
+.ribbon-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px 8px 12px;
+  background: #1c1917; /* stone-900 */
+  color: #f5f5f4;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  box-shadow: 0 8px 24px -12px rgba(28, 25, 23, 0.5);
+  transform-origin: center;
+  animation: ribbon-morph 420ms cubic-bezier(0.7, 0, 0.2, 1) 1;
+  transition:
+    background 280ms cubic-bezier(0.7, 0, 0.2, 1),
+    color 280ms cubic-bezier(0.7, 0, 0.2, 1);
+}
+.ribbon-pill[data-state='done']    { background: #047857; /* emerald-700 */ }
+.ribbon-pill[data-state='errored'] { background: #be123c; /* rose-700 */ }
+
+.ribbon-dot {
+  position: relative;
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fbbf24;
+  box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.6);
+  flex-shrink: 0;
+}
+.ribbon-pill[data-state='running'] .ribbon-dot {
+  animation: ribbon-dot-pulse 1400ms ease-in-out infinite;
+}
+.ribbon-pill[data-state='done'] .ribbon-dot {
+  background: #d1fae5;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.25);
+}
+.ribbon-pill[data-state='errored'] .ribbon-dot {
+  background: #ffe4e6;
+  box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.25);
+}
+.ribbon-pill[data-state='pending'] .ribbon-dot {
+  background: #57534e;
+}
+
+.ribbon-counter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.ribbon-beam {
+  position: relative;
+  width: 100%;
+  height: 3px;
+  background: #e7e5e4; /* stone-200 */
+  border-radius: 999px;
+  overflow: hidden;
+}
+.ribbon-beam-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #34d399);
+  border-radius: 999px;
+  transition: width 420ms cubic-bezier(0.7, 0, 0.2, 1);
+}
+.ribbon-beam-fill[data-state='errored'] {
+  background: linear-gradient(90deg, #be123c, #f43f5e);
+}
+
+.ribbon-history {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  min-height: 18px;
+}
+.ribbon-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: #f5f5f4;
+  border: 1px solid #e7e5e4;
+  border-radius: 999px;
+  font-size: 10px;
+  color: #44403c;
+  animation: ribbon-chip-in 320ms cubic-bezier(0.7, 0, 0.2, 1) 1 backwards;
+}
+.ribbon-chip[data-state='done']    { color: #047857; border-color: #a7f3d0; }
+.ribbon-chip[data-state='errored'] { color: #be123c; border-color: #fecdd3; }
+
+@keyframes ribbon-morph {
+  0%   { transform: scale(0.86, 1.14); }
+  55%  { transform: scale(1.05, 0.94); }
+  100% { transform: scale(1); }
+}
+@keyframes ribbon-dot-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.6); }
+  50%      { box-shadow: 0 0 0 6px rgba(251, 191, 36, 0); }
+}
+@keyframes ribbon-chip-in {
+  from { opacity: 0; transform: translateY(4px) scale(0.85); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ribbon-pill, .ribbon-dot, .ribbon-chip, .ribbon-beam-fill {
+    animation: none !important;
+    transition: none !important;
+  }
+}

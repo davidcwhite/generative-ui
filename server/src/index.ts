@@ -6,6 +6,7 @@ import { streamText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { tools, displayTools } from './tools.js';
 import { dcmTools } from './mcp/client.js';
+import { mockDcmChatRoute } from './routes/mockChat.js';
 import { registry } from './data/registry.js';
 import { deals } from './mcp/data/deals.js';
 import { generateAllocationsForDeal } from './mcp/data/investors.js';
@@ -554,6 +555,10 @@ app.post('/api/chat', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// UX experiments lab — synthetic mock chat (no LLM call)
+// Same wire format as /api/dcm/chat so `useChat` is drop-in compatible.
+app.post('/api/dcm/mock-chat', mockDcmChatRoute);
 
 // DCM Bond Issuance chat endpoint
 app.post('/api/dcm/chat', async (req, res) => {
