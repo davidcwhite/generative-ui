@@ -834,6 +834,471 @@ body {
 }
 
 /* =====================================================================
+ * V13 · Mock per-step “SSE” subtext — visually matches the original
+ * V10 metadata line, but clips to three lines so older streamed text scrolls
+ * upward out of view as new text arrives.
+ * ===================================================================== */
+
+.v13-stream-clip {
+  padding-left: 24px;
+  margin-top: 2px;
+  margin-bottom: 1px;
+  color: #a8a29e;
+}
+.v13-stream-rail {
+  max-height: calc(1.4em * 3);
+  overflow: hidden;
+  scroll-behavior: auto;
+}
+.v13-stream-text {
+  font-family: 'SF Mono', Menlo, Monaco, 'Courier New', monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  margin: 0;
+  color: #a8a29e;
+  white-space: pre;
+  overflow-wrap: normal;
+}
+.v13-stream-cursor {
+  display: inline-block;
+  color: #78716c;
+  animation: v13-cursor 1s step-end infinite;
+  margin-left: 1px;
+}
+@keyframes v13-cursor {
+  50% {
+    opacity: 0.15;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v13-stream-cursor {
+    animation: none;
+    opacity: 0.5;
+  }
+  .v13-stream-rail {
+    scroll-behavior: auto;
+  }
+}
+
+/* =====================================================================
+ * V14 · Sublime stream — same transparency as V13, but softer hierarchy:
+ * a tiny label, two visible records, fade masks, and only the newest
+ * partial record gets emphasis.
+ * ===================================================================== */
+
+.v14-stream {
+  padding-left: 24px;
+  margin-top: 4px;
+  margin-bottom: 2px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 8px;
+  align-items: start;
+}
+.v14-stream__label {
+  padding-top: 1px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 10px;
+  line-height: 1.4;
+  color: #d6d3d1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.v14-stream__viewport {
+  position: relative;
+  max-height: calc(1.45em * 2);
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 0.55em,
+    black calc(100% - 0.45em),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 0.55em,
+    black calc(100% - 0.45em),
+    transparent 100%
+  );
+}
+.v14-stream__stack {
+  font-family: 'SF Mono', Menlo, Monaco, 'Courier New', monospace;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: #a8a29e;
+}
+.v14-stream__line {
+  white-space: pre;
+  opacity: 0.48;
+}
+.v14-stream__line--current {
+  color: #78716c;
+  opacity: 0.95;
+}
+.v14-stream__cursor {
+  display: inline-block;
+  margin-left: 1px;
+  color: #57534e;
+  animation: v14-cursor 900ms step-end infinite;
+}
+@keyframes v14-cursor {
+  50% {
+    opacity: 0.2;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v14-stream__cursor {
+    animation: none;
+    opacity: 0.45;
+  }
+}
+
+/* =====================================================================
+ * V15 · Ambient stream — label-free V14. The stream sits directly under
+ * the stage text with soft fade masks; the expanded detail is a polished
+ * payload drawer instead of nested raw arg/result controls.
+ * ===================================================================== */
+
+.v15-stream {
+  position: relative;
+  padding-left: 24px;
+  margin-top: 4px;
+  margin-bottom: 2px;
+}
+.v15-stream__viewport {
+  position: relative;
+  max-height: calc(1.45em * 2);
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 0.55em,
+    black calc(100% - 0.45em),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 0.55em,
+    black calc(100% - 0.45em),
+    transparent 100%
+  );
+}
+.v15-stream__stack {
+  font-family: 'SF Mono', Menlo, Monaco, 'Courier New', monospace;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: #a8a29e;
+}
+.v15-stream__line {
+  white-space: pre;
+  opacity: 0.42;
+}
+.v15-stream__line--current {
+  color: #78716c;
+  opacity: 0.92;
+  text-shadow: 0 0 16px rgba(120, 113, 108, 0.12);
+}
+.v15-stream__cursor {
+  display: inline-block;
+  margin-left: 1px;
+  color: #57534e;
+  animation: v15-cursor 900ms step-end infinite;
+}
+@keyframes v15-cursor {
+  50% {
+    opacity: 0.2;
+  }
+}
+.v15-detail {
+  margin: 6px 0 2px 24px;
+  border: 1px solid rgba(231, 229, 228, 0.9);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(250, 250, 249, 0.92), rgba(245, 245, 244, 0.82));
+  box-shadow: 0 1px 0 rgba(28, 25, 23, 0.03);
+  overflow: hidden;
+}
+.v15-detail__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px 6px;
+  border-bottom: 1px solid rgba(231, 229, 228, 0.7);
+}
+.v15-detail__title {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: #57534e;
+}
+.v15-detail__pill {
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: #78716c;
+  background: rgba(231, 229, 228, 0.72);
+}
+.v15-detail__pill--running {
+  color: #57534e;
+  background: rgba(214, 211, 209, 0.86);
+}
+.v15-detail__pill--done {
+  color: #047857;
+  background: rgba(209, 250, 229, 0.82);
+}
+.v15-detail__pill--errored {
+  color: #be123c;
+  background: rgba(255, 228, 230, 0.9);
+}
+.v15-detail__body {
+  max-height: 13rem;
+  margin: 0;
+  overflow: auto;
+  padding: 9px 10px 10px;
+  font-family: 'SF Mono', Menlo, Monaco, 'Courier New', monospace;
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: #57534e;
+  white-space: pre;
+}
+@media (prefers-reduced-motion: reduce) {
+  .v15-stream__cursor {
+    animation: none;
+  }
+  .v15-stream__cursor {
+    opacity: 0.45;
+  }
+}
+
+/* =====================================================================
+ * V16 · Soft focus stream — raw records like V15, but the active record
+ * gets a quiet rounded focus field and older records recede further.
+ * ===================================================================== */
+
+.v16-stream {
+  padding-left: 24px;
+  margin-top: 4px;
+  margin-bottom: 2px;
+}
+.v16-stream__viewport {
+  max-height: calc(1.5em * 2);
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 0.45em,
+    black calc(100% - 0.4em),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 0.45em,
+    black calc(100% - 0.4em),
+    transparent 100%
+  );
+}
+.v16-stream__stack {
+  font-family: 'SF Mono', Menlo, Monaco, 'Courier New', monospace;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: #a8a29e;
+}
+.v16-stream__line {
+  width: max-content;
+  max-width: 100%;
+  white-space: pre;
+  opacity: 0.34;
+  transition: opacity 180ms ease, color 180ms ease, transform 180ms ease;
+}
+.v16-stream__line--current {
+  border-radius: 6px;
+  color: #57534e;
+  opacity: 0.96;
+  transform: translateX(1px);
+  background: rgba(245, 245, 244, 0.72);
+  box-shadow: 0 0 0 1px rgba(231, 229, 228, 0.55);
+}
+.v16-stream__cursor {
+  display: inline-block;
+  margin-left: 1px;
+  color: #78716c;
+  animation: v16-cursor 900ms step-end infinite;
+}
+@keyframes v16-cursor {
+  50% {
+    opacity: 0.18;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v16-stream__line {
+    transition: none;
+  }
+  .v16-stream__cursor {
+    animation: none;
+    opacity: 0.45;
+  }
+}
+
+/* =====================================================================
+ * V17 · Parsed signal stream — same incoming JSON, but displayed as
+ * compact semantic signals instead of raw SSE records.
+ * ===================================================================== */
+
+.v17-stream {
+  padding-left: 24px;
+  margin-top: 4px;
+  margin-bottom: 2px;
+}
+.v17-stream__viewport {
+  max-height: calc(1.6em * 2);
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 0.5em,
+    black calc(100% - 0.45em),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 0.5em,
+    black calc(100% - 0.45em),
+    transparent 100%
+  );
+}
+.v17-stream__stack {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #a8a29e;
+}
+.v17-stream__line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  opacity: 0.44;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.v17-stream__line--current {
+  color: #57534e;
+  opacity: 0.94;
+}
+.v17-stream__dot {
+  width: 3px;
+  height: 3px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #d6d3d1;
+}
+.v17-stream__line--current .v17-stream__dot {
+  background: #a8a29e;
+  box-shadow: 0 0 0 3px rgba(214, 211, 209, 0.28);
+}
+.v17-stream__cursor {
+  display: inline-block;
+  margin-left: -2px;
+  color: #78716c;
+  animation: v17-cursor 900ms step-end infinite;
+}
+@keyframes v17-cursor {
+  50% {
+    opacity: 0.2;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v17-stream__cursor {
+    animation: none;
+    opacity: 0.45;
+  }
+}
+
+/* =====================================================================
+ * V18 · Data ribbon stream — streamed records become quiet horizontal
+ * pills, giving a more instrument-panel feel than vertical log lines.
+ * ===================================================================== */
+
+.v18-stream {
+  padding-left: 24px;
+  margin-top: 5px;
+  margin-bottom: 2px;
+}
+.v18-stream__viewport {
+  max-width: 100%;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    black 1.2rem,
+    black calc(100% - 1.4rem),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    black 1.2rem,
+    black calc(100% - 1.4rem),
+    transparent 100%
+  );
+}
+.v18-stream__track {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: max-content;
+  min-height: 1.5rem;
+}
+.v18-stream__pill {
+  flex: 0 0 auto;
+  max-width: 13rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid rgba(231, 229, 228, 0.8);
+  border-radius: 999px;
+  background: rgba(250, 250, 249, 0.68);
+  padding: 2px 8px 2px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: #a8a29e;
+  opacity: 0.5;
+}
+.v18-stream__pill--current {
+  border-color: rgba(214, 211, 209, 0.96);
+  background: rgba(245, 245, 244, 0.95);
+  color: #57534e;
+  opacity: 1;
+  box-shadow: 0 1px 0 rgba(28, 25, 23, 0.03);
+}
+.v18-stream__cursor {
+  display: inline-block;
+  margin-left: 1px;
+  color: #78716c;
+  animation: v18-cursor 900ms step-end infinite;
+}
+@keyframes v18-cursor {
+  50% {
+    opacity: 0.2;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v18-stream__cursor {
+    animation: none;
+    opacity: 0.45;
+  }
+}
+
+/* =====================================================================
  * V9 / V10 shared payload reveal.
  * ===================================================================== */
 
