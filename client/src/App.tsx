@@ -1,6 +1,5 @@
 import { useChat, type Message } from '@ai-sdk/react';
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { TableCard } from './components/TableCard';
 import { FilterForm } from './components/FilterForm';
@@ -25,16 +24,20 @@ import {
   MessageSquare,
   FileText,
   BarChart3,
-  PanelLeft,
   Plus,
   Search,
   LogOut,
-  ChevronRight,
-  Trash2,
   Menu,
   X,
-  type LucideIcon,
 } from 'lucide-react';
+import {
+  Sidebar,
+  PFLogoMark,
+  type SidebarSection,
+  type SidebarLink,
+  type SidebarContextGroup,
+  type SidebarActionRow,
+} from './sidebar';
 
 const MAX_STORED_MESSAGES = 50;
 const MAX_SESSIONS = 20;
@@ -73,35 +76,6 @@ interface ChatSession {
 }
 
 type SidebarSectionId = 'agents' | 'documents' | 'data';
-type SidebarIconName =
-  | 'agents'
-  | 'documents'
-  | 'data'
-  | 'sidebar-toggle'
-  | 'plus'
-  | 'search'
-  | 'logout'
-  | 'chevron'
-  | 'trash';
-
-interface SidebarLink {
-  id: string;
-  label: string;
-  meta?: string;
-  status?: string;
-}
-
-interface SidebarContextGroup {
-  id: string;
-  title: string;
-  links: SidebarLink[];
-}
-
-const SIDEBAR_SECTIONS: Array<{ id: SidebarSectionId; label: string; icon: SidebarIconName }> = [
-  { id: 'agents', label: 'Agents', icon: 'agents' },
-  { id: 'documents', label: 'Documents', icon: 'documents' },
-  { id: 'data', label: 'Data', icon: 'data' },
-];
 
 const STATIC_CONTEXT_GROUPS: Record<Exclude<SidebarSectionId, 'agents'>, SidebarContextGroup[]> = {
   documents: [
@@ -109,17 +83,17 @@ const STATIC_CONTEXT_GROUPS: Record<Exclude<SidebarSectionId, 'agents'>, Sidebar
       id: 'recent-documents',
       title: 'Recent',
       links: [
-        { id: 'mandate-brief', label: 'BMW mandate brief', meta: 'Updated 8m ago', status: 'draft' },
-        { id: 'investor-pack', label: 'Investor meeting pack', meta: 'Coverage notes' },
-        { id: 'term-sheet', label: 'Draft term sheet', meta: 'Primary Flow doc' },
+        { id: 'mandate-brief', label: 'BMW mandate brief' },
+        { id: 'investor-pack', label: 'Investor meeting pack' },
+        { id: 'term-sheet', label: 'Draft term sheet' },
       ],
     },
     {
       id: 'document-workflows',
       title: 'Workflows',
       links: [
-        { id: 'summaries', label: 'Generated summaries', meta: '12 documents' },
-        { id: 'exports', label: 'Export queue', meta: '2 pending' },
+        { id: 'summaries', label: 'Generated summaries' },
+        { id: 'exports', label: 'Export queue' },
       ],
     },
   ],
@@ -128,144 +102,21 @@ const STATIC_CONTEXT_GROUPS: Record<Exclude<SidebarSectionId, 'agents'>, Sidebar
       id: 'market-data',
       title: 'Market data',
       links: [
-        { id: 'dashboard', label: 'Data Viewer', meta: 'Open dashboard', status: 'live' },
-        { id: 'issuance', label: 'Issuance monitor', meta: '20 deals' },
-        { id: 'allocations', label: 'Allocation quality', meta: '6 books' },
+        { id: 'dashboard', label: 'Data Viewer' },
+        { id: 'issuance', label: 'Issuance monitor' },
+        { id: 'allocations', label: 'Allocation quality' },
       ],
     },
     {
       id: 'coverage-data',
       title: 'Coverage',
       links: [
-        { id: 'issuers', label: 'Issuer profiles', meta: 'Autos focus' },
-        { id: 'investors', label: 'Investor history', meta: 'Fill rates' },
+        { id: 'issuers', label: 'Issuer profiles' },
+        { id: 'investors', label: 'Investor history' },
       ],
     },
   ],
 };
-
-const ICON_MAP: Record<SidebarIconName, LucideIcon> = {
-  agents: MessageSquare,
-  documents: FileText,
-  data: BarChart3,
-  'sidebar-toggle': PanelLeft,
-  plus: Plus,
-  search: Search,
-  logout: LogOut,
-  chevron: ChevronRight,
-  trash: Trash2,
-};
-
-function SidebarIcon({ icon, className = 'h-5 w-5' }: { icon: SidebarIconName; className?: string }) {
-  const Icon = ICON_MAP[icon];
-  return <Icon className={className} strokeWidth={1.75} aria-hidden="true" />;
-}
-
-function PFLogoMark({ className = 'h-5 w-5' }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path d="M8 5.5v13" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" />
-      <path d="M8 6.25h6a3 3 0 0 1 0 6H9" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M9 14.5h6.5" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function RailTooltip({
-  label,
-  anchor,
-  show,
-}: {
-  label: string;
-  anchor: HTMLElement | null;
-  show: boolean;
-}) {
-  if (!show || !anchor) return null;
-  const rect = anchor.getBoundingClientRect();
-  return createPortal(
-    <span
-      role="tooltip"
-      style={{
-        position: 'fixed',
-        top: rect.top + rect.height / 2,
-        left: rect.right + 8,
-        transform: 'translateY(-50%)',
-        zIndex: 60,
-      }}
-      className="pointer-events-none whitespace-nowrap rounded-md bg-[#1A1A1A] px-2.5 py-1.5 text-xs font-medium text-white shadow-lg"
-    >
-      {label}
-    </span>,
-    document.body,
-  );
-}
-
-function useRailTooltip(collapsed: boolean) {
-  const [hovered, setHovered] = useState(false);
-  return {
-    showTooltip: collapsed && hovered,
-    bind: {
-      onMouseEnter: () => setHovered(true),
-      onMouseLeave: () => setHovered(false),
-    },
-  };
-}
-
-function SidebarNavRow({
-  icon,
-  label,
-  collapsed,
-  active = false,
-  tone = 'default',
-  onClick,
-}: {
-  icon: SidebarIconName;
-  label: string;
-  collapsed: boolean;
-  active?: boolean;
-  tone?: 'default' | 'muted';
-  onClick: () => void;
-}) {
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const { showTooltip, bind } = useRailTooltip(collapsed);
-
-  const colorClasses = active
-    ? 'bg-[#E5E5E3] text-[#1A1A1A]'
-    : tone === 'muted'
-    ? 'text-stone-600 hover:bg-[#EDEDEB] hover:text-[#1A1A1A]'
-    : 'text-stone-700 hover:bg-[#EEEEEC] hover:text-[#1A1A1A]';
-
-  return (
-    <>
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={onClick}
-        aria-label={label}
-        aria-current={active ? 'page' : undefined}
-        {...bind}
-        className={`flex w-full items-center rounded-lg py-2 text-left text-sm font-medium transition-colors duration-150 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-300 motion-reduce:transition-none ${colorClasses}`}
-      >
-        <span className="flex h-5 w-10 shrink-0 items-center justify-center">
-          <SidebarIcon icon={icon} className="h-5 w-5" />
-        </span>
-        <span
-          className={`ml-3 min-w-0 flex-1 truncate transition-opacity duration-150 ease-out motion-reduce:transition-none ${
-            collapsed ? 'opacity-0' : 'opacity-100'
-          }`}
-        >
-          {label}
-        </span>
-      </button>
-      <RailTooltip label={label} anchor={buttonRef.current} show={showTooltip} />
-    </>
-  );
-}
 
 // Generate unique session ID
 function generateSessionId(): string {
@@ -364,11 +215,6 @@ export default function App() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(false);
   const [activeView, setActiveView] = useState<'chat' | 'dashboard'>('chat');
   const [activeSidebarSection, setActiveSidebarSection] = useState<SidebarSectionId>('agents');
-  const [isContextPanelCollapsed, setIsContextPanelCollapsed] = useState(false);
-  const [isRailHovered, setIsRailHovered] = useState(false);
-  const brandChipRef = useRef<HTMLButtonElement>(null);
-  const [isBrandChipHovered, setIsBrandChipHovered] = useState(false);
-  const [collapsedContextGroups, setCollapsedContextGroups] = useState<Record<string, boolean>>({});
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [labMode, setLabMode] = useState<LabMode>('off');
   
@@ -426,13 +272,6 @@ export default function App() {
   const handleSidebarSectionSelect = useCallback((sectionId: SidebarSectionId) => {
     setActiveSidebarSection(sectionId);
     setActiveView(sectionId === 'data' ? 'dashboard' : 'chat');
-  }, []);
-
-  const toggleContextGroup = useCallback((groupId: string) => {
-    setCollapsedContextGroups((current) => ({
-      ...current,
-      [groupId]: !current[groupId],
-    }));
   }, []);
 
   // Save messages to active session when they change
@@ -585,11 +424,11 @@ export default function App() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem(AUTH_KEY);
     setIsAuthenticated(false);
     setPassword('');
-  };
+  }, []);
 
   // Helper to format query_data results as table
   const formatQueryResult = (result: {
@@ -627,26 +466,77 @@ export default function App() {
     );
   };
 
-  const sidebarContextGroups: SidebarContextGroup[] =
-    activeSidebarSection === 'agents'
-      ? [
-          {
-            id: 'agent-recents',
-            title: 'Recents',
-            links:
-              sessions.length > 0
-                ? sessions.map((session) => ({
-                    id: session.id,
-                    label: session.title,
-                    meta: new Date(session.updatedAt).toLocaleDateString(undefined, {
-                      month: 'short',
-                      day: 'numeric',
-                    }),
-                  }))
-                : [{ id: 'empty-agents', label: 'No chat history yet', meta: 'Start a new conversation' }],
-          },
-        ]
-      : STATIC_CONTEXT_GROUPS[activeSidebarSection];
+  // Sidebar inputs — memoized so <Sidebar/> (memo'd) doesn't re-render on every chat keystroke.
+  const sidebarSections = useMemo<SidebarSection[]>(
+    () => [
+      { id: 'agents', label: 'Agents', icon: MessageSquare },
+      { id: 'documents', label: 'Documents', icon: FileText },
+      { id: 'data', label: 'Data', icon: BarChart3 },
+    ],
+    [],
+  );
+
+  const sidebarSectionActions = useMemo<Record<string, SidebarActionRow[]>>(
+    () => ({
+      agents: [
+        { label: 'New chat', icon: Plus, onClick: handleNewChat, tone: 'muted' },
+        { label: 'Search chats', icon: Search, onClick: () => { /* placeholder until search is wired */ }, tone: 'muted' },
+      ],
+    }),
+    [handleNewChat],
+  );
+
+  const sidebarContextGroups = useMemo<SidebarContextGroup[]>(
+    () =>
+      activeSidebarSection === 'agents'
+        ? [
+            {
+              id: 'agent-recents',
+              title: 'Recents',
+              links:
+                sessions.length > 0
+                  ? sessions.map((session) => ({ id: session.id, label: session.title }))
+                  : [{ id: 'empty-agents', label: 'No chat history yet' }],
+            },
+          ]
+        : STATIC_CONTEXT_GROUPS[activeSidebarSection],
+    [activeSidebarSection, sessions],
+  );
+
+  const sidebarBottomAction = useMemo<SidebarActionRow>(
+    () => ({ label: 'Logout', icon: LogOut, onClick: handleLogout }),
+    [handleLogout],
+  );
+
+  const handleSidebarLinkClick = useCallback(
+    (link: SidebarLink) => {
+      if (link.id === 'dashboard') {
+        handleSidebarSectionSelect('data');
+        return;
+      }
+      if (sessions.some((s) => s.id === link.id)) {
+        switchToSession(link.id);
+      }
+    },
+    [handleSidebarSectionSelect, sessions, switchToSession],
+  );
+
+  const isSidebarLinkActive = useCallback(
+    (link: SidebarLink) => link.id === activeSessionId,
+    [activeSessionId],
+  );
+  const isSidebarLinkDeletable = useCallback(
+    (link: SidebarLink) => sessions.some((s) => s.id === link.id),
+    [sessions],
+  );
+  const isSidebarLinkDisabled = useCallback(
+    (link: SidebarLink) => link.id === 'empty-agents',
+    [],
+  );
+  const handleSidebarLinkDelete = useCallback(
+    (link: SidebarLink) => deleteSession(link.id),
+    [deleteSession],
+  );
 
   // Password screen
   if (!isAuthenticated) {
@@ -797,235 +687,20 @@ export default function App() {
         </div>
       )}
 
-      {/* Desktop Sidebar - hidden on mobile */}
-      <aside
-        className={`hidden md:flex h-full shrink-0 flex-col overflow-x-hidden border-r border-[#E5E5E3] bg-[#F5F5F3] transition-[width] duration-200 ease-out motion-reduce:transition-none ${
-          isContextPanelCollapsed ? 'w-16' : 'w-72'
-        }`}
-        aria-label="Primary navigation"
-        onMouseEnter={() => setIsRailHovered(true)}
-        onMouseLeave={() => setIsRailHovered(false)}
-      >
-        {/* Brand row — single layout, fades only */}
-        <div className="flex h-[60px] items-center gap-3 px-3">
-          {/* w-10 slot keeps the chip centered at x=32, identical to section nav icons */}
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center">
-            <button
-              ref={brandChipRef}
-              type="button"
-              onClick={
-                isContextPanelCollapsed
-                  ? () => {
-                      setIsRailHovered(false);
-                      setIsContextPanelCollapsed(false);
-                    }
-                  : undefined
-              }
-              onMouseEnter={() => setIsBrandChipHovered(true)}
-              onMouseLeave={() => setIsBrandChipHovered(false)}
-              tabIndex={isContextPanelCollapsed ? 0 : -1}
-              aria-label={isContextPanelCollapsed ? 'Open sidebar' : undefined}
-              aria-hidden={isContextPanelCollapsed ? undefined : true}
-              className={`relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg transition-colors duration-150 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-300 motion-reduce:transition-none ${
-                !isContextPanelCollapsed
-                  ? 'cursor-default bg-[#1A1A1A] text-white'
-                  : isBrandChipHovered
-                  ? 'cursor-pointer bg-[#EEEEEC] text-stone-700'
-                  : isRailHovered
-                  ? 'cursor-pointer bg-transparent text-stone-700'
-                  : 'cursor-pointer bg-[#1A1A1A] text-white'
-              }`}
-            >
-              <span
-                className={`absolute inset-0 flex items-center justify-center transition-opacity duration-150 ease-out motion-reduce:transition-none ${
-                  isContextPanelCollapsed && isRailHovered ? 'opacity-0' : 'opacity-100'
-                }`}
-              >
-                <PFLogoMark className="h-5 w-5" />
-              </span>
-              <span
-                className={`absolute inset-0 flex items-center justify-center transition-opacity duration-150 ease-out motion-reduce:transition-none ${
-                  isContextPanelCollapsed && isRailHovered ? 'opacity-100' : 'opacity-0'
-                }`}
-              >
-                <SidebarIcon icon="sidebar-toggle" className="h-5 w-5" />
-              </span>
-            </button>
-          </div>
-
-          <span
-            className={`min-w-0 flex-1 truncate text-sm font-semibold text-[#1A1A1A] transition-opacity duration-150 ease-out motion-reduce:transition-none ${
-              isContextPanelCollapsed ? 'opacity-0' : 'opacity-100'
-            }`}
-            aria-hidden={isContextPanelCollapsed ? true : undefined}
-          >
-            Primary Flow
-          </span>
-
-          <button
-            type="button"
-            onClick={() => {
-              setIsRailHovered(false);
-              setIsContextPanelCollapsed(true);
-            }}
-            tabIndex={isContextPanelCollapsed ? -1 : 0}
-            aria-label="Collapse sidebar"
-            aria-hidden={isContextPanelCollapsed ? true : undefined}
-            title="Collapse sidebar"
-            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-stone-500 transition-opacity duration-150 ease-out hover:bg-[#E5E5E3] hover:text-[#1A1A1A] focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-300 motion-reduce:transition-none ${
-              isContextPanelCollapsed ? 'pointer-events-none opacity-0' : 'opacity-100'
-            }`}
-          >
-            <SidebarIcon icon="sidebar-toggle" className="h-4 w-4" />
-          </button>
-          <RailTooltip
-            label="Open sidebar"
-            anchor={brandChipRef.current}
-            show={isContextPanelCollapsed && isBrandChipHovered}
-          />
-        </div>
-
-        {/* Primary nav */}
-        <nav className="mt-2 flex flex-col gap-0.5 px-3" aria-label="Primary navigation">
-          {SIDEBAR_SECTIONS.map((section) => (
-            <SidebarNavRow
-              key={section.id}
-              icon={section.icon}
-              label={section.label}
-              collapsed={isContextPanelCollapsed}
-              active={activeSidebarSection === section.id}
-              onClick={() => handleSidebarSectionSelect(section.id)}
-            />
-          ))}
-        </nav>
-
-        {/* Section content — always rendered; fades when collapsed */}
-        <div
-          className={`mt-5 flex flex-1 flex-col overflow-hidden transition-opacity duration-150 ease-out motion-reduce:transition-none ${
-            isContextPanelCollapsed ? 'pointer-events-none opacity-0' : 'opacity-100'
-          }`}
-          aria-hidden={isContextPanelCollapsed ? true : undefined}
-        >
-          {activeSidebarSection === 'agents' && (
-            <div className="shrink-0 space-y-0.5 px-3 pb-3">
-              <SidebarNavRow
-                icon="plus"
-                label="New chat"
-                collapsed={false}
-                tone="muted"
-                onClick={handleNewChat}
-              />
-              <SidebarNavRow
-                icon="search"
-                label="Search chats"
-                collapsed={false}
-                tone="muted"
-                onClick={() => { /* placeholder until search is wired */ }}
-              />
-            </div>
-          )}
-          <div className="flex-1 overflow-y-auto px-3 pb-3">
-            <div className="space-y-3">
-              {sidebarContextGroups.map((group) => {
-                const isGroupCollapsed = collapsedContextGroups[group.id] ?? false;
-                return (
-                  <section key={group.id} className="space-y-1">
-                    <button
-                      type="button"
-                      onClick={() => toggleContextGroup(group.id)}
-                      className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wider text-stone-400 transition-colors hover:text-stone-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-300"
-                      aria-expanded={!isGroupCollapsed}
-                    >
-                      <span>{group.title}</span>
-                      <span
-                        className={`transition-transform duration-150 ease-out ${isGroupCollapsed ? '' : 'rotate-90'}`}
-                      >
-                        <SidebarIcon icon="chevron" className="h-3 w-3" />
-                      </span>
-                    </button>
-
-                    {!isGroupCollapsed && (
-                      <div className="flex flex-col">
-                        {group.links.map((link) => {
-                          const isAgentSession =
-                            activeSidebarSection === 'agents' && sessions.some((s) => s.id === link.id);
-                          const isActiveSession =
-                            activeSidebarSection === 'agents' && link.id === activeSessionId;
-                          const isEmptyState = link.id === 'empty-agents';
-
-                          const handleLinkClick = () => {
-                            if (isEmptyState) return;
-                            if (link.id === 'dashboard') {
-                              handleSidebarSectionSelect('data');
-                              return;
-                            }
-                            if (isAgentSession) {
-                              switchToSession(link.id);
-                            }
-                          };
-
-                          return (
-                            <div
-                              key={link.id}
-                              className={`group/item flex items-center rounded-lg transition-colors ${
-                                isActiveSession ? 'bg-[#E5E5E3]' : 'hover:bg-[#EEEEEC]'
-                              }`}
-                            >
-                              <button
-                                type="button"
-                                onClick={handleLinkClick}
-                                disabled={isEmptyState}
-                                className="min-w-0 flex-1 px-3 py-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-stone-300 disabled:cursor-default"
-                                aria-current={isActiveSession ? 'page' : undefined}
-                              >
-                                <span
-                                  className={`block truncate text-sm ${
-                                    isEmptyState
-                                      ? 'text-stone-400'
-                                      : isActiveSession
-                                      ? 'font-medium text-[#1A1A1A]'
-                                      : 'text-stone-800'
-                                  }`}
-                                >
-                                  {link.label}
-                                </span>
-                              </button>
-                              {isAgentSession && (
-                                <button
-                                  type="button"
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    deleteSession(link.id);
-                                  }}
-                                  className="mr-1.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-stone-400 opacity-0 transition-opacity hover:bg-stone-200/60 hover:text-stone-700 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-stone-300 group-hover/item:opacity-100"
-                                  title="Delete chat"
-                                  aria-label={`Delete ${link.label}`}
-                                >
-                                  <SidebarIcon icon="trash" className="h-3.5 w-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </section>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom: Logout — uses single-layout SidebarNavRow */}
-        <div className="mt-auto border-t border-[#E5E5E3] px-3 py-3">
-          <SidebarNavRow
-            icon="logout"
-            label="Logout"
-            collapsed={isContextPanelCollapsed}
-            onClick={handleLogout}
-          />
-        </div>
-      </aside>
+      {/* Desktop sidebar (mobile drawer is handled separately above) */}
+      <Sidebar
+        sections={sidebarSections}
+        activeSectionId={activeSidebarSection}
+        onSectionChange={(id) => handleSidebarSectionSelect(id as SidebarSectionId)}
+        sectionActions={sidebarSectionActions}
+        contextGroups={sidebarContextGroups}
+        onLinkClick={handleSidebarLinkClick}
+        onLinkDelete={handleSidebarLinkDelete}
+        isLinkActive={isSidebarLinkActive}
+        isLinkDeletable={isSidebarLinkDeletable}
+        isLinkDisabled={isSidebarLinkDisabled}
+        bottomAction={sidebarBottomAction}
+      />
 
       {/* Main content */}
       {activeView === 'dashboard' ? (
