@@ -1,5 +1,6 @@
 import { useChat, type Message } from '@ai-sdk/react';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import { TableCard } from './components/TableCard';
 import { FilterForm } from './components/FilterForm';
@@ -16,6 +17,24 @@ import {
 } from './components/dcm';
 import { Dashboard } from './components/Dashboard';
 import { LabChatView } from './lab/LabChatView';
+import { UiComponentLabView } from './lab/components-ui/UiComponentLabView';
+import { BondIssuanceAgGridLab } from './lab/ag-grid/BondIssuanceAgGridLab';
+import { CopilotKitLabView } from './lab/copilotkit/CopilotKitLabView';
+import { SidebarUxLabView } from './lab/sidebar-ux/SidebarUxLabView';
+import {
+  MessageSquare,
+  FileText,
+  BarChart3,
+  PanelLeft,
+  Plus,
+  Search,
+  LogOut,
+  ChevronRight,
+  Trash2,
+  Menu,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
 
 const MAX_STORED_MESSAGES = 50;
 const MAX_SESSIONS = 20;
@@ -25,6 +44,25 @@ const ACTIVE_SESSION_KEY = 'pf-active-session';
 const API_URL = import.meta.env.VITE_API_URL || '/api/dcm/chat';
 const API_BASE = API_URL.replace('/api/dcm/chat', '');
 
+type LabMode =
+  | 'off'
+  | 'streaming_ux'
+  | 'ui_components_custom'
+  | 'ui_components_precanned'
+  | 'aggrid_bonds'
+  | 'copilotkit_generative'
+  | 'sidebar_ux_examples';
+
+const LAB_MODE_LABEL: Record<LabMode, string> = {
+  off: 'Lab off',
+  streaming_ux: 'Streaming UX',
+  ui_components_custom: 'UI components · Custom',
+  ui_components_precanned: 'UI components · Pre-canned',
+  aggrid_bonds: 'AG Grid · Bonds',
+  copilotkit_generative: 'CopilotKit · Generative UI',
+  sidebar_ux_examples: 'Sidebar UX · Examples',
+};
+
 // Chat session type
 interface ChatSession {
   id: string;
@@ -32,6 +70,201 @@ interface ChatSession {
   messages: Message[];
   createdAt: number;
   updatedAt: number;
+}
+
+type SidebarSectionId = 'agents' | 'documents' | 'data';
+type SidebarIconName =
+  | 'agents'
+  | 'documents'
+  | 'data'
+  | 'sidebar-toggle'
+  | 'plus'
+  | 'search'
+  | 'logout'
+  | 'chevron'
+  | 'trash';
+
+interface SidebarLink {
+  id: string;
+  label: string;
+  meta?: string;
+  status?: string;
+}
+
+interface SidebarContextGroup {
+  id: string;
+  title: string;
+  links: SidebarLink[];
+}
+
+const SIDEBAR_SECTIONS: Array<{ id: SidebarSectionId; label: string; icon: SidebarIconName }> = [
+  { id: 'agents', label: 'Agents', icon: 'agents' },
+  { id: 'documents', label: 'Documents', icon: 'documents' },
+  { id: 'data', label: 'Data', icon: 'data' },
+];
+
+const STATIC_CONTEXT_GROUPS: Record<Exclude<SidebarSectionId, 'agents'>, SidebarContextGroup[]> = {
+  documents: [
+    {
+      id: 'recent-documents',
+      title: 'Recent',
+      links: [
+        { id: 'mandate-brief', label: 'BMW mandate brief', meta: 'Updated 8m ago', status: 'draft' },
+        { id: 'investor-pack', label: 'Investor meeting pack', meta: 'Coverage notes' },
+        { id: 'term-sheet', label: 'Draft term sheet', meta: 'Primary Flow doc' },
+      ],
+    },
+    {
+      id: 'document-workflows',
+      title: 'Workflows',
+      links: [
+        { id: 'summaries', label: 'Generated summaries', meta: '12 documents' },
+        { id: 'exports', label: 'Export queue', meta: '2 pending' },
+      ],
+    },
+  ],
+  data: [
+    {
+      id: 'market-data',
+      title: 'Market data',
+      links: [
+        { id: 'dashboard', label: 'Data Viewer', meta: 'Open dashboard', status: 'live' },
+        { id: 'issuance', label: 'Issuance monitor', meta: '20 deals' },
+        { id: 'allocations', label: 'Allocation quality', meta: '6 books' },
+      ],
+    },
+    {
+      id: 'coverage-data',
+      title: 'Coverage',
+      links: [
+        { id: 'issuers', label: 'Issuer profiles', meta: 'Autos focus' },
+        { id: 'investors', label: 'Investor history', meta: 'Fill rates' },
+      ],
+    },
+  ],
+};
+
+const ICON_MAP: Record<SidebarIconName, LucideIcon> = {
+  agents: MessageSquare,
+  documents: FileText,
+  data: BarChart3,
+  'sidebar-toggle': PanelLeft,
+  plus: Plus,
+  search: Search,
+  logout: LogOut,
+  chevron: ChevronRight,
+  trash: Trash2,
+};
+
+function SidebarIcon({ icon, className = 'h-5 w-5' }: { icon: SidebarIconName; className?: string }) {
+  const Icon = ICON_MAP[icon];
+  return <Icon className={className} strokeWidth={1.75} aria-hidden="true" />;
+}
+
+function PFLogoMark({ className = 'h-5 w-5' }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path d="M8 5.5v13" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" />
+      <path d="M8 6.25h6a3 3 0 0 1 0 6H9" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9 14.5h6.5" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function RailTooltip({
+  label,
+  anchor,
+  show,
+}: {
+  label: string;
+  anchor: HTMLElement | null;
+  show: boolean;
+}) {
+  if (!show || !anchor) return null;
+  const rect = anchor.getBoundingClientRect();
+  return createPortal(
+    <span
+      role="tooltip"
+      style={{
+        position: 'fixed',
+        top: rect.top + rect.height / 2,
+        left: rect.right + 8,
+        transform: 'translateY(-50%)',
+        zIndex: 60,
+      }}
+      className="pointer-events-none whitespace-nowrap rounded-md bg-[#1A1A1A] px-2.5 py-1.5 text-xs font-medium text-white shadow-lg"
+    >
+      {label}
+    </span>,
+    document.body,
+  );
+}
+
+function useRailTooltip(collapsed: boolean) {
+  const [hovered, setHovered] = useState(false);
+  return {
+    showTooltip: collapsed && hovered,
+    bind: {
+      onMouseEnter: () => setHovered(true),
+      onMouseLeave: () => setHovered(false),
+    },
+  };
+}
+
+function SidebarNavRow({
+  icon,
+  label,
+  collapsed,
+  active = false,
+  tone = 'default',
+  onClick,
+}: {
+  icon: SidebarIconName;
+  label: string;
+  collapsed: boolean;
+  active?: boolean;
+  tone?: 'default' | 'muted';
+  onClick: () => void;
+}) {
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const { showTooltip, bind } = useRailTooltip(collapsed);
+
+  const colorClasses = active
+    ? 'bg-[#E5E5E3] text-[#1A1A1A]'
+    : tone === 'muted'
+    ? 'text-stone-600 hover:bg-[#EDEDEB] hover:text-[#1A1A1A]'
+    : 'text-stone-700 hover:bg-[#EEEEEC] hover:text-[#1A1A1A]';
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={onClick}
+        aria-label={label}
+        aria-current={active ? 'page' : undefined}
+        {...bind}
+        className={`flex w-full items-center rounded-lg py-2 text-left text-sm font-medium transition-colors duration-150 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-300 motion-reduce:transition-none ${colorClasses}`}
+      >
+        <span className="flex h-5 w-10 shrink-0 items-center justify-center">
+          <SidebarIcon icon={icon} className="h-5 w-5" />
+        </span>
+        <span
+          className={`ml-3 min-w-0 flex-1 truncate transition-opacity duration-150 ease-out motion-reduce:transition-none ${
+            collapsed ? 'opacity-0' : 'opacity-100'
+          }`}
+        >
+          {label}
+        </span>
+      </button>
+      <RailTooltip label={label} anchor={buttonRef.current} show={showTooltip} />
+    </>
+  );
 }
 
 // Generate unique session ID
@@ -130,9 +363,14 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [isCheckingAuth, setIsCheckingAuth] = useState(false);
   const [activeView, setActiveView] = useState<'chat' | 'dashboard'>('chat');
-  const [isHistoryHovered, setIsHistoryHovered] = useState(false);
+  const [activeSidebarSection, setActiveSidebarSection] = useState<SidebarSectionId>('agents');
+  const [isContextPanelCollapsed, setIsContextPanelCollapsed] = useState(false);
+  const [isRailHovered, setIsRailHovered] = useState(false);
+  const brandChipRef = useRef<HTMLButtonElement>(null);
+  const [isBrandChipHovered, setIsBrandChipHovered] = useState(false);
+  const [collapsedContextGroups, setCollapsedContextGroups] = useState<Record<string, boolean>>({});
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [labMode, setLabMode] = useState<boolean>(false);
+  const [labMode, setLabMode] = useState<LabMode>('off');
   
   const { messages, input, setInput, handleInputChange, addToolResult, isLoading, setMessages, stop, append } = useChat({
     api: API_URL,
@@ -184,6 +422,18 @@ export default function App() {
     setInput('');
     append({ role: 'user', content: messageContent });
   }, [input, getPendingInteractiveTools, addToolResult, setInput, append]);
+
+  const handleSidebarSectionSelect = useCallback((sectionId: SidebarSectionId) => {
+    setActiveSidebarSection(sectionId);
+    setActiveView(sectionId === 'data' ? 'dashboard' : 'chat');
+  }, []);
+
+  const toggleContextGroup = useCallback((groupId: string) => {
+    setCollapsedContextGroups((current) => ({
+      ...current,
+      [groupId]: !current[groupId],
+    }));
+  }, []);
 
   // Save messages to active session when they change
   useEffect(() => {
@@ -261,6 +511,7 @@ export default function App() {
     saveActiveSessionId(newSession.id);
     setMessages([]);
     setActiveView('chat');
+    setActiveSidebarSection('agents');
   }, [activeSessionId, messages, setMessages]);
 
   // Switch to a different session
@@ -285,6 +536,7 @@ export default function App() {
       saveActiveSessionId(sessionId);
       setMessages(targetSession.messages);
       setActiveView('chat');
+      setActiveSidebarSection('agents');
     }
   }, [activeSessionId, messages, sessions, setMessages]);
 
@@ -375,6 +627,27 @@ export default function App() {
     );
   };
 
+  const sidebarContextGroups: SidebarContextGroup[] =
+    activeSidebarSection === 'agents'
+      ? [
+          {
+            id: 'agent-recents',
+            title: 'Recents',
+            links:
+              sessions.length > 0
+                ? sessions.map((session) => ({
+                    id: session.id,
+                    label: session.title,
+                    meta: new Date(session.updatedAt).toLocaleDateString(undefined, {
+                      month: 'short',
+                      day: 'numeric',
+                    }),
+                  }))
+                : [{ id: 'empty-agents', label: 'No chat history yet', meta: 'Start a new conversation' }],
+          },
+        ]
+      : STATIC_CONTEXT_GROUPS[activeSidebarSection];
+
   // Password screen
   if (!isAuthenticated) {
     return (
@@ -415,8 +688,8 @@ export default function App() {
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-[#E5E5E3] bg-[#F5F5F3]">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-[#1A1A1A] flex items-center justify-center">
-            <span className="text-white font-bold text-xs">PF</span>
+          <div className="w-8 h-8 rounded-lg bg-[#1A1A1A] flex items-center justify-center text-white">
+            <PFLogoMark className="h-4 w-4" />
           </div>
           <span className="font-semibold text-[#1A1A1A]">Primary Flow</span>
         </div>
@@ -425,9 +698,7 @@ export default function App() {
           className="p-2 rounded-lg hover:bg-[#E5E5E3] transition-colors"
           title="Menu"
         >
-          <svg className="w-6 h-6 text-stone-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
+          <Menu className="w-6 h-6 text-stone-700" strokeWidth={1.75} aria-hidden="true" />
         </button>
       </div>
 
@@ -444,8 +715,8 @@ export default function App() {
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-4 border-b border-[#E5E5E3]">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-[#1A1A1A] flex items-center justify-center">
-                  <span className="text-white font-bold text-xs">PF</span>
+                <div className="w-8 h-8 rounded-lg bg-[#1A1A1A] flex items-center justify-center text-white">
+                  <PFLogoMark className="h-4 w-4" />
                 </div>
                 <span className="font-semibold text-[#1A1A1A]">Primary Flow</span>
               </div>
@@ -453,34 +724,35 @@ export default function App() {
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="p-2 rounded-lg hover:bg-stone-100 transition-colors"
               >
-                <svg className="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X className="w-5 h-5 text-stone-600" strokeWidth={1.75} aria-hidden="true" />
               </button>
             </div>
             
             {/* Menu Items */}
             <div className="flex-1 overflow-y-auto py-2">
-              {/* New Chat */}
+              {/* Chat / Agents (top-level) */}
+              <button 
+                onClick={() => { setActiveView('chat'); setActiveSidebarSection('agents'); setIsMobileMenuOpen(false); }}
+                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-stone-50 transition-colors ${activeView === 'chat' ? 'bg-stone-100' : ''}`}
+              >
+                <MessageSquare className="w-5 h-5 text-stone-600" strokeWidth={1.75} aria-hidden="true" />
+                <span className="text-sm font-medium text-stone-700">Chat</span>
+              </button>
+
+              {/* Agents actions */}
               <button 
                 onClick={() => { handleNewChat(); setIsMobileMenuOpen(false); }}
                 className="w-full flex items-center gap-3 px-4 py-3 hover:bg-stone-50 transition-colors"
               >
-                <svg className="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span className="text-sm font-medium text-stone-700">New Chat</span>
+                <Plus className="w-5 h-5 text-stone-600" strokeWidth={1.75} aria-hidden="true" />
+                <span className="text-sm font-medium text-stone-700">New chat</span>
               </button>
-              
-              {/* Chat / History */}
               <button 
-                onClick={() => { setActiveView('chat'); setIsMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-stone-50 transition-colors ${activeView === 'chat' ? 'bg-stone-100' : ''}`}
+                onClick={() => { /* placeholder until search is wired */ setIsMobileMenuOpen(false); }}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-stone-50 transition-colors"
               >
-                <svg className="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="text-sm font-medium text-stone-700">Chat</span>
+                <Search className="w-5 h-5 text-stone-600" strokeWidth={1.75} aria-hidden="true" />
+                <span className="text-sm font-medium text-stone-700">Search chats</span>
               </button>
               
               {/* Recent Chats */}
@@ -503,12 +775,10 @@ export default function App() {
               
               {/* Data Viewer */}
               <button 
-                onClick={() => { setActiveView('dashboard'); setIsMobileMenuOpen(false); }}
+                onClick={() => { setActiveView('dashboard'); setActiveSidebarSection('data'); setIsMobileMenuOpen(false); }}
                 className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-stone-50 transition-colors ${activeView === 'dashboard' ? 'bg-stone-100' : ''}`}
               >
-                <svg className="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
+                <BarChart3 className="w-5 h-5 text-stone-600" strokeWidth={1.75} aria-hidden="true" />
                 <span className="text-sm font-medium text-stone-700">Data Viewer</span>
               </button>
             </div>
@@ -519,9 +789,7 @@ export default function App() {
                 onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}
                 className="w-full flex items-center gap-3 px-2 py-2 hover:bg-stone-50 rounded-lg transition-colors"
               >
-                <svg className="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
+                <LogOut className="w-5 h-5 text-stone-600" strokeWidth={1.75} aria-hidden="true" />
                 <span className="text-sm font-medium text-stone-700">Logout</span>
               </button>
             </div>
@@ -529,177 +797,279 @@ export default function App() {
         </div>
       )}
 
-      {/* Rail Sidebar - hidden on mobile */}
-      <aside className="hidden md:flex w-16 flex-col items-center py-4 border-r border-[#E5E5E3] bg-[#F5F5F3] relative z-40">
-        {/* Logo */}
-        <div className="w-10 h-10 rounded-lg bg-[#1A1A1A] flex items-center justify-center mb-8">
-          <span className="text-white font-bold text-sm">PF</span>
-        </div>
-        
-        {/* New Chat Button */}
-        <button 
-          onClick={handleNewChat}
-          className="w-10 h-10 rounded-lg hover:bg-[#E5E5E3] flex items-center justify-center transition-colors mb-4"
-          title="New chat"
-        >
-          <svg className="w-5 h-5 text-stone-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-        </button>
-        
-        {/* Nav items */}
-        <nav className="flex-1 flex flex-col items-center gap-2">
-          {/* History button */}
-          <div 
-            className="relative"
-            onMouseEnter={() => setIsHistoryHovered(true)}
-            onMouseLeave={() => setIsHistoryHovered(false)}
-          >
-            <button 
-              onClick={() => setActiveView('chat')}
-              className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${isHistoryHovered ? 'bg-[#E5E5E3]' : 'hover:bg-[#E5E5E3]'}`}
-              title="History"
+      {/* Desktop Sidebar - hidden on mobile */}
+      <aside
+        className={`hidden md:flex h-full shrink-0 flex-col overflow-x-hidden border-r border-[#E5E5E3] bg-[#F5F5F3] transition-[width] duration-200 ease-out motion-reduce:transition-none ${
+          isContextPanelCollapsed ? 'w-16' : 'w-72'
+        }`}
+        aria-label="Primary navigation"
+        onMouseEnter={() => setIsRailHovered(true)}
+        onMouseLeave={() => setIsRailHovered(false)}
+      >
+        {/* Brand row — single layout, fades only */}
+        <div className="flex h-[60px] items-center gap-3 px-3">
+          {/* w-10 slot keeps the chip centered at x=32, identical to section nav icons */}
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center">
+            <button
+              ref={brandChipRef}
+              type="button"
+              onClick={
+                isContextPanelCollapsed
+                  ? () => {
+                      setIsRailHovered(false);
+                      setIsContextPanelCollapsed(false);
+                    }
+                  : undefined
+              }
+              onMouseEnter={() => setIsBrandChipHovered(true)}
+              onMouseLeave={() => setIsBrandChipHovered(false)}
+              tabIndex={isContextPanelCollapsed ? 0 : -1}
+              aria-label={isContextPanelCollapsed ? 'Open sidebar' : undefined}
+              aria-hidden={isContextPanelCollapsed ? undefined : true}
+              className={`relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg transition-colors duration-150 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-300 motion-reduce:transition-none ${
+                !isContextPanelCollapsed
+                  ? 'cursor-default bg-[#1A1A1A] text-white'
+                  : isBrandChipHovered
+                  ? 'cursor-pointer bg-[#EEEEEC] text-stone-700'
+                  : isRailHovered
+                  ? 'cursor-pointer bg-transparent text-stone-700'
+                  : 'cursor-pointer bg-[#1A1A1A] text-white'
+              }`}
             >
-              <svg className={`w-5 h-5 ${activeView === 'chat' ? 'text-[#1A1A1A]' : 'text-stone-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </button>
-            
-            {/* Invisible bridge to flyover - extends hover zone to the right */}
-            {isHistoryHovered && (
-              <div className="absolute left-full top-0 w-4 h-full" />
-            )}
-          </div>
-          
-          {/* Data Viewer button */}
-          <button 
-            onClick={() => setActiveView('dashboard')}
-            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${activeView === 'dashboard' ? 'bg-[#E5E5E3]' : 'hover:bg-[#E5E5E3]'}`}
-            title="Data Viewer"
-          >
-            <svg className={`w-5 h-5 ${activeView === 'dashboard' ? 'text-[#1A1A1A]' : 'text-stone-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-          </button>
-        </nav>
-        
-        {/* Bottom actions */}
-        <div className="flex flex-col items-center gap-2">
-          <button 
-            onClick={handleLogout}
-            className="w-10 h-10 rounded-lg hover:bg-[#E5E5E3] flex items-center justify-center transition-colors" 
-            title="Logout"
-          >
-            <svg className="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-          </button>
-        </div>
-      </aside>
-
-      {/* Secondary Sidebar - History Panel (Overlay) - hidden on mobile */}
-      {isHistoryHovered && (
-        <div 
-          className="hidden md:flex absolute left-16 top-0 w-64 h-full bg-white border-r border-[#E5E5E3] shadow-lg flex-col z-50"
-          onMouseEnter={() => setIsHistoryHovered(true)}
-          onMouseLeave={() => setIsHistoryHovered(false)}
-        >
-          {/* Header */}
-          <div className="px-4 pt-4 pb-4">
-            <div className="flex items-center justify-between h-10">
-              <span className="font-medium text-[#1A1A1A]">History</span>
-              <button 
-                className="p-1.5 rounded-lg hover:bg-stone-100 transition-colors"
-                title="Pin sidebar"
+              <span
+                className={`absolute inset-0 flex items-center justify-center transition-opacity duration-150 ease-out motion-reduce:transition-none ${
+                  isContextPanelCollapsed && isRailHovered ? 'opacity-0' : 'opacity-100'
+                }`}
               >
-                <svg className="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                </svg>
-              </button>
+                <PFLogoMark className="h-5 w-5" />
+              </span>
+              <span
+                className={`absolute inset-0 flex items-center justify-center transition-opacity duration-150 ease-out motion-reduce:transition-none ${
+                  isContextPanelCollapsed && isRailHovered ? 'opacity-100' : 'opacity-0'
+                }`}
+              >
+                <SidebarIcon icon="sidebar-toggle" className="h-5 w-5" />
+              </span>
+            </button>
+          </div>
+
+          <span
+            className={`min-w-0 flex-1 truncate text-sm font-semibold text-[#1A1A1A] transition-opacity duration-150 ease-out motion-reduce:transition-none ${
+              isContextPanelCollapsed ? 'opacity-0' : 'opacity-100'
+            }`}
+            aria-hidden={isContextPanelCollapsed ? true : undefined}
+          >
+            Primary Flow
+          </span>
+
+          <button
+            type="button"
+            onClick={() => {
+              setIsRailHovered(false);
+              setIsContextPanelCollapsed(true);
+            }}
+            tabIndex={isContextPanelCollapsed ? -1 : 0}
+            aria-label="Collapse sidebar"
+            aria-hidden={isContextPanelCollapsed ? true : undefined}
+            title="Collapse sidebar"
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-stone-500 transition-opacity duration-150 ease-out hover:bg-[#E5E5E3] hover:text-[#1A1A1A] focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-300 motion-reduce:transition-none ${
+              isContextPanelCollapsed ? 'pointer-events-none opacity-0' : 'opacity-100'
+            }`}
+          >
+            <SidebarIcon icon="sidebar-toggle" className="h-4 w-4" />
+          </button>
+          <RailTooltip
+            label="Open sidebar"
+            anchor={brandChipRef.current}
+            show={isContextPanelCollapsed && isBrandChipHovered}
+          />
+        </div>
+
+        {/* Primary nav */}
+        <nav className="flex flex-col gap-0.5 px-3" aria-label="Primary navigation">
+          {SIDEBAR_SECTIONS.map((section) => (
+            <SidebarNavRow
+              key={section.id}
+              icon={section.icon}
+              label={section.label}
+              collapsed={isContextPanelCollapsed}
+              active={activeSidebarSection === section.id}
+              onClick={() => handleSidebarSectionSelect(section.id)}
+            />
+          ))}
+        </nav>
+
+        {/* Section content — always rendered; fades when collapsed */}
+        <div
+          className={`mt-5 flex-1 overflow-hidden transition-opacity duration-150 ease-out motion-reduce:transition-none ${
+            isContextPanelCollapsed ? 'pointer-events-none opacity-0' : 'opacity-100'
+          }`}
+          aria-hidden={isContextPanelCollapsed ? true : undefined}
+        >
+          <div className="h-full overflow-y-auto px-3 pb-3">
+            <div className="space-y-3">
+              {activeSidebarSection === 'agents' && (
+                <div className="space-y-0.5">
+                  <SidebarNavRow
+                    icon="plus"
+                    label="New chat"
+                    collapsed={false}
+                    tone="muted"
+                    onClick={handleNewChat}
+                  />
+                  <SidebarNavRow
+                    icon="search"
+                    label="Search chats"
+                    collapsed={false}
+                    tone="muted"
+                    onClick={() => { /* placeholder until search is wired */ }}
+                  />
+                </div>
+              )}
+              {sidebarContextGroups.map((group) => {
+                const isGroupCollapsed = collapsedContextGroups[group.id] ?? false;
+                return (
+                  <section key={group.id} className="space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => toggleContextGroup(group.id)}
+                      className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wider text-stone-400 transition-colors hover:text-stone-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-300"
+                      aria-expanded={!isGroupCollapsed}
+                    >
+                      <span>{group.title}</span>
+                      <span
+                        className={`transition-transform duration-150 ease-out ${isGroupCollapsed ? '' : 'rotate-90'}`}
+                      >
+                        <SidebarIcon icon="chevron" className="h-3 w-3" />
+                      </span>
+                    </button>
+
+                    {!isGroupCollapsed && (
+                      <div className="flex flex-col">
+                        {group.links.map((link) => {
+                          const isAgentSession =
+                            activeSidebarSection === 'agents' && sessions.some((s) => s.id === link.id);
+                          const isActiveSession =
+                            activeSidebarSection === 'agents' && link.id === activeSessionId;
+                          const isEmptyState = link.id === 'empty-agents';
+
+                          const handleLinkClick = () => {
+                            if (isEmptyState) return;
+                            if (link.id === 'dashboard') {
+                              handleSidebarSectionSelect('data');
+                              return;
+                            }
+                            if (isAgentSession) {
+                              switchToSession(link.id);
+                            }
+                          };
+
+                          return (
+                            <div
+                              key={link.id}
+                              className={`group/item flex items-center rounded-lg transition-colors ${
+                                isActiveSession ? 'bg-[#E5E5E3]' : 'hover:bg-[#EEEEEC]'
+                              }`}
+                            >
+                              <button
+                                type="button"
+                                onClick={handleLinkClick}
+                                disabled={isEmptyState}
+                                className="min-w-0 flex-1 px-3 py-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-stone-300 disabled:cursor-default"
+                                aria-current={isActiveSession ? 'page' : undefined}
+                              >
+                                <span
+                                  className={`block truncate text-sm ${
+                                    isEmptyState
+                                      ? 'text-stone-400'
+                                      : isActiveSession
+                                      ? 'font-medium text-[#1A1A1A]'
+                                      : 'text-stone-800'
+                                  }`}
+                                >
+                                  {link.label}
+                                </span>
+                              </button>
+                              {isAgentSession && (
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    deleteSession(link.id);
+                                  }}
+                                  className="mr-1.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-stone-400 opacity-0 transition-opacity hover:bg-stone-200/60 hover:text-stone-700 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-stone-300 group-hover/item:opacity-100"
+                                  title="Delete chat"
+                                  aria-label={`Delete ${link.label}`}
+                                >
+                                  <SidebarIcon icon="trash" className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </section>
+                );
+              })}
             </div>
           </div>
-          
-          {/* Recent section */}
-          <div className="flex-1 overflow-y-auto">
-            {sessions.length > 0 ? (
-              <>
-                <div className="px-4 py-2">
-                  <span className="text-xs font-medium text-stone-400 uppercase tracking-wide">Recent</span>
-                </div>
-                <div className="flex flex-col">
-                  {sessions.map(session => (
-                    <div 
-                      key={session.id}
-                      onClick={() => switchToSession(session.id)}
-                      className={`flex items-center gap-2 px-4 py-2.5 hover:bg-stone-50 cursor-pointer group/item ${session.id === activeSessionId ? 'bg-stone-100' : ''}`}
-                    >
-                      <span className="flex-1 text-sm text-left text-stone-700 truncate">
-                        {session.title}
-                      </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteSession(session.id);
-                        }}
-                        className="opacity-0 group-hover/item:opacity-100 p-1 hover:bg-stone-200 rounded transition-opacity"
-                        title="Delete chat"
-                      >
-                        <svg className="w-3.5 h-3.5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div className="px-4 py-8 text-center">
-                <p className="text-sm text-stone-400">No chat history yet</p>
-                <p className="text-xs text-stone-400 mt-1">Start a new conversation</p>
-              </div>
-            )}
-          </div>
         </div>
-      )}
+
+        {/* Bottom: Logout — uses single-layout SidebarNavRow */}
+        <div className="mt-auto border-t border-[#E5E5E3] px-3 py-3">
+          <SidebarNavRow
+            icon="logout"
+            label="Logout"
+            collapsed={isContextPanelCollapsed}
+            onClick={handleLogout}
+          />
+        </div>
+      </aside>
 
       {/* Main content */}
       {activeView === 'dashboard' ? (
         <Dashboard />
       ) : (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="relative flex-1 flex flex-col overflow-hidden">
+          {/* Floating Lab mode control */}
+          <div className="pointer-events-none absolute right-4 top-3 z-10 md:right-6">
+            <label className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-[#E5E5E3] bg-white/90 px-3 py-1.5 text-xs font-medium text-stone-600 shadow-sm backdrop-blur transition-colors hover:bg-white">
+              <svg className="h-3.5 w-3.5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M14.25 3.104v5.714a2.25 2.25 0 00.659 1.591L19 14.5M9.75 3.104a48.554 48.554 0 014.5 0M5 14.5l-1.27 4.317A1.5 1.5 0 005.166 20.7h13.668a1.5 1.5 0 001.436-1.883L19 14.5M5 14.5h14" />
+              </svg>
+              <span className="sr-only">Lab mode</span>
+              <select
+                value={labMode}
+                onChange={(event) =>
+                  setLabMode(event.target.value as LabMode)
+                }
+                className="bg-transparent text-xs font-medium text-stone-700 outline-none"
+                aria-label="Lab mode"
+              >
+                {(Object.keys(LAB_MODE_LABEL) as LabMode[]).map((mode) => (
+                  <option key={mode} value={mode}>
+                    {LAB_MODE_LABEL[mode]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
           {/* Scrollable content area */}
           <div className="flex-1 overflow-auto">
-            {/* Header */}
-            <header className="px-4 md:px-6 pt-4 pb-4 border-b border-[#E5E5E3] bg-[#FAFAF8]/80 backdrop-blur-sm sticky top-0 z-10">
-              <div className="flex items-center justify-between h-10">
-                <h1 className="text-lg font-semibold text-[#1A1A1A]">
-                  {labMode ? (
-                    <>UX Experiments <span className="font-normal italic">Lab</span></>
-                  ) : (
-                    <>Primary Flow <span className="font-normal italic">Canvas</span></>
-                  )}
-                </h1>
-                <button
-                  type="button"
-                  onClick={() => setLabMode((v) => !v)}
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                    labMode
-                      ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white hover:bg-stone-800'
-                      : 'border-[#E5E5E3] bg-white text-stone-600 hover:bg-stone-50'
-                  }`}
-                  title="Toggle UX experiments lab"
-                  aria-pressed={labMode}
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M14.25 3.104v5.714a2.25 2.25 0 00.659 1.591L19 14.5M9.75 3.104a48.554 48.554 0 014.5 0M5 14.5l-1.27 4.317A1.5 1.5 0 005.166 20.7h13.668a1.5 1.5 0 001.436-1.883L19 14.5M5 14.5h14" />
-                  </svg>
-                  {labMode ? 'Lab on' : 'Lab off'}
-                </button>
-              </div>
-            </header>
-
-            {labMode ? (
+            {labMode === 'streaming_ux' ? (
               <LabChatView />
+            ) : labMode === 'ui_components_custom' ? (
+              <UiComponentLabView mode="custom" />
+            ) : labMode === 'ui_components_precanned' ? (
+              <UiComponentLabView mode="precanned" />
+            ) : labMode === 'aggrid_bonds' ? (
+              <BondIssuanceAgGridLab />
+            ) : labMode === 'copilotkit_generative' ? (
+              <CopilotKitLabView />
+            ) : labMode === 'sidebar_ux_examples' ? (
+              <SidebarUxLabView />
             ) : (
               <>
             {/* Messages */}
@@ -1190,7 +1560,7 @@ export default function App() {
             )}
           </div>
 
-          {!labMode && (
+          {labMode === 'off' && (
           <footer className="px-4 md:px-6 pb-6 pt-3">
           <div className="max-w-3xl mx-auto">
             <form
