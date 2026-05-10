@@ -886,7 +886,7 @@ export default function App() {
         </div>
 
         {/* Primary nav */}
-        <nav className="flex flex-col gap-0.5 px-3" aria-label="Primary navigation">
+        <nav className="mt-2 flex flex-col gap-0.5 px-3" aria-label="Primary navigation">
           {SIDEBAR_SECTIONS.map((section) => (
             <SidebarNavRow
               key={section.id}
@@ -901,31 +901,31 @@ export default function App() {
 
         {/* Section content — always rendered; fades when collapsed */}
         <div
-          className={`mt-5 flex-1 overflow-hidden transition-opacity duration-150 ease-out motion-reduce:transition-none ${
+          className={`mt-5 flex flex-1 flex-col overflow-hidden transition-opacity duration-150 ease-out motion-reduce:transition-none ${
             isContextPanelCollapsed ? 'pointer-events-none opacity-0' : 'opacity-100'
           }`}
           aria-hidden={isContextPanelCollapsed ? true : undefined}
         >
-          <div className="h-full overflow-y-auto px-3 pb-3">
+          {activeSidebarSection === 'agents' && (
+            <div className="shrink-0 space-y-0.5 px-3 pb-3">
+              <SidebarNavRow
+                icon="plus"
+                label="New chat"
+                collapsed={false}
+                tone="muted"
+                onClick={handleNewChat}
+              />
+              <SidebarNavRow
+                icon="search"
+                label="Search chats"
+                collapsed={false}
+                tone="muted"
+                onClick={() => { /* placeholder until search is wired */ }}
+              />
+            </div>
+          )}
+          <div className="flex-1 overflow-y-auto px-3 pb-3">
             <div className="space-y-3">
-              {activeSidebarSection === 'agents' && (
-                <div className="space-y-0.5">
-                  <SidebarNavRow
-                    icon="plus"
-                    label="New chat"
-                    collapsed={false}
-                    tone="muted"
-                    onClick={handleNewChat}
-                  />
-                  <SidebarNavRow
-                    icon="search"
-                    label="Search chats"
-                    collapsed={false}
-                    tone="muted"
-                    onClick={() => { /* placeholder until search is wired */ }}
-                  />
-                </div>
-              )}
               {sidebarContextGroups.map((group) => {
                 const isGroupCollapsed = collapsedContextGroups[group.id] ?? false;
                 return (
