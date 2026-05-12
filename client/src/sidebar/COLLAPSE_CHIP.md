@@ -147,5 +147,31 @@ it isn't clipped by the rail's `overflow-x-hidden`.
 
 ---
 
+## 3. Where this lives in this repo
+
+`client/src/App.tsx` only wires the sidebar into the app. It prepares the
+sections, actions, context groups, callbacks, and renders `<Sidebar />`.
+
+The collapse/expand behavior itself lives in `client/src/sidebar/Sidebar.tsx`:
+
+- `useControllableCollapse(...)` chooses controlled vs local collapsed state.
+- `collapsed` controls the rail width: `w-16` collapsed, `w-72` expanded.
+- `railHovered` is set by the outer `<aside onMouseEnter/onMouseLeave>`.
+- `BrandChip` owns the four-state chip visual logic.
+- `handleCollapse` / `handleExpand` clear `railHovered` before flipping
+  `collapsed`, preventing the expand-icon flash.
+
+Supporting files:
+
+- `client/src/sidebar/PFLogoMark.tsx` defines the default SVG brand mark.
+- `client/src/sidebar/RailTooltip.tsx` provides `useRailTooltip`, which gives
+  the chip its direct-hover state and instant tooltip.
+- `client/src/sidebar/theme.ts` contains the dark chip, light-grey hover,
+  rail, tooltip, and focus-ring class tokens.
+- `client/src/sidebar/SidebarNavRow.tsx` applies the same collapsed tooltip
+  and fixed icon-slot pattern to normal rail items.
+
+---
+
 That's the whole behavior: three booleans, one ternary, two opacity layers,
 one `setRailHovered(false)` line before each state flip.
