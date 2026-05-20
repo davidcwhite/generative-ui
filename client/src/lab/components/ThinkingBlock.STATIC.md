@@ -6,19 +6,25 @@ You see the dots but they don't pulse. Run this in DevTools console first:
 document.querySelector('style[data-thinking-block]')
 ```
 
-- `null` → see **#1**.
+- `null` → styles never mounted. You likely have an **old copy** that relied on
+  `document.head` injection, or the component isn't the current single-file
+  version. Re-copy `ThinkingBlock.tsx` from this repo.
 - element returned → see **#2** through **#4**.
+
+The current implementation renders `<style data-thinking-block>` **inside the
+component tree** (not `<head>`). The tag lives next to the SVG wherever Task
+renders it.
 
 ---
 
-## 1. Keyframes never injected
+## 1. Keyframes never mounted
 
-`injectStyles()` only runs on mount. If `null`, the component either never
-mounted, mounted server-side then lost its in-memory flag, or HMR removed
-the tag.
+Styles ship as `<style data-thinking-block>` rendered beside the SVG — not
+injected into `<head>`. If `querySelector` returns `null`, the host app is
+using a stale copy of the component.
 
-**Fix.** Hard refresh (Cmd-Shift-R). If that fixes it, it's a dev-only HMR
-glitch — production is fine.
+**Fix.** Re-copy `ThinkingBlock.tsx`. Hard refresh (Cmd-Shift-R). Confirm the
+file contains `<style data-thinking-block>{STYLES}</style>` inside the return.
 
 ## 2. Keyframe names don't match the style tag
 
