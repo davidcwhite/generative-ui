@@ -510,10 +510,12 @@ flip the inner/outer sets.
 
 ## Where this lives in this repo
 
+This repo ships the **single-file variant** — keyframes are injected at
+runtime, no separate CSS file.
+
 | File | Role |
 |------|------|
-| `client/src/lab/components/ThinkingBlock.tsx` | Component |
-| `client/src/lab/components/thinking-block.css` | Keyframes + base size |
+| `client/src/lab/components/ThinkingBlock.tsx` | Component + inline `<style>` injection |
 | `client/src/lab/variants/V21ThinkingFollow.tsx` | Lab variant — block-only streaming UX |
 
 **Provenance:** Grid layout and stagger logic from OpenCode
