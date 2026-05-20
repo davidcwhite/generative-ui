@@ -284,15 +284,227 @@ return <ThinkingBlock size={18} />;
 
 ---
 
+## Single-file portable variant (recommended for drop-in)
+
+If you’re copying this into another project and don’t want to fight the host
+bundler over CSS imports, ship the keyframes **inline as a `<style>` tag** and
+delete `thinking-block.css` entirely. The component becomes one file with no
+external CSS dependency — works in Vite, CRA, Next.js (both routers), Remix,
+Astro islands, and isolated Storybook stories without any config.
+
+```tsx
+import { useMemo, type CSSProperties } from 'react';
+
+const INNER = new Set([5, 6, 9, 10]);
+const CORNER = new Set([0, 3, 12, 15]);
+
+const STYLES = `
+@keyframes tb-active {
+  0%,100% { opacity: .4;  fill: #d6d3d1; }
+  50%     { opacity: 1;   fill: #10b981; }
+}
+@keyframes tb-soft {
+  0%,100% { opacity: .15; fill: #e7e5e4; }
+  50%     { opacity: .45; fill: #a8a29e; }
+}
+`;
+
+let injected = false;
+function injectStyles() {
+  if (injected || typeof document === 'undefined') return;
+  const tag = document.createElement('style');
+  tag.setAttribute('data-thinking-block', '');
+  tag.textContent = STYLES;
+  document.head.appendChild(tag);
+  injected = true;
+}
+
+interface ThinkingBlockProps {
+  size?: number;
+  className?: string;
+  style?: CSSProperties;
+}
+
+export function ThinkingBlock({ size = 16, className, style }: ThinkingBlockProps) {
+  injectStyles();
+  const squares = useMemo(
+    () =>
+      Array.from({ length: 16 }, (_, i) => ({
+        id: i,
+        x: (i % 4) * 4,
+        y: Math.floor(i / 4) * 4,
+        delay: Math.random() * 1.8,
+        duration: 1.2 + Math.random() * 1.2,
+        corner: CORNER.has(i),
+        inner: INNER.has(i),
+      })),
+    [],
+  );
+
+  return (
+    <svg
+      viewBox="0 0 15 15"
+      className={className}
+      style={{ width: size, height: size, flexShrink: 0, ...style }}
+      aria-hidden
+    >
+      {squares.map((s) => (
+        <rect
+          key={s.id}
+          x={s.x}
+          y={s.y}
+          width="3"
+          height="3"
+          rx="1"
+          fill="#d6d3d1"
+          style={
+            s.corner
+              ? { opacity: 0 }
+              : {
+                  animation: `${s.inner ? 'tb-active' : 'tb-soft'} ${s.duration}s ease-in-out infinite both`,
+                  animationDelay: `${s.delay}s`,
+                }
+          }
+        />
+      ))}
+    </svg>
+  );
+}
+```
+
+Why this works everywhere:
+
+- **`injectStyles()` runs once** at module-eval time on the client; the `<style>`
+  tag is appended to `<head>`, deduped via a module-level flag. No bundler CSS
+  pipeline involved.
+- **`typeof document === 'undefined'` guard** keeps SSR safe (Next.js, Remix).
+- **`useMemo` for stagger** stops the random delays regenerating on every
+  render — also makes each instance unique (vs the module-level version, which
+  syncs all instances).
+- **Keyframe names use a short prefix (`tb-*`)** unlikely to clash with host
+  styles.
+
+Trade-off: a single `<style>` tag in the document head per page load. If you
+need it gone for SSR-pure pages or strict CSP without `style-src 'unsafe-inline'`,
+fall back to the two-file version with a proper CSS import.
+
+---
+
 ## Gotchas
+
+Ordered by how often each one breaks the indicator when porting to a new
+project. The single-file variant above sidesteps 1, 3, 4, and 10.
+
+### 1. CSS file not actually imported
+
+The two-file version imports `'./thinking-block.css'`, but bundlers handle
+side-effect CSS imports differently:
+
+- **Vite / CRA / Next.js App Router (`'use client'`)** — works as-is.
+- **Next.js Pages Router** — CSS imports in non-page components are restricted.
+  Move the import to `_app.tsx`, or use the single-file variant.
+- **Storybook / Vitest / Jest** — CSS imports may be stubbed by config. Import
+  once in your test setup / storybook preview, or use the single-file variant.
+- **Library bundles (rollup, tsup)** — by default CSS isn’t bundled into the JS.
+  Ship CSS as a separate entry, or use the single-file variant.
+
+**Sanity check.** Open DevTools → Elements → click a `<rect>` → Computed →
+look for `animation-name`. If empty, the CSS never loaded.
+
+### 2. Tailwind Preflight overriding `fill`
+
+If the host project sets `svg *, svg rect { fill: currentColor }` (common with
+icon packs), it beats the keyframe’s `fill` because the selector is more
+specific than the element-style animation property.
+
+**Fix.** Bump specificity by scoping the keyframe’s effect to a class:
+
+```css
+[data-component='thinking-block'] rect[data-inner] { animation-name: oc-pulse-green-active; }
+[data-component='thinking-block'] rect:not([data-inner]) { animation-name: oc-pulse-green-soft; }
+```
+
+…and tag inner rects with `data-inner` instead of inlining `animation-name`.
+Or remove the static `fill` attribute and animate `color` + `fill="currentColor"`.
+
+### 3. PurgeCSS / Tailwind v3 stripping the keyframes
+
+Tailwind’s content scanner can drop `@keyframes oc-pulse-green-active` if it
+never sees the name in a class attribute. The animation name is referenced
+from JS strings, which the scanner doesn’t see.
+
+**Fix.** Add to `tailwind.config.js`:
+
+```js
+safelist: ['oc-pulse-green-active', 'oc-pulse-green-soft']
+```
+
+…or use the single-file variant (no purge involved).
+
+### 4. CSS Modules eating the keyframe name
+
+If the host treats every `.css` as a CSS module (Next.js does this for
+`*.module.css`), keyframe names get hashed and won’t match the string passed
+to inline `style`.
+
+**Fix.** Don’t name the file `*.module.css`, or use the single-file variant.
+
+### 5. SSR / Next.js hydration mismatch
+
+`SQUARES` at module scope calls `Math.random()` — server and client produce
+different delay sets, React warns, and inline `style` can fail to apply on
+hydration.
+
+**Fix.** Move the random generation into `useMemo` inside the component (the
+single-file variant above already does this).
+
+### 6. Global `prefers-reduced-motion` rule
+
+If your app sets `* { animation: none !important; }` inside a reduced-motion
+media query, this indicator dies along with everything else. Either narrow
+the rule or scope an explicit reduced-motion fallback for this component:
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  [data-component='thinking-block'] rect {
+    animation: none !important;
+    opacity: 0.5;
+  }
+}
+```
+
+### 7. Animations work in dev, not in production
+
+Almost always one of:
+
+- **#1** — CSS not bundled into the prod build.
+- **#3** — Purge removed the keyframes.
+- **#4** — CSS modules transformed the keyframe names.
+
+Diff the prod and dev DOM for `<style>` tags / linked stylesheets; whatever’s
+missing in prod is the culprit. The single-file variant removes all three.
+
+### 8. `SQUARES` accidentally moved into the component
+
+Looks fine but appears frozen. If `Array.from(...)` runs every render without
+`useMemo`, new random delays apply each frame and the dots never sit long
+enough to read as an animation. Keep it at module scope **or** wrap in
+`useMemo` — never plain in-render.
+
+### 9. Dots all same brightness
+
+Confirm inner indices `{5, 6, 9, 10}` use the active keyframe; the corners
+`{0, 3, 12, 15}` stay opacity 0. A common mistake during refactors is to
+flip the inner/outer sets.
+
+### 10. Other quick ones
 
 | Issue | Fix |
 |-------|-----|
-| Animations don’t run | Ensure `thinking-block.css` is imported (component or global entry). |
-| Dots all same brightness | Confirm inner indices `{5,6,9,10}` use `oc-pulse-green-active`. |
-| Clipped in flex row | `[data-component='thinking-block']` sets `flex-shrink: 0`. |
-| Flash on hot reload | Module-level random regenerates; harmless in dev. |
+| Clipped in flex row | `flex-shrink: 0` on the SVG (single-file variant sets this inline). |
+| Flash on hot reload | Module-level random regenerates; harmless in dev. Use `useMemo` to stop it. |
 | Too subtle / too loud | Tune opacity stops in keyframes, not `size`. |
+| CSP blocks inline `<style>` | Use the two-file variant; inline styles need `style-src 'unsafe-inline'`. |
 
 ---
 
