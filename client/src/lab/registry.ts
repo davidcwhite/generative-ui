@@ -4,6 +4,9 @@ import { V15AmbientStream } from './variants/V15AmbientStream';
 import { V16SoftFocusStream } from './variants/V16SoftFocusStream';
 import { V17ParsedSignalStream } from './variants/V17ParsedSignalStream';
 import { V18DataRibbonStream } from './variants/V18DataRibbonStream';
+import { V19VanillaSdkSteps } from './variants/V19VanillaSdkSteps';
+import { V20MockedRounds } from './variants/V20MockedRounds';
+import { V21ThinkingFollow } from './variants/V21ThinkingFollow';
 import type { VariantDef } from './types';
 
 export const variants: Record<string, VariantDef> = {
@@ -43,6 +46,24 @@ export const variants: Record<string, VariantDef> = {
     blurb: 'V15 as a quiet horizontal ribbon: streamed records arrive as small data pills sliding through the sub-step area.',
     Render: V18DataRibbonStream,
   },
+  v19_vanilla_sdk_steps: {
+    id: 'v19_vanilla_sdk_steps',
+    label: 'V19 · Vanilla AI SDK steps',
+    blurb: 'Doc-faithful baseline: walks message.parts directly and renders each tool-invocation with its literal SDK state (partial-call → call → result). No mock SSE, no orchestration overlay — what the AI SDK looks like out of the box.',
+    Render: V19VanillaSdkSteps,
+  },
+  v20_mocked_rounds: {
+    id: 'v20_mocked_rounds',
+    label: 'V20 · Mocked SSE rounds',
+    blurb: 'Forks V19 with a self-contained mock SSE timeline. Events are tagged by round number; consecutive same-round events share a subblock and round changes drop a marker. Spinner stays active until the simulated query completes.',
+    Render: V20MockedRounds,
+  },
+  v21_thinking_follow: {
+    id: 'v21_thinking_follow',
+    label: 'V21 · Thinking follow',
+    blurb: 'OpenCode-style dot-matrix thinking block only — no step timeline. Inner dots pulse to emerald at peak, outer dots stay soft gray. Linger on screen after the mock query completes.',
+    Render: V21ThinkingFollow,
+  },
 };
 
 export const variantOrder = [
@@ -52,6 +73,9 @@ export const variantOrder = [
   'v16_soft_focus_stream',
   'v17_parsed_signal_stream',
   'v18_data_ribbon_stream',
+  'v19_vanilla_sdk_steps',
+  'v20_mocked_rounds',
+  'v21_thinking_follow',
 ] as const;
 
 export type VariantId = (typeof variantOrder)[number];
