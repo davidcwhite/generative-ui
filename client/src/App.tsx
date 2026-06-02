@@ -15,6 +15,7 @@ import {
   MarketIssuance,
 } from './components/dcm';
 import { Dashboard } from './components/Dashboard';
+import { IssuanceComponentsLabView } from './lab/issuance-components/IssuanceComponentsLabView';
 
 const MAX_STORED_MESSAGES = 50;
 const MAX_SESSIONS = 20;
@@ -23,6 +24,13 @@ const SESSIONS_KEY = 'pf-chat-sessions';
 const ACTIVE_SESSION_KEY = 'pf-active-session';
 const API_URL = import.meta.env.VITE_API_URL || '/api/dcm/chat';
 const API_BASE = API_URL.replace('/api/dcm/chat', '');
+
+type LabMode = 'off' | 'issuance_components';
+
+const LAB_MODE_LABEL: Record<LabMode, string> = {
+  off: 'Lab off',
+  issuance_components: 'Issuance · Live Components',
+};
 
 // Chat session type
 interface ChatSession {
@@ -131,6 +139,7 @@ export default function App() {
   const [activeView, setActiveView] = useState<'chat' | 'dashboard'>('chat');
   const [isHistoryHovered, setIsHistoryHovered] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [labMode, setLabMode] = useState<LabMode>('off');
   
   const { messages, input, setInput, handleInputChange, addToolResult, isLoading, setMessages, stop, append } = useChat({
     api: API_URL,
@@ -664,9 +673,35 @@ export default function App() {
       {activeView === 'dashboard' ? (
         <Dashboard />
       ) : (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="relative flex-1 flex flex-col overflow-hidden">
+          {/* Floating Lab mode control */}
+          <div className="pointer-events-none absolute right-4 top-3 z-20 md:right-6">
+            <label className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-[#E5E5E3] bg-white/90 px-3 py-1.5 text-xs font-medium text-stone-600 shadow-sm backdrop-blur transition-colors hover:bg-white">
+              <svg className="h-3.5 w-3.5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M14.25 3.104v5.714a2.25 2.25 0 00.659 1.591L19 14.5M9.75 3.104a48.554 48.554 0 014.5 0M5 14.5l-1.27 4.317A1.5 1.5 0 005.166 20.7h13.668a1.5 1.5 0 001.436-1.883L19 14.5M5 14.5h14" />
+              </svg>
+              <span className="sr-only">Lab mode</span>
+              <select
+                value={labMode}
+                onChange={(event) => setLabMode(event.target.value as LabMode)}
+                className="bg-transparent text-xs font-medium text-stone-700 outline-none"
+                aria-label="Lab mode"
+              >
+                {(Object.keys(LAB_MODE_LABEL) as LabMode[]).map((mode) => (
+                  <option key={mode} value={mode}>
+                    {LAB_MODE_LABEL[mode]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
           {/* Scrollable content area */}
           <div className="flex-1 overflow-auto">
+            {labMode === 'issuance_components' ? (
+              <IssuanceComponentsLabView />
+            ) : (
+              <>
             {/* Header */}
             <header className="px-4 md:px-6 pt-4 pb-4 border-b border-[#E5E5E3] bg-[#FAFAF8]/80 backdrop-blur-sm sticky top-0 z-10">
               <div className="flex items-center h-10">
@@ -1158,9 +1193,12 @@ export default function App() {
             </div>
           )}
           </div>
+              </>
+            )}
           </div>
 
           {/* Input Area */}
+          {labMode === 'off' && (
           <footer className="px-4 md:px-6 pb-6 pt-3">
           <div className="max-w-3xl mx-auto">
             <form
@@ -1219,6 +1257,7 @@ export default function App() {
             </form>
           </div>
         </footer>
+          )}
         </div>
       )}
     </div>
