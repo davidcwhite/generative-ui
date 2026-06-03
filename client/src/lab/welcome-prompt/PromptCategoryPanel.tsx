@@ -42,7 +42,7 @@ export function PromptCategoryPanel({
   }, [onClose]);
 
   return (
-    <div className="overflow-hidden rounded-[1.5rem] border border-[#E5E5E3] bg-white shadow-sm">
+    <div className="overflow-hidden rounded-[1.5rem] border border-[#E5E5E3] bg-white">
       <div className="flex items-center justify-between px-5 py-3.5">
         <div className="flex items-center gap-2 text-stone-400">
           <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />

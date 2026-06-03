@@ -3,10 +3,11 @@ import {
   TrendingUp,
   GitCompare,
   FileSignature,
+  Activity,
   type LucideIcon,
 } from 'lucide-react';
 
-export type PromptCategoryId = 'pitch' | 'research' | 'compare' | 'generate';
+export type PromptCategoryId = 'pitch' | 'research' | 'compare' | 'generate' | 'monitor';
 
 export interface PromptCategory {
   id: PromptCategoryId;
@@ -28,6 +29,7 @@ export const promptCategories: PromptCategory[] = [
   { id: 'research', label: 'Research', icon: TrendingUp },
   { id: 'compare', label: 'Compare', icon: GitCompare },
   { id: 'generate', label: 'Generate', icon: FileSignature },
+  { id: 'monitor', label: 'Monitor', icon: Activity },
 ];
 
 export const promptSuggestions: PromptSuggestion[] = [
@@ -166,5 +168,30 @@ export const promptSuggestions: PromptSuggestion[] = [
     categoryId: 'generate',
     label: 'Draft a post-trade client email',
     prompt: 'Draft a concise post-trade client email recapping the execution and final terms.',
+  },
+  // Monitor
+  {
+    id: 'monitor-pipeline',
+    categoryId: 'monitor',
+    label: 'Track the live issuance pipeline',
+    prompt: 'Track the live EUR issuance pipeline and alert me to any new auto sector mandates.',
+  },
+  {
+    id: 'monitor-spreads',
+    categoryId: 'monitor',
+    label: 'Watch spread moves on my coverage',
+    prompt: 'Watch intraday spread moves across my coverage names and flag anything beyond two standard deviations.',
+  },
+  {
+    id: 'monitor-redemptions',
+    categoryId: 'monitor',
+    label: 'Flag upcoming redemptions to pre-fund',
+    prompt: 'Flag upcoming redemptions over the next six months where the issuer may want to pre-fund.',
+  },
+  {
+    id: 'monitor-ratings',
+    categoryId: 'monitor',
+    label: 'Surface recent rating actions',
+    prompt: 'Surface recent rating actions and outlook changes across the auto sector.',
   },
 ];

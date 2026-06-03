@@ -60,7 +60,7 @@ export function WelcomePromptLabView() {
 
   return (
     <div className="min-h-full bg-[#FAFAF8]">
-      <div className="mx-auto flex max-w-xl flex-col items-center px-4 py-16 md:py-24">
+      <div className="mx-auto flex max-w-2xl flex-col items-center px-4 py-16 md:py-24">
         <h2 className="mb-8 text-center text-2xl font-semibold tracking-tight text-[#1A1A1A]">
           What are we working on?
         </h2>

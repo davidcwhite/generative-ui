@@ -193,34 +193,96 @@ you only lose the in-input preview.
 
 ## 3. The chip bar (collapsed state)
 
+A single non-wrapping row: a fixed circular search button is pinned on the left, then
+chips scroll horizontally beside it. When the chips overflow, edge fades plus hover
+arrows appear; otherwise the row looks like a plain set of pills. The arrows and fades
+are purely additive, so it degrades gracefully on touch (native swipe scroll).
+
 ```tsx
-import type { LucideIcon } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, Search, type LucideIcon } from 'lucide-react';
 
 export interface PromptCategoryChip { id: string; label: string; icon: LucideIcon; }
 
 export function PromptCategoryBar({
-  chips, onSelect,
-}: { chips: PromptCategoryChip[]; onSelect: (id: string) => void }) {
+  chips, onSelect, onSearch,
+}: { chips: PromptCategoryChip[]; onSelect: (id: string) => void; onSearch?: () => void }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(false);
+
+  const updateEdges = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanLeft(el.scrollLeft > 1);
+    setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+  }, []);
+
+  useEffect(() => {
+    updateEdges();
+    const el = scrollRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(updateEdges); // re-check when width changes
+    observer.observe(el);
+    window.addEventListener('resize', updateEdges);
+    return () => { observer.disconnect(); window.removeEventListener('resize', updateEdges); };
+  }, [updateEdges, chips.length]);
+
+  const scrollByDir = (dir: -1 | 1) =>
+    scrollRef.current?.scrollBy({ left: dir * 220, behavior: 'smooth' });
+
   return (
-    <div className="flex flex-wrap items-center justify-center gap-2">
-      {chips.map((chip) => {
-        const Icon = chip.icon;
-        return (
-          <button
-            key={chip.id}
-            type="button"
-            onClick={() => onSelect(chip.id)}
-            className="flex items-center gap-2 rounded-full border border-[#E5E5E3] bg-white px-3.5 py-2 text-sm font-medium text-stone-700 shadow-sm transition-colors hover:border-stone-300 hover:bg-stone-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-300"
-          >
-            <Icon className="h-4 w-4 text-stone-500" strokeWidth={1.75} aria-hidden="true" />
-            {chip.label}
-          </button>
-        );
-      })}
+    <div className="group flex items-center gap-2">
+      {/* fixed circular search, always pinned left */}
+      <button type="button" onClick={onSearch} aria-label="Search prompts"
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#E5E5E3] bg-white text-stone-500 transition-colors hover:border-stone-300 hover:bg-stone-50 hover:text-stone-700">
+        <Search className="h-5 w-5" strokeWidth={1.75} />
+      </button>
+
+      <div className="relative min-w-0 flex-1">
+        {canLeft && (
+          <>
+            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-[#FAFAF8] to-transparent" />
+            <button type="button" onClick={() => scrollByDir(-1)} aria-label="Scroll left"
+              className="absolute left-0 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-[#E5E5E3] bg-white text-stone-500 opacity-0 transition-opacity hover:text-stone-800 group-hover:opacity-100">
+              <ChevronLeft className="h-4 w-4" strokeWidth={2} />
+            </button>
+          </>
+        )}
+
+        {/* one row, native horizontal scroll, scrollbar hidden */}
+        <div ref={scrollRef} onScroll={updateEdges}
+          className="flex gap-2 overflow-x-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {chips.map((chip) => {
+            const Icon = chip.icon;
+            return (
+              <button key={chip.id} type="button" onClick={() => onSelect(chip.id)}
+                className="flex shrink-0 items-center gap-2 rounded-2xl border border-[#E5E5E3] bg-white px-3.5 py-2 text-sm font-medium text-stone-700 transition-colors hover:border-stone-300 hover:bg-stone-50">
+                <Icon className="h-4 w-4 text-stone-500" strokeWidth={1.75} />
+                {chip.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {canRight && (
+          <>
+            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-[#FAFAF8] to-transparent" />
+            <button type="button" onClick={() => scrollByDir(1)} aria-label="Scroll right"
+              className="absolute right-0 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-[#E5E5E3] bg-white text-stone-500 opacity-0 transition-opacity hover:text-stone-800 group-hover:opacity-100">
+              <ChevronRight className="h-4 w-4" strokeWidth={2} />
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
 ```
+
+> The edge-fade color (`#FAFAF8`) must match your page background so chips appear to
+> dissolve under the arrows. If your input is docked/narrow, this same row keeps the
+> search button visible while the categories scroll independently.
 
 ---
 
@@ -261,7 +323,7 @@ export function PromptCategoryPanel({
   }, [onClose]);
 
   return (
-    <div className="overflow-hidden rounded-[1.5rem] border border-[#E5E5E3] bg-white shadow-sm">
+    <div className="overflow-hidden rounded-[1.5rem] border border-[#E5E5E3] bg-white">
       <div className="flex items-center justify-between px-5 py-3.5">
         <div className="flex items-center gap-2 text-stone-400">
           <Icon className="h-4 w-4" strokeWidth={1.75} />
@@ -390,7 +452,8 @@ categories pass `isSaved` + `onToggleSave` so rows show the bookmark.
 | Preview / muted  | `stone-400`    | hover preview, placeholders, meta     |
 | Save accent      | `amber-500`    | active bookmark                       |
 | Delete accent    | `red-500`      | saved-row delete                      |
-| Corner radius    | `1.5rem`       | chip container + panel (match, for morph) |
+| Corner radius    | `1.5rem`       | composer + panel (match, for morph)       |
+| Chip radius      | `rounded-2xl`  | category chips (soft, squarer than pill)  |
 
 Principles: low-commitment chips, the **input doubles as the preview surface**, and
 the panel mirrors the chip row's radius/width so opening it reads as an in-place

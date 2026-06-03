@@ -16,7 +16,7 @@ export const WelcomeHero = forwardRef<HTMLTextAreaElement, WelcomeHeroProps>(
 
     return (
       <div className="w-full">
-        <div className="rounded-[1.5rem] border border-[#E5E5E3] bg-white shadow-sm transition-all focus-within:border-[#D5D5D3] focus-within:shadow-md">
+        <div className="rounded-[1.5rem] border border-[#E5E5E3] bg-white transition-colors focus-within:border-[#D5D5D3]">
           <textarea
             ref={ref}
             value={displayValue}
