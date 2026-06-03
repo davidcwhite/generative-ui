@@ -16,6 +16,8 @@ import {
 } from './components/dcm';
 import { Dashboard } from './components/Dashboard';
 import { IssuanceComponentsLabView } from './lab/issuance-components/IssuanceComponentsLabView';
+import { DealSnapshotLabView } from './lab/deal-snapshot/DealSnapshotLabView';
+import { DataLineageLabView } from './lab/data-lineage/DataLineageLabView';
 
 const MAX_STORED_MESSAGES = 50;
 const MAX_SESSIONS = 20;
@@ -25,11 +27,13 @@ const ACTIVE_SESSION_KEY = 'pf-active-session';
 const API_URL = import.meta.env.VITE_API_URL || '/api/dcm/chat';
 const API_BASE = API_URL.replace('/api/dcm/chat', '');
 
-type LabMode = 'off' | 'issuance_components';
+type LabMode = 'off' | 'issuance_components' | 'deal_snapshot' | 'data_lineage';
 
 const LAB_MODE_LABEL: Record<LabMode, string> = {
   off: 'Lab off',
   issuance_components: 'Issuance · Live Components',
+  deal_snapshot: 'Deal Snapshot · Tear Sheet',
+  data_lineage: 'Data Lineage · Provenance',
 };
 
 // Chat session type
@@ -138,6 +142,7 @@ export default function App() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(false);
   const [activeView, setActiveView] = useState<'chat' | 'dashboard'>('chat');
   const [isHistoryHovered, setIsHistoryHovered] = useState(false);
+  const [isLabHovered, setIsLabHovered] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [labMode, setLabMode] = useState<LabMode>('off');
   
@@ -518,6 +523,29 @@ export default function App() {
                 </svg>
                 <span className="text-sm font-medium text-stone-700">Data Viewer</span>
               </button>
+
+              {/* Lab experiments */}
+              <div className="mx-4 mt-4 border-t border-[#E5E5E3] pt-4">
+                <span className="text-xs font-medium text-stone-400 uppercase tracking-wide">Experiments</span>
+                <label className="mt-2 flex w-full flex-col gap-1">
+                  <select
+                    value={labMode}
+                    onChange={(event) => {
+                      const mode = event.target.value as LabMode;
+                      setLabMode(mode);
+                      if (mode !== 'off') setActiveView('chat');
+                    }}
+                    className="w-full rounded-lg border border-[#E5E5E3] bg-white px-3 py-2 text-sm text-stone-700 outline-none focus:border-stone-400"
+                    aria-label="Lab experiment"
+                  >
+                    {(Object.keys(LAB_MODE_LABEL) as LabMode[]).map((mode) => (
+                      <option key={mode} value={mode}>
+                        {LAB_MODE_LABEL[mode]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
             </div>
             
             {/* Bottom - Logout */}
@@ -588,6 +616,37 @@ export default function App() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </button>
+
+          {/* Lab experiments */}
+          <div
+            className="relative"
+            onMouseEnter={() => setIsLabHovered(true)}
+            onMouseLeave={() => setIsLabHovered(false)}
+          >
+            <button
+              type="button"
+              className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
+                labMode !== 'off' || isLabHovered ? 'bg-[#E5E5E3]' : 'hover:bg-[#E5E5E3]'
+              }`}
+              title="Experiments"
+            >
+              <svg
+                className={`w-5 h-5 ${labMode !== 'off' ? 'text-[#1A1A1A]' : 'text-stone-600'}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M14.25 3.104v5.714a2.25 2.25 0 00.659 1.591L19 14.5M9.75 3.104a48.554 48.554 0 014.5 0M5 14.5l-1.27 4.317A1.5 1.5 0 005.166 20.7h13.668a1.5 1.5 0 001.436-1.883L19 14.5M5 14.5h14"
+                />
+              </svg>
+            </button>
+            {isLabHovered && <div className="absolute left-full top-0 h-full w-4" aria-hidden />}
+          </div>
         </nav>
         
         {/* Bottom actions */}
@@ -603,6 +662,44 @@ export default function App() {
           </button>
         </div>
       </aside>
+
+      {/* Secondary Sidebar - Lab panel (flyout) - hidden on mobile */}
+      {isLabHovered && (
+        <div
+          className="hidden md:flex absolute left-16 top-0 w-72 h-full bg-white border-r border-[#E5E5E3] shadow-lg flex-col z-50"
+          onMouseEnter={() => setIsLabHovered(true)}
+          onMouseLeave={() => setIsLabHovered(false)}
+        >
+          <div className="px-4 pt-4 pb-4">
+            <div className="flex items-center h-10">
+              <span className="font-medium text-[#1A1A1A]">Experiments</span>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto px-4">
+            <span className="text-xs font-medium text-stone-400 uppercase tracking-wide">UX prototypes</span>
+            <div className="mt-2 flex flex-col gap-1">
+              {(Object.keys(LAB_MODE_LABEL) as LabMode[]).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => {
+                    setLabMode(mode);
+                    if (mode !== 'off') setActiveView('chat');
+                  }}
+                  className={`flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                    labMode === mode ? 'bg-stone-100 text-[#1A1A1A]' : 'text-stone-600 hover:bg-stone-50'
+                  }`}
+                >
+                  <span className="truncate">{LAB_MODE_LABEL[mode]}</span>
+                  {labMode === mode && (
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-stone-900" aria-hidden />
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Secondary Sidebar - History Panel (Overlay) - hidden on mobile */}
       {isHistoryHovered && (
@@ -674,32 +771,14 @@ export default function App() {
         <Dashboard />
       ) : (
         <div className="relative flex-1 flex flex-col overflow-hidden">
-          {/* Floating Lab mode control */}
-          <div className="pointer-events-none absolute right-4 top-3 z-20 md:right-6">
-            <label className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-[#E5E5E3] bg-white/90 px-3 py-1.5 text-xs font-medium text-stone-600 shadow-sm backdrop-blur transition-colors hover:bg-white">
-              <svg className="h-3.5 w-3.5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M14.25 3.104v5.714a2.25 2.25 0 00.659 1.591L19 14.5M9.75 3.104a48.554 48.554 0 014.5 0M5 14.5l-1.27 4.317A1.5 1.5 0 005.166 20.7h13.668a1.5 1.5 0 001.436-1.883L19 14.5M5 14.5h14" />
-              </svg>
-              <span className="sr-only">Lab mode</span>
-              <select
-                value={labMode}
-                onChange={(event) => setLabMode(event.target.value as LabMode)}
-                className="bg-transparent text-xs font-medium text-stone-700 outline-none"
-                aria-label="Lab mode"
-              >
-                {(Object.keys(LAB_MODE_LABEL) as LabMode[]).map((mode) => (
-                  <option key={mode} value={mode}>
-                    {LAB_MODE_LABEL[mode]}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
           {/* Scrollable content area */}
           <div className="flex-1 overflow-auto">
             {labMode === 'issuance_components' ? (
               <IssuanceComponentsLabView />
+            ) : labMode === 'deal_snapshot' ? (
+              <DealSnapshotLabView />
+            ) : labMode === 'data_lineage' ? (
+              <DataLineageLabView />
             ) : (
               <>
             {/* Header */}
