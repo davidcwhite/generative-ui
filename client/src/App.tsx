@@ -20,6 +20,10 @@ import { UiComponentLabView } from './lab/components-ui/UiComponentLabView';
 import { BondIssuanceAgGridLab } from './lab/ag-grid/BondIssuanceAgGridLab';
 import { CopilotKitLabView } from './lab/copilotkit/CopilotKitLabView';
 import { SidebarUxLabView } from './lab/sidebar-ux/SidebarUxLabView';
+import { WelcomePromptLabView } from './lab/welcome-prompt/WelcomePromptLabView';
+import { SuggestedPrompts } from './lab/welcome-prompt/SuggestedPrompts';
+import { SavedPrompts } from './lab/welcome-prompt/SavedPrompts';
+import { useSavedPrompts } from './lab/welcome-prompt/useSavedPrompts';
 import {
   MessageSquare,
   FileText,
@@ -54,7 +58,8 @@ type LabMode =
   | 'ui_components_precanned'
   | 'aggrid_bonds'
   | 'copilotkit_generative'
-  | 'sidebar_ux_examples';
+  | 'sidebar_ux_examples'
+  | 'welcome_prompt_ux';
 
 const LAB_MODE_LABEL: Record<LabMode, string> = {
   off: 'Lab off',
@@ -64,6 +69,7 @@ const LAB_MODE_LABEL: Record<LabMode, string> = {
   aggrid_bonds: 'AG Grid · Bonds',
   copilotkit_generative: 'CopilotKit · Generative UI',
   sidebar_ux_examples: 'Sidebar UX · Examples',
+  welcome_prompt_ux: 'Welcome · Prompt UX',
 };
 
 // Chat session type
@@ -223,6 +229,8 @@ export default function App() {
     maxSteps: 5,
     initialMessages: getInitialMessages(),
   });
+
+  const { savedPrompts, isSaved, togglePrompt, removePrompt } = useSavedPrompts();
 
   // Find all pending tool calls that require user input (forms, approval buttons)
   const getPendingInteractiveTools = useCallback(() => {
@@ -745,41 +753,35 @@ export default function App() {
               <CopilotKitLabView />
             ) : labMode === 'sidebar_ux_examples' ? (
               <SidebarUxLabView />
+            ) : labMode === 'welcome_prompt_ux' ? (
+              <WelcomePromptLabView />
             ) : (
               <>
             {/* Messages */}
         <div className="max-w-3xl mx-auto px-4 md:px-6 py-8 flex flex-col gap-5">
           {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center min-h-[60vh]">
-
-              <h2 className="text-2xl font-semibold text-[#1A1A1A] mb-2">Component-first <span className="font-normal italic">flow</span></h2>
-              <p className="text-stone-500 mb-12 text-sm max-w-md text-center">Less wall of text, more get things done.</p>
-              
-              <div className="w-full max-w-xl">
-                <p className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-3">Try asking</p>
-                <div className="flex flex-col gap-2">
-                  {[
-                    "We're pitching BMW for a mandate",
-                    "Show me Volkswagen's issuance history",
-                    "Compare Mercedes-Benz to auto sector peers",
-                    "Generate a mandate brief for Siemens",
-                  ].map((suggestion, i) => (
-                    <button
-                      key={i}
-                      onClick={() => {
-                        const event = { target: { value: suggestion } } as React.ChangeEvent<HTMLInputElement>;
-                        handleInputChange(event);
-                      }}
-                      className="flex items-center gap-3 px-4 py-3 text-sm text-stone-600 bg-white border border-[#E5E5E3] rounded-xl hover:border-stone-300 hover:bg-stone-50 transition-colors text-left group"
-                    >
-                      <svg className="w-4 h-4 text-stone-400 group-hover:text-stone-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                      </svg>
-                      <span>{suggestion}</span>
-                    </button>
-                  ))}
-                </div>
+            <div className="flex flex-col items-center justify-center min-h-[60vh] py-8">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1A1A1A] text-white shadow-sm">
+                <PFLogoMark className="h-5 w-5" />
               </div>
+              <h2 className="mt-5 text-2xl font-semibold text-[#1A1A1A]">Component-first <span className="font-normal italic">flow</span></h2>
+              <p className="mt-2 mb-10 text-stone-500 text-sm max-w-md text-center">Less wall of text, more get things done.</p>
+
+              <SuggestedPrompts
+                onSelect={(suggestion) => setInput(suggestion.prompt)}
+                onToggleSave={(suggestion) => togglePrompt(suggestion.prompt, suggestion.label)}
+                isSaved={isSaved}
+              />
+
+              {savedPrompts.length > 0 && (
+                <div className="mt-10 w-full max-w-2xl">
+                  <SavedPrompts
+                    savedPrompts={savedPrompts}
+                    onSelect={(saved) => setInput(saved.prompt)}
+                    onRemove={removePrompt}
+                  />
+                </div>
+              )}
             </div>
           )}
           
