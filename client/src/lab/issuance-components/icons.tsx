@@ -130,3 +130,29 @@ export function CollapseIcon({ className = '' }: IconProps) {
     </svg>
   );
 }
+
+export function MetricIcon({ className = '' }: IconProps) {
+  return (
+    <svg className={className} {...base}>
+      <path d="M4 19V5M4 19h16" />
+      <path d="M8 16l3-4 3 2 4-6" />
+    </svg>
+  );
+}
+
+export function ChartIcon({ className = '' }: IconProps) {
+  return (
+    <svg className={className} {...base}>
+      <path d="M21 12a9 9 0 1 1-9-9v9z" />
+      <path d="M12 3a9 9 0 0 1 9 9h-9z" />
+    </svg>
+  );
+}
+
+export function ArrowRightIcon({ className = '' }: IconProps) {
+  return (
+    <svg className={className} {...base}>
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+  );
+}

@@ -18,6 +18,7 @@ import { Dashboard } from './components/Dashboard';
 import { IssuanceComponentsLabView } from './lab/issuance-components/IssuanceComponentsLabView';
 import { DealSnapshotLabView } from './lab/deal-snapshot/DealSnapshotLabView';
 import { DataLineageLabView } from './lab/data-lineage/DataLineageLabView';
+import { DataLineageV2LabView } from './lab/data-lineage-v2/DataLineageV2LabView';
 
 const MAX_STORED_MESSAGES = 50;
 const MAX_SESSIONS = 20;
@@ -27,13 +28,14 @@ const ACTIVE_SESSION_KEY = 'pf-active-session';
 const API_URL = import.meta.env.VITE_API_URL || '/api/dcm/chat';
 const API_BASE = API_URL.replace('/api/dcm/chat', '');
 
-type LabMode = 'off' | 'issuance_components' | 'deal_snapshot' | 'data_lineage';
+type LabMode = 'off' | 'issuance_components' | 'deal_snapshot' | 'data_lineage' | 'data_lineage_v2';
 
 const LAB_MODE_LABEL: Record<LabMode, string> = {
   off: 'Lab off',
   issuance_components: 'Issuance · Live Components',
   deal_snapshot: 'Deal Snapshot · Tear Sheet',
   data_lineage: 'Data Lineage · Provenance',
+  data_lineage_v2: 'Data Lineage · Provenance v2',
 };
 
 // Chat session type
@@ -779,6 +781,8 @@ export default function App() {
               <DealSnapshotLabView />
             ) : labMode === 'data_lineage' ? (
               <DataLineageLabView />
+            ) : labMode === 'data_lineage_v2' ? (
+              <DataLineageV2LabView />
             ) : (
               <>
             {/* Header */}
