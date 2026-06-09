@@ -20,6 +20,7 @@ import { DealSnapshotLabView } from './lab/deal-snapshot/DealSnapshotLabView';
 import { DataLineageLabView } from './lab/data-lineage/DataLineageLabView';
 import { DataLineageV2LabView } from './lab/data-lineage-v2/DataLineageV2LabView';
 import { TrustPanelSegmentsLabView, TrustPanelIndexLabView } from './lab/trust-panel/TrustPanelLabView';
+import { TrustChatLabView } from './lab/trust-chat/TrustChatLabView';
 
 const MAX_STORED_MESSAGES = 50;
 const MAX_SESSIONS = 20;
@@ -36,7 +37,8 @@ type LabMode =
   | 'data_lineage'
   | 'data_lineage_v2'
   | 'trust_panel_segments'
-  | 'trust_panel_index';
+  | 'trust_panel_index'
+  | 'trust_chat';
 
 const LAB_MODE_LABEL: Record<LabMode, string> = {
   off: 'Lab off',
@@ -46,6 +48,7 @@ const LAB_MODE_LABEL: Record<LabMode, string> = {
   data_lineage_v2: 'Data Lineage · Provenance v2',
   trust_panel_segments: 'Trust Panel · Segments',
   trust_panel_index: 'Trust Panel · Index',
+  trust_chat: 'Trust Panel · Chat Cascade',
 };
 
 // Chat session type
@@ -797,6 +800,8 @@ export default function App() {
               <TrustPanelSegmentsLabView />
             ) : labMode === 'trust_panel_index' ? (
               <TrustPanelIndexLabView />
+            ) : labMode === 'trust_chat' ? (
+              <TrustChatLabView />
             ) : (
               <>
             {/* Header */}
