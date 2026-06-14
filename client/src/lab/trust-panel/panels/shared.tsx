@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type {
   AssetDescriptor,
   ComponentLineage,
@@ -69,12 +70,34 @@ function Sep() {
   );
 }
 
-/** SQL in a quiet light-grey block — no dark surfaces. */
-export function SqlBlock({ sql }: { sql: string }) {
+/** SQL block shared by trust-panel variants. */
+export function SqlBlock({ sql, tone = 'light' }: { sql: string; tone?: 'light' | 'dark' }) {
+  const [copied, setCopied] = useState(false);
   return (
-    <pre className="overflow-x-auto rounded-xl bg-stone-50 px-4 py-3 font-mono text-[11px] leading-relaxed text-stone-600">
-      <code>{sql}</code>
-    </pre>
+    <div className="group/sql relative">
+      <pre
+        className={`overflow-x-auto rounded-xl px-4 py-3 font-mono text-[11px] leading-relaxed ${
+          tone === 'dark' ? 'bg-black text-stone-100' : 'bg-stone-50 text-stone-600'
+        }`}
+      >
+        <code>{sql}</code>
+      </pre>
+      <button
+        type="button"
+        onClick={() => {
+          navigator.clipboard.writeText(sql);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        }}
+        className={`absolute right-2 top-2 rounded px-1.5 py-0.5 text-[10px] opacity-0 transition-opacity focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 group-hover/sql:opacity-100 ${
+          tone === 'dark'
+            ? 'bg-stone-800 text-stone-400 hover:text-stone-200 focus-visible:ring-stone-500'
+            : 'bg-stone-200 text-stone-500 hover:text-stone-700 focus-visible:ring-stone-400'
+        }`}
+      >
+        {copied ? 'Copied!' : 'Copy'}
+      </button>
+    </div>
   );
 }
 

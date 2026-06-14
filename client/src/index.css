@@ -205,3 +205,32 @@ body {
   .lab-shimmer { animation: none; }
   .lab-fade-in { animation: none; }
 }
+
+/* Panel figure: soft crossfade on a selection — the outgoing snapshot fades
+   out over the incoming one. Pure opacity, scoped to the panel (no page jump). */
+.cf-enter { animation: cf-fade-in 350ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.cf-leave { animation: cf-fade-out 350ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes cf-fade-in  { from { opacity: 0; } }
+@keyframes cf-fade-out { to   { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-enter, .cf-leave { animation: none; }
+}
+
+/* Dropdown menu: creamy open / close — grows down from the trigger */
+.dd-menu {
+  transform-origin: top left;
+  transition:
+    opacity 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.dd-menu[data-state='open']   { opacity: 1; transform: translateY(0)    scale(1);    }
+.dd-menu[data-state='closed'] { opacity: 0; transform: translateY(-4px) scale(0.97); }
+
+@starting-style {
+  .dd-menu[data-state='open'] { opacity: 0; transform: translateY(-4px) scale(0.97); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dd-menu { transition: none; }
+}

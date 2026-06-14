@@ -14,7 +14,17 @@ const MODE_OPTIONS: { id: HydrationMode; label: string }[] = [
   { id: 'instant', label: 'Instant' },
 ];
 
+type CascadePanelVariant = 'rail' | 'dropdown';
+
 export function TrustChatLabView() {
+  return <TrustChatLab panelVariant="rail" />;
+}
+
+export function TrustChatDropdownLabView() {
+  return <TrustChatLab panelVariant="dropdown" />;
+}
+
+function TrustChatLab({ panelVariant }: { panelVariant: CascadePanelVariant }) {
   const [mode, setMode] = useState<HydrationMode>('progressive');
   const [runId, setRunId] = useState(0);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -76,6 +86,7 @@ export function TrustChatLabView() {
 
   const shared = { mode, runId };
   const cardCols = open ? (expanded ? 'grid-cols-1' : 'grid-cols-1 xl:grid-cols-2') : 'sm:grid-cols-2';
+  const usesDropdownPanel = panelVariant === 'dropdown';
 
   return (
     <div className="flex h-full">
@@ -85,16 +96,21 @@ export function TrustChatLabView() {
           {/* Lab header */}
           <section className="rounded-2xl border border-stone-200 bg-white p-5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400">
-              Components · Trust panel · Chat
+              {usesDropdownPanel
+                ? 'Components · Lineage · Chat dropdown'
+                : 'Components · Trust panel · Chat'}
             </p>
             <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <h2 className="text-xl font-semibold tracking-tight text-stone-950">
-                  Verify any figure, stay in the conversation
+                  {usesDropdownPanel
+                    ? 'Verify a response, component, and query'
+                    : 'Verify any figure, stay in the conversation'}
                 </h2>
                 <p className="mt-2 max-w-2xl text-sm leading-relaxed text-stone-500">
-                  A two-turn mock chat. Click any cited figure to dock the trust panel: the rail
-                  tracks responses, a dropdown picks the component, another picks the query step.
+                  {usesDropdownPanel
+                    ? 'A two-turn mock chat. Click any cited figure to dock the lineage panel: a top dropdown picks the response, a second picks the component, and a third picks the query step.'
+                    : 'A two-turn mock chat. Click any cited figure to dock the trust panel: the rail tracks responses, a dropdown picks the component, another picks the query step.'}
                 </p>
               </div>
 
@@ -185,6 +201,7 @@ export function TrustChatLabView() {
               lineage={panelLineage}
               activeAssetId={panelLineage.id}
               onSelectAsset={selectAsset}
+              responseSelector={panelVariant}
               expanded={expanded}
               onToggleExpand={() => setExpanded((v) => !v)}
               onClose={() => {
