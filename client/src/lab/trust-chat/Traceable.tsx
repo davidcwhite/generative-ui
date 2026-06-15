@@ -57,7 +57,7 @@ export function Traceable({
 
   return (
     <span
-      className="relative inline-flex"
+      className={`relative inline-flex ${preview ? 'z-50' : ''}`}
       onMouseEnter={open}
       onMouseLeave={close}
       onFocus={open}
@@ -69,7 +69,7 @@ export function Traceable({
           close();
           onTrace(componentId);
         }}
-        title="Trace this figure to its source"
+        aria-label="Trace this figure to its source"
         className={`group/trace inline-flex items-start gap-0.5 rounded-md text-left transition-colors ${
           active ? 'bg-stone-900/[0.04]' : ''
         }`}
