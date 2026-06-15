@@ -232,11 +232,12 @@ export function CascadePanel({
         {/* Query: step dropdown, then the materialised view */}
         <div className="flex items-center gap-3 px-5 pb-4 pt-1.5">
           <Dropdown
+            fitContent
             label={
-              <span className="flex min-w-0 items-center text-[13px] text-stone-700">
+              <span className="flex items-center whitespace-nowrap text-[13px] text-stone-700">
                 <span className="shrink-0 tabular-nums text-stone-400">{stepIdx + 1}</span>
                 <span className="mx-1.5 shrink-0 text-stone-300">·</span>
-                <span className="min-w-0 truncate font-medium">{step.label}</span>
+                <span className="font-medium">{step.label}</span>
               </span>
             }
             menuWidth="w-72"
@@ -331,10 +332,12 @@ interface DropdownProps {
   label: ReactNode;
   menuWidth: string;
   menuLabel?: string;
+  /** Let the trigger grow to fit its label (e.g. query-step names). */
+  fitContent?: boolean;
   children: (close: () => void) => ReactNode;
 }
 
-function Dropdown({ label, menuWidth, menuLabel, children }: DropdownProps) {
+function Dropdown({ label, menuWidth, menuLabel, fitContent = false, children }: DropdownProps) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -365,17 +368,22 @@ function Dropdown({ label, menuWidth, menuLabel, children }: DropdownProps) {
   }, [open]);
 
   return (
-    <div ref={ref} className={`relative min-w-0 max-w-full ${mounted ? 'z-20' : ''}`}>
+    <div
+      ref={ref}
+      className={`relative ${fitContent ? 'w-fit' : 'min-w-0 max-w-full'} ${mounted ? 'z-20' : ''}`}
+    >
       <button
         type="button"
         onClick={toggle}
         aria-expanded={open}
         aria-haspopup="menu"
-        className={`group/dd -mx-1.5 inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-lg px-1.5 py-1 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 ${
+        className={`group/dd inline-flex items-center gap-2 rounded-lg px-1.5 py-1 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 ${
+          fitContent ? 'w-fit' : '-mx-1.5 min-w-0 max-w-full'
+        } ${
           open ? 'bg-stone-100 text-stone-900' : 'text-stone-700 hover:bg-stone-100 hover:text-stone-900'
         }`}
       >
-        <span className="min-w-0">{label}</span>
+        <span className={fitContent ? undefined : 'min-w-0 overflow-hidden'}>{label}</span>
         <ChevronDownIcon
           className={`h-3.5 w-3.5 shrink-0 text-stone-400 transition-transform duration-200 group-hover/dd:text-stone-600 ${
             open ? 'rotate-180 text-stone-600' : ''
