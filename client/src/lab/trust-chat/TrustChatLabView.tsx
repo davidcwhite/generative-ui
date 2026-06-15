@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from 'react';
 import type { HydrationMode } from '../issuance-components/useHydration';
 import { ReplayIcon } from '../issuance-components/icons';
 import type { ComponentLineage } from '../data-lineage-v2/lineageData';
@@ -16,6 +23,16 @@ const MODE_OPTIONS: { id: HydrationMode; label: string }[] = [
 
 type CascadePanelVariant = 'rail' | 'dropdown';
 
+const PANEL_DEFAULT_WIDTH = 46;
+const PANEL_EXPANDED_WIDTH = 68;
+const PANEL_MIN_WIDTH = 38;
+const PANEL_MAX_WIDTH = 72;
+const PANEL_WIDTH_STEP = 2;
+
+function clampPanelWidth(width: number) {
+  return Math.min(PANEL_MAX_WIDTH, Math.max(PANEL_MIN_WIDTH, width));
+}
+
 export function TrustChatLabView() {
   return <TrustChatLab panelVariant="rail" />;
 }
@@ -28,7 +45,10 @@ function TrustChatLab({ panelVariant }: { panelVariant: CascadePanelVariant }) {
   const [mode, setMode] = useState<HydrationMode>('progressive');
   const [runId, setRunId] = useState(0);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState(false);
+  const [panelWidth, setPanelWidth] = useState(PANEL_DEFAULT_WIDTH);
+  const [resizing, setResizing] = useState(false);
+  const resizeFrameRef = useRef<number | null>(null);
+  const pendingPanelWidthRef = useRef(panelWidth);
 
   const replay = useCallback(() => setRunId((id) => id + 1), []);
 
@@ -46,6 +66,45 @@ function TrustChatLab({ panelVariant }: { panelVariant: CascadePanelVariant }) {
   const selectAsset = useCallback((id: string) => setActiveId(id), []);
 
   const open = activeId !== null;
+  const expanded = panelWidth >= (PANEL_DEFAULT_WIDTH + PANEL_EXPANDED_WIDTH) / 2;
+
+  useEffect(() => {
+    return () => {
+      if (resizeFrameRef.current !== null) {
+        window.cancelAnimationFrame(resizeFrameRef.current);
+      }
+    };
+  }, []);
+
+  const schedulePanelWidth = useCallback((nextWidth: number) => {
+    pendingPanelWidthRef.current = clampPanelWidth(nextWidth);
+    if (resizeFrameRef.current !== null) return;
+    resizeFrameRef.current = window.requestAnimationFrame(() => {
+      resizeFrameRef.current = null;
+      setPanelWidth(pendingPanelWidthRef.current);
+    });
+  }, []);
+
+  const startPanelResize = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      setResizing(true);
+      const onMove = (moveEvent: PointerEvent) => {
+        const width = ((window.innerWidth - moveEvent.clientX) / window.innerWidth) * 100;
+        schedulePanelWidth(width);
+      };
+      const stop = () => {
+        setResizing(false);
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', stop);
+        document.removeEventListener('pointercancel', stop);
+      };
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', stop);
+      document.addEventListener('pointercancel', stop);
+    },
+    [schedulePanelWidth],
+  );
 
   // While open, ←/→ cycle across every asset in the conversation.
   useEffect(() => {
@@ -185,11 +244,45 @@ function TrustChatLab({ panelVariant }: { panelVariant: CascadePanelVariant }) {
       {/* Right pane: the trust panel, slides open as a full-height split */}
       <aside
         aria-hidden={!open}
-        className={`hidden shrink-0 overflow-hidden border-stone-200 bg-white transition-[width] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] lg:block ${
+        className={`relative hidden shrink-0 overflow-hidden border-stone-200 bg-white lg:block ${
           open ? 'border-l' : 'pointer-events-none border-l-0'
+        } ${
+          resizing
+            ? 'transition-none'
+            : 'transition-[width] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)]'
         }`}
-        style={{ width: open ? (expanded ? '68%' : '46%') : '0%' }}
+        style={{ width: open ? `${panelWidth}%` : '0%' }}
       >
+        {open && (
+          <div
+            role="separator"
+            aria-label="Resize lineage panel"
+            aria-orientation="vertical"
+            aria-valuemin={PANEL_MIN_WIDTH}
+            aria-valuemax={PANEL_MAX_WIDTH}
+            aria-valuenow={Math.round(panelWidth)}
+            tabIndex={0}
+            onPointerDown={startPanelResize}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowLeft') {
+                event.preventDefault();
+                setPanelWidth((width) => clampPanelWidth(width + PANEL_WIDTH_STEP));
+              } else if (event.key === 'ArrowRight') {
+                event.preventDefault();
+                setPanelWidth((width) => clampPanelWidth(width - PANEL_WIDTH_STEP));
+              } else if (event.key === 'Home') {
+                event.preventDefault();
+                setPanelWidth(PANEL_MIN_WIDTH);
+              } else if (event.key === 'End') {
+                event.preventDefault();
+                setPanelWidth(PANEL_MAX_WIDTH);
+              }
+            }}
+            className="group absolute left-0 top-0 z-30 hidden h-full w-3 cursor-col-resize items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-stone-400 lg:flex"
+          >
+            <span className="h-10 w-px rounded-full bg-stone-200 transition-colors group-hover:bg-stone-400" />
+          </div>
+        )}
         {panelLineage && (
           <div
             className={`h-full min-w-[480px] transition-opacity duration-300 ${
@@ -203,10 +296,15 @@ function TrustChatLab({ panelVariant }: { panelVariant: CascadePanelVariant }) {
               onSelectAsset={selectAsset}
               responseSelector={panelVariant}
               expanded={expanded}
-              onToggleExpand={() => setExpanded((v) => !v)}
+              onToggleExpand={() => {
+                setPanelWidth((width) =>
+                  width >= (PANEL_DEFAULT_WIDTH + PANEL_EXPANDED_WIDTH) / 2
+                    ? PANEL_DEFAULT_WIDTH
+                    : PANEL_EXPANDED_WIDTH,
+                );
+              }}
               onClose={() => {
                 setActiveId(null);
-                setExpanded(false);
               }}
             />
           </div>
