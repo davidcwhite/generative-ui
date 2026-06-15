@@ -16,10 +16,6 @@ import {
 } from './components/dcm';
 import { Dashboard } from './components/Dashboard';
 import { LabChatView } from './lab/LabChatView';
-import { UiComponentLabView } from './lab/components-ui/UiComponentLabView';
-import { BondIssuanceAgGridLab } from './lab/ag-grid/BondIssuanceAgGridLab';
-import { CopilotKitLabView } from './lab/copilotkit/CopilotKitLabView';
-import { SidebarUxLabView } from './lab/sidebar-ux/SidebarUxLabView';
 import { WelcomePromptLabView } from './lab/welcome-prompt/WelcomePromptLabView';
 import { SuggestedPrompts } from './lab/welcome-prompt/SuggestedPrompts';
 import { SavedPrompts } from './lab/welcome-prompt/SavedPrompts';
@@ -54,21 +50,11 @@ const API_BASE = API_URL.replace('/api/dcm/chat', '');
 type LabMode =
   | 'off'
   | 'streaming_ux'
-  | 'ui_components_custom'
-  | 'ui_components_precanned'
-  | 'aggrid_bonds'
-  | 'copilotkit_generative'
-  | 'sidebar_ux_examples'
   | 'welcome_prompt_ux';
 
 const LAB_MODE_LABEL: Record<LabMode, string> = {
   off: 'Lab off',
   streaming_ux: 'Streaming UX',
-  ui_components_custom: 'UI components · Custom',
-  ui_components_precanned: 'UI components · Pre-canned',
-  aggrid_bonds: 'AG Grid · Bonds',
-  copilotkit_generative: 'CopilotKit · Generative UI',
-  sidebar_ux_examples: 'Sidebar UX · Examples',
   welcome_prompt_ux: 'Welcome · Prompt UX',
 };
 
@@ -743,16 +729,6 @@ export default function App() {
           <div className="flex-1 overflow-auto">
             {labMode === 'streaming_ux' ? (
               <LabChatView />
-            ) : labMode === 'ui_components_custom' ? (
-              <UiComponentLabView mode="custom" />
-            ) : labMode === 'ui_components_precanned' ? (
-              <UiComponentLabView mode="precanned" />
-            ) : labMode === 'aggrid_bonds' ? (
-              <BondIssuanceAgGridLab />
-            ) : labMode === 'copilotkit_generative' ? (
-              <CopilotKitLabView />
-            ) : labMode === 'sidebar_ux_examples' ? (
-              <SidebarUxLabView />
             ) : labMode === 'welcome_prompt_ux' ? (
               <WelcomePromptLabView />
             ) : (
