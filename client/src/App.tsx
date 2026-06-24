@@ -21,6 +21,9 @@ import { DataLineageLabView } from './lab/data-lineage/DataLineageLabView';
 import { DataLineageV2LabView } from './lab/data-lineage-v2/DataLineageV2LabView';
 import { TrustPanelSegmentsLabView, TrustPanelIndexLabView } from './lab/trust-panel/TrustPanelLabView';
 import { TrustChatDropdownLabView, TrustChatLabView } from './lab/trust-chat/TrustChatLabView';
+import { ChatHistoryLabView } from './lab/chat-history/ChatHistoryLabView';
+import { ChatHistoryPanel } from './lab/chat-history/components/ChatHistoryPanel';
+import type { MockChatSession } from './lab/chat-history/mockSessions';
 
 const MAX_STORED_MESSAGES = 50;
 const MAX_SESSIONS = 20;
@@ -39,7 +42,8 @@ type LabMode =
   | 'trust_panel_segments'
   | 'trust_panel_index'
   | 'trust_chat'
-  | 'trust_chat_dropdown';
+  | 'trust_chat_dropdown'
+  | 'chat_history';
 
 const LAB_MODE_LABEL: Record<LabMode, string> = {
   off: 'Lab off',
@@ -51,6 +55,7 @@ const LAB_MODE_LABEL: Record<LabMode, string> = {
   trust_panel_index: 'Trust Panel · Index',
   trust_chat: 'Trust Panel · Chat Cascade',
   trust_chat_dropdown: 'Lineage · Chat Dropdown Cascade',
+  chat_history: 'Chat History · Rename UX',
 };
 
 // Chat session type
@@ -60,6 +65,7 @@ interface ChatSession {
   messages: Message[];
   createdAt: number;
   updatedAt: number;
+  userRenamedTitle?: boolean;
 }
 
 // Generate unique session ID
@@ -74,9 +80,25 @@ function generateSessionTitle(messages: Message[]): string {
     const content = typeof firstUserMessage.content === 'string' 
       ? firstUserMessage.content 
       : '';
-    return content.slice(0, 40) + (content.length > 40 ? '...' : '');
+    return content.slice(0, 40) + (content.length > 40 ? '…' : '');
   }
   return 'New Chat';
+}
+
+function messageContentPreview(message: Message | undefined): string {
+  if (!message || typeof message.content !== 'string') return 'No messages yet';
+  return message.content.replace(/\s+/g, ' ').trim() || 'No messages yet';
+}
+
+function chatSessionToHistorySession(session: ChatSession): MockChatSession {
+  const lastMessage = session.messages[session.messages.length - 1];
+  return {
+    id: session.id,
+    title: session.title || 'New Chat',
+    preview: messageContentPreview(lastMessage),
+    updatedAt: session.updatedAt,
+    messageCount: session.messages.length,
+  };
 }
 
 // Load sessions from localStorage
@@ -225,7 +247,7 @@ export default function App() {
               return {
                 ...session,
                 messages: messages.slice(-MAX_STORED_MESSAGES),
-                title: generateSessionTitle(messages),
+                title: session.userRenamedTitle ? session.title : generateSessionTitle(messages),
                 updatedAt: Date.now(),
               };
             }
@@ -263,7 +285,12 @@ export default function App() {
       setSessions(prevSessions => {
         const updated = prevSessions.map(s => 
           s.id === activeSessionId 
-            ? { ...s, messages: messages.slice(-MAX_STORED_MESSAGES), title: generateSessionTitle(messages), updatedAt: Date.now() }
+            ? {
+                ...s,
+                messages: messages.slice(-MAX_STORED_MESSAGES),
+                title: s.userRenamedTitle ? s.title : generateSessionTitle(messages),
+                updatedAt: Date.now(),
+              }
             : s
         );
         saveSessions(updated);
@@ -299,7 +326,12 @@ export default function App() {
       setSessions(prevSessions => {
         const updated = prevSessions.map(s => 
           s.id === activeSessionId 
-            ? { ...s, messages: messages.slice(-MAX_STORED_MESSAGES), title: generateSessionTitle(messages), updatedAt: Date.now() }
+            ? {
+                ...s,
+                messages: messages.slice(-MAX_STORED_MESSAGES),
+                title: s.userRenamedTitle ? s.title : generateSessionTitle(messages),
+                updatedAt: Date.now(),
+              }
             : s
         );
         saveSessions(updated);
@@ -334,6 +366,24 @@ export default function App() {
     });
   }, [activeSessionId, setMessages]);
 
+  // Rename a session and preserve the custom title through future message autosaves.
+  const renameSession = useCallback((sessionId: string, title: string) => {
+    setSessions(prevSessions => {
+      const updated = prevSessions.map(session =>
+        session.id === sessionId
+          ? {
+              ...session,
+              title,
+              userRenamedTitle: true,
+              updatedAt: Date.now(),
+            }
+          : session
+      );
+      saveSessions(updated);
+      return updated;
+    });
+  }, []);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsCheckingAuth(true);
@@ -367,6 +417,8 @@ export default function App() {
     setIsAuthenticated(false);
     setPassword('');
   };
+
+  const historySessions = sessions.map(chatSessionToHistorySession);
 
   // Helper to format query_data results as table
   const formatQueryResult = (result: {
@@ -720,66 +772,20 @@ export default function App() {
 
       {/* Secondary Sidebar - History Panel (Overlay) - hidden on mobile */}
       {isHistoryHovered && (
-        <div 
-          className="hidden md:flex absolute left-16 top-0 w-64 h-full bg-white border-r border-[#E5E5E3] shadow-lg flex-col z-50"
+        <div
+          className="ch-panel-enter hidden md:block absolute left-16 top-0 w-72 h-full border-r border-[#E5E5E3] shadow-lg z-50"
           onMouseEnter={() => setIsHistoryHovered(true)}
           onMouseLeave={() => setIsHistoryHovered(false)}
         >
-          {/* Header */}
-          <div className="px-4 pt-4 pb-4">
-            <div className="flex items-center justify-between h-10">
-              <span className="font-medium text-[#1A1A1A]">History</span>
-              <button 
-                className="p-1.5 rounded-lg hover:bg-stone-100 transition-colors"
-                title="Pin sidebar"
-              >
-                <svg className="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                </svg>
-              </button>
-            </div>
-          </div>
-          
-          {/* Recent section */}
-          <div className="flex-1 overflow-y-auto">
-            {sessions.length > 0 ? (
-              <>
-                <div className="px-4 py-2">
-                  <span className="text-xs font-medium text-stone-400 uppercase tracking-wide">Recent</span>
-                </div>
-                <div className="flex flex-col">
-                  {sessions.map(session => (
-                    <div 
-                      key={session.id}
-                      onClick={() => switchToSession(session.id)}
-                      className={`flex items-center gap-2 px-4 py-2.5 hover:bg-stone-50 cursor-pointer group/item ${session.id === activeSessionId ? 'bg-stone-100' : ''}`}
-                    >
-                      <span className="flex-1 text-sm text-left text-stone-700 truncate">
-                        {session.title}
-                      </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteSession(session.id);
-                        }}
-                        className="opacity-0 group-hover/item:opacity-100 p-1 hover:bg-stone-200 rounded transition-opacity"
-                        title="Delete chat"
-                      >
-                        <svg className="w-3.5 h-3.5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div className="px-4 py-8 text-center">
-                <p className="text-sm text-stone-400">No chat history yet</p>
-                <p className="text-xs text-stone-400 mt-1">Start a new conversation</p>
-              </div>
-            )}
-          </div>
+          <ChatHistoryPanel
+            sessions={historySessions}
+            activeId={activeSessionId}
+            now={Date.now()}
+            onSelect={switchToSession}
+            onRename={renameSession}
+            onDelete={deleteSession}
+            className="h-full"
+          />
         </div>
       )}
 
@@ -806,6 +812,8 @@ export default function App() {
               <TrustChatLabView />
             ) : labMode === 'trust_chat_dropdown' ? (
               <TrustChatDropdownLabView />
+            ) : labMode === 'chat_history' ? (
+              <ChatHistoryLabView />
             ) : (
               <>
             {/* Header */}

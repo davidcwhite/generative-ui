@@ -234,3 +234,77 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .dd-menu { transition: none; }
 }
+
+/* ── Chat history lab: panel + inline rename/delete popover ─────────── */
+
+.ch-panel-enter {
+  animation: ch-panel-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes ch-panel-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.ch-popover {
+  transform-origin: top right;
+  transition:
+    opacity 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ch-popover[data-state='open'] {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+.ch-popover:not([data-state='open']) {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.97);
+}
+
+.ch-inline-edit::selection {
+  background: #d6d3d1;
+  color: #1c1917;
+}
+
+/* One-shot left-to-right specular glint, clipped to the glyphs. A narrow bright
+   core with soft stone shoulders on a 200% non-repeating gradient: the text
+   stays fully painted throughout (no flash) and the glint crosses exactly once.
+   Ease-in (slow then fast) makes it read as narrow-at-rest then streaking. */
+.ch-title-saved {
+  background-image: linear-gradient(
+    90deg,
+    #292524 0%,
+    #292524 12%,
+    #a8a29e 32%,
+    #ffffff 50%,
+    #a8a29e 68%,
+    #292524 88%,
+    #292524 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: ch-title-sheen 230ms cubic-bezier(0.5, 0, 0.75, 0) 1 both;
+}
+@keyframes ch-title-sheen {
+  from { background-position: 100% 0; }
+  to   { background-position: 0% 0; }
+}
+
+@starting-style {
+  .ch-popover[data-state='open'] {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ch-panel-enter { animation: none; }
+  .ch-popover { transition: none; }
+  .ch-title-saved {
+    animation: none;
+    background: none;
+    color: #292524;
+  }
+}
