@@ -16,6 +16,7 @@ import {
 } from './components/dcm';
 import { Dashboard } from './components/Dashboard';
 import { IssuanceComponentsLabView } from './lab/issuance-components/IssuanceComponentsLabView';
+import { BondIssuanceStudioLabView } from './lab/issuance-studio/BondIssuanceStudioLabView';
 import { DealSnapshotLabView } from './lab/deal-snapshot/DealSnapshotLabView';
 import { DataLineageLabView } from './lab/data-lineage/DataLineageLabView';
 import { DataLineageV2LabView } from './lab/data-lineage-v2/DataLineageV2LabView';
@@ -32,6 +33,7 @@ const API_BASE = API_URL.replace('/api/dcm/chat', '');
 
 type LabMode =
   | 'off'
+  | 'issuance_studio'
   | 'issuance_components'
   | 'deal_snapshot'
   | 'data_lineage'
@@ -43,6 +45,7 @@ type LabMode =
 
 const LAB_MODE_LABEL: Record<LabMode, string> = {
   off: 'Lab off',
+  issuance_studio: 'Issuance · Studio (Generated UI)',
   issuance_components: 'Issuance · Live Components',
   deal_snapshot: 'Deal Snapshot · Tear Sheet',
   data_lineage: 'Data Lineage · Provenance',
@@ -790,7 +793,9 @@ export default function App() {
         <div className="relative flex-1 flex flex-col overflow-hidden">
           {/* Scrollable content area */}
           <div className="flex-1 overflow-auto">
-            {labMode === 'issuance_components' ? (
+            {labMode === 'issuance_studio' ? (
+              <BondIssuanceStudioLabView />
+            ) : labMode === 'issuance_components' ? (
               <IssuanceComponentsLabView />
             ) : labMode === 'deal_snapshot' ? (
               <DealSnapshotLabView />
