@@ -8,12 +8,18 @@ import { CrossCurrencyRelativeValue } from './components/CrossCurrencyRelativeVa
 import { PeerAnalysis } from './components/PeerAnalysis';
 import { AllocationSummary } from './components/AllocationSummary';
 import { SecondaryPerformance } from './components/SecondaryPerformance';
+import { GenericComponentCard } from './components/GenericComponentCard';
 
 import { dealSamples, termsSamples, secondarySamples } from './data/deal';
 import { windowSamples, crossCurrencySamples } from './data/market';
 import { allocationSamples, peerSamples } from './data/book';
+import { genericSamples } from '../generic-component/samples';
 
 export type ComponentKind =
+  | 'generic'
+  | 'genericTiles'
+  | 'genericMinimal'
+  | 'genericBar'
   | 'issuanceWindow'
   | 'dealSnapshot'
   | 'newIssueTerms'
@@ -49,6 +55,44 @@ const sampleList = <T extends { id: string; label: string }>(samples: T[]) =>
  * selectable samples and how to render itself for a given {mode, runId}.
  */
 export const STUDIO_ENTRIES: StudioEntry[] = [
+  {
+    kind: 'generic',
+    label: 'Generic Component',
+    blurb:
+      'A portable agent↔frontend contract: a KPI strip over a tagged body (bar chart or rich table). The backend emits one JSON payload; this renders it.',
+    samples: sampleList(genericSamples),
+    render: (id, shared) => <GenericComponentCard data={pick(genericSamples, id).data} {...shared} />,
+  },
+  {
+    kind: 'genericTiles',
+    label: 'Generic · Tiles',
+    blurb:
+      'Preferred direction, de-bordered: soft-tinted KPI tiles (no outline) with a large value and an arrowed delta beneath, over the bordered ag-grid table.',
+    samples: sampleList(genericSamples),
+    render: (id, shared) => (
+      <GenericComponentCard data={pick(genericSamples, id).data} variant="tiles" {...shared} />
+    ),
+  },
+  {
+    kind: 'genericMinimal',
+    label: 'Generic · Minimal',
+    blurb:
+      'Same favourite layout, KPIs stripped of all chrome — tiny uppercase label, an oversized value, grouped by whitespace alone (Stripe/Linear metric-strip style).',
+    samples: sampleList(genericSamples),
+    render: (id, shared) => (
+      <GenericComponentCard data={pick(genericSamples, id).data} variant="minimal" {...shared} />
+    ),
+  },
+  {
+    kind: 'genericBar',
+    label: 'Generic · Stat bar',
+    blurb:
+      'KPIs joined into one connected stat bar split by hairline rules, each delta shown as a small arrowed pill — a tidy, scannable header over the bordered table.',
+    samples: sampleList(genericSamples),
+    render: (id, shared) => (
+      <GenericComponentCard data={pick(genericSamples, id).data} variant="bar" {...shared} />
+    ),
+  },
   {
     kind: 'issuanceWindow',
     label: 'Issuance Window',
