@@ -12,6 +12,13 @@ const PROMPT_SUGGESTIONS = [
   'Generate a mandate brief for BMW',
 ];
 
+function formatLabError(error: Error): string {
+  if (error.message.trim()) return error.message;
+  return (
+    'Could not reach the mock chat API. Start the backend with `npm run dev` in the `server/` folder (port 3000), then click Replay.'
+  );
+}
+
 export function LabChatView() {
   const [activeVariantId, setActiveVariantId] = useState<string>(
     DEFAULT_VARIANT_ID,
@@ -42,6 +49,15 @@ export function LabChatView() {
   });
 
   const isStreaming = status === 'submitted' || status === 'streaming';
+  const lastMessage = messages[messages.length - 1];
+  const assistantHasToolSteps =
+    lastMessage?.role === 'assistant' &&
+    (lastMessage.parts ?? []).some((part) => part.type === 'tool-invocation');
+  const showPendingStream =
+    status === 'submitted' ||
+    (isStreaming &&
+      lastMessage?.role === 'assistant' &&
+      !assistantHasToolSteps);
 
   const handleReplay = useCallback(() => {
     stop();
@@ -125,7 +141,7 @@ export function LabChatView() {
           );
         })}
 
-        {status === 'submitted' && (
+        {showPendingStream && (
           <div className="self-start w-full">
             <div className="flex items-center gap-2 rounded-md border border-stone-200 bg-white px-3 py-2 text-xs text-stone-500">
               <Spinner size={12} />
@@ -136,7 +152,7 @@ export function LabChatView() {
 
         {error && (
           <div className="self-start w-full rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
-            {error.message}
+            {formatLabError(error)}
           </div>
         )}
       </div>

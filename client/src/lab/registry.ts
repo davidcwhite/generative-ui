@@ -4,6 +4,7 @@ import { V15AmbientStream } from './variants/V15AmbientStream';
 import { V16SoftFocusStream } from './variants/V16SoftFocusStream';
 import { V17ParsedSignalStream } from './variants/V17ParsedSignalStream';
 import { V18DataRibbonStream } from './variants/V18DataRibbonStream';
+import { V19ThinkingTimeline } from './variants/V19ThinkingTimeline';
 import type { VariantDef } from './types';
 
 export const variants: Record<string, VariantDef> = {
@@ -43,6 +44,12 @@ export const variants: Record<string, VariantDef> = {
     blurb: 'V15 as a quiet horizontal ribbon: streamed records arrive as small data pills sliding through the sub-step area.',
     Render: V18DataRibbonStream,
   },
+  v19_thinking_timeline: {
+    id: 'v19_thinking_timeline',
+    label: 'V19 · Thinking timeline',
+    blurb: 'A reasoning-trace rail: a clean vertical line with checkpoints — a search node with source chips, tool steps whose narration types in, and a settled “Thought for Ns” node.',
+    Render: V19ThinkingTimeline,
+  },
 };
 
 export const variantOrder = [
@@ -52,8 +59,9 @@ export const variantOrder = [
   'v16_soft_focus_stream',
   'v17_parsed_signal_stream',
   'v18_data_ribbon_stream',
+  'v19_thinking_timeline',
 ] as const;
 
 export type VariantId = (typeof variantOrder)[number];
 
-export const DEFAULT_VARIANT_ID: VariantId = 'v18_data_ribbon_stream';
+export const DEFAULT_VARIANT_ID: VariantId = 'v19_thinking_timeline';

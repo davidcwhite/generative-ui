@@ -1299,6 +1299,202 @@ body {
 }
 
 /* =====================================================================
+ * V19 · Thinking timeline — a quiet vertical reasoning rail with
+ * checkpoint markers (search → tool steps → settled). Borderless; the
+ * surrounding assistant message provides the container.
+ * ===================================================================== */
+.v19-think {
+  --v19-rail: #e7e5e4; /* stone-200 */
+  --v19-bg: #fafaf8; /* lab page background */
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.v19-think__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #a8a29e; /* stone-400 */
+  letter-spacing: 0.01em;
+}
+.v19-think__label--live {
+  position: relative;
+}
+.v19-think__label--live::after {
+  content: '…';
+  animation: v19-ellipsis 1.4s steps(4, end) infinite;
+}
+@keyframes v19-ellipsis {
+  0% { content: ''; }
+  25% { content: '·'; }
+  50% { content: '··'; }
+  75%, 100% { content: '···'; }
+}
+
+.v19-think__list {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.v19-think__node {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  column-gap: 12px;
+  padding-bottom: 22px;
+  animation: v19-node-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.v19-think__node:last-child {
+  padding-bottom: 0;
+}
+/* Connector segment: each node (except the last) draws a line from its own
+ * marker centre down into the next marker centre, so the rail ends exactly
+ * at the final tick rather than running past it. */
+.v19-think__node:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 12px;
+  bottom: -12px;
+  width: 1.5px;
+  background: var(--v19-rail);
+}
+@keyframes v19-node-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Markers sit on a solid ring so they punch through the connector line. */
+.v19-think__marker {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+}
+.v19-think__marker--icon {
+  color: #78716c; /* stone-500 */
+  background: var(--v19-bg);
+  border-radius: 999px;
+}
+.v19-think__marker--icon svg {
+  width: 17px;
+  height: 17px;
+}
+.v19-think__marker--check {
+  color: #57534e; /* stone-600 */
+}
+.v19-think__marker--dot::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #1c1917; /* stone-900 */
+  box-shadow: 0 0 0 4px var(--v19-bg);
+}
+.v19-think__marker--dot.v19-think__marker--running::before {
+  background: #78716c;
+  animation: v19-pulse 1.4s ease-in-out infinite;
+}
+@keyframes v19-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.7); opacity: 0.55; }
+}
+
+.v19-think__content {
+  min-width: 0;
+  padding-top: 1px;
+}
+.v19-think__title {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: #292524; /* stone-800 */
+}
+.v19-think__body {
+  margin-top: 6px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: #78716c; /* stone-500 */
+  text-wrap: pretty;
+}
+.v19-think__done {
+  margin-top: 2px;
+  font-size: 13px;
+  color: #a8a29e;
+}
+
+.v19-think__cursor {
+  display: inline-block;
+  margin-left: 1px;
+  color: #a8a29e;
+  animation: v19-cursor 900ms step-end infinite;
+}
+@keyframes v19-cursor {
+  50% { opacity: 0.15; }
+}
+
+/* Source chips under the search checkpoint. */
+.v19-think__sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.v19-think__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 9px 0 6px;
+  border: 1px solid var(--v19-rail);
+  border-radius: 999px;
+  background: #ffffff;
+  font-size: 12px;
+  color: #57534e;
+  white-space: nowrap;
+}
+.v19-think__chip--more {
+  padding: 0 10px;
+  color: #a8a29e;
+}
+.v19-think__chip-mono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.v19-think__payload {
+  margin-top: 2px;
+  animation: v19-node-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v19-think__node,
+  .v19-think__payload {
+    animation: none;
+  }
+  .v19-think__marker--dot.v19-think__marker--running::before {
+    animation: none;
+  }
+  .v19-think__cursor,
+  .v19-think__label--live::after {
+    animation: none;
+  }
+}
+
+/* =====================================================================
  * V9 / V10 shared payload reveal.
  * ===================================================================== */
 
