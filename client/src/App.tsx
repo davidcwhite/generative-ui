@@ -22,6 +22,7 @@ import { DataLineageV2LabView } from './lab/data-lineage-v2/DataLineageV2LabView
 import { TrustPanelSegmentsLabView, TrustPanelIndexLabView } from './lab/trust-panel/TrustPanelLabView';
 import { TrustChatDropdownLabView, TrustChatLabView } from './lab/trust-chat/TrustChatLabView';
 import { ChatHistoryLabView } from './lab/chat-history/ChatHistoryLabView';
+import { ChatSwitchSkeletonLabView } from './lab/chat-history/ChatSwitchSkeletonLabView';
 import { ChatHistoryPanel } from './lab/chat-history/components/ChatHistoryPanel';
 import type { MockChatSession } from './lab/chat-history/mockSessions';
 
@@ -43,7 +44,8 @@ type LabMode =
   | 'trust_panel_index'
   | 'trust_chat'
   | 'trust_chat_dropdown'
-  | 'chat_history';
+  | 'chat_history'
+  | 'chat_switch_skeleton';
 
 const LAB_MODE_LABEL: Record<LabMode, string> = {
   off: 'Lab off',
@@ -56,6 +58,7 @@ const LAB_MODE_LABEL: Record<LabMode, string> = {
   trust_chat: 'Trust Panel · Chat Cascade',
   trust_chat_dropdown: 'Lineage · Chat Dropdown Cascade',
   chat_history: 'Chat History · Rename UX',
+  chat_switch_skeleton: 'Chat History · Switch Skeleton',
 };
 
 // Chat session type
@@ -814,6 +817,8 @@ export default function App() {
               <TrustChatDropdownLabView />
             ) : labMode === 'chat_history' ? (
               <ChatHistoryLabView />
+            ) : labMode === 'chat_switch_skeleton' ? (
+              <ChatSwitchSkeletonLabView />
             ) : (
               <>
             {/* Header */}
