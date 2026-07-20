@@ -1667,26 +1667,3 @@ Reconciliation
 The registry is not an anti-pattern when it is bounded and treated as disposable. The anti-pattern is making it the only record that a request is processing.
 
 The lowest-effort robust implementation does not require full event sourcing or Redis. Start with durable run IDs/status in our DB, idempotent dispatch, the agent's existing persisted run/status API, TanStack Query snapshots, and AI SDK streaming. Add exact resumable streams only when the product truly requires replaying every missed delta.
-
----
-
-## Research references
-
-- Vercel AI SDK: [`useChat`](https://ai-sdk.dev/docs/reference/ai-sdk-ui/use-chat)
-- Vercel AI SDK: [Transport](https://ai-sdk.dev/docs/ai-sdk-ui/transport)
-- Vercel AI SDK: [`UIMessage`](https://ai-sdk.dev/docs/reference/ai-sdk-core/ui-message)
-- Vercel AI SDK: [Message Persistence](https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-message-persistence)
-- Vercel AI SDK: [Resume Streams](https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-resume-streams)
-- Vercel AI SDK: [Stream Protocol](https://ai-sdk.dev/docs/ai-sdk-ui/stream-protocol)
-- Vercel AI SDK: [Streaming Custom Data](https://ai-sdk.dev/docs/ai-sdk-ui/streaming-data)
-- Vercel AI SDK: [Tool Usage](https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-tool-usage)
-- Vercel AI SDK: [Shared `Chat` Context](https://ai-sdk.dev/cookbook/next/use-shared-chat-context)
-- TanStack Query: [Query Keys](https://tanstack.com/query/latest/docs/framework/react/guides/query-keys)
-- TanStack Query: [Caching](https://tanstack.com/query/latest/docs/framework/react/guides/caching)
-- TanStack Query: [Important Defaults](https://tanstack.com/query/latest/docs/framework/react/guides/important-defaults)
-- TanStack Query: [Cache Updates](https://tanstack.com/query/latest/docs/framework/react/guides/updates-from-mutation-responses)
-- TanStack Query: [Persisted Queries](https://tanstack.com/query/latest/docs/framework/react/plugins/persistQueryClient)
-- FastAPI: [Streaming Responses](https://fastapi.tiangolo.com/advanced/custom-response/)
-- FastAPI: [Server-Sent Events](https://fastapi.tiangolo.com/tutorial/server-sent-events/)
-- FastAPI: [Background Tasks](https://fastapi.tiangolo.com/tutorial/background-tasks/)
-- Microsoft Azure Architecture Center: [Transactional Outbox](https://learn.microsoft.com/en-us/azure/architecture/databases/guide/transactional-out-box-cosmos)
