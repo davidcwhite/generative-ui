@@ -15,6 +15,7 @@ import {
   MarketIssuance,
 } from './components/dcm';
 import { Dashboard } from './components/Dashboard';
+import { TeamWorkspaceView } from './team-workspace/TeamWorkspaceView';
 import { LabChatView } from './lab/LabChatView';
 
 const MAX_STORED_MESSAGES = 50;
@@ -129,7 +130,7 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [isCheckingAuth, setIsCheckingAuth] = useState(false);
-  const [activeView, setActiveView] = useState<'chat' | 'dashboard'>('chat');
+  const [activeView, setActiveView] = useState<'chat' | 'dashboard' | 'team'>('chat');
   const [isHistoryHovered, setIsHistoryHovered] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [labMode, setLabMode] = useState<boolean>(false);
@@ -449,7 +450,7 @@ export default function App() {
                 </div>
                 <span className="font-semibold text-[#1A1A1A]">Primary Flow</span>
               </div>
-              <button 
+              <button
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="p-2 rounded-lg hover:bg-stone-100 transition-colors"
               >
@@ -510,6 +511,17 @@ export default function App() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
                 <span className="text-sm font-medium text-stone-700">Data Viewer</span>
+              </button>
+
+              {/* Team Workspace */}
+              <button
+                onClick={() => { setActiveView('team'); setIsMobileMenuOpen(false); }}
+                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-stone-50 transition-colors ${activeView === 'team' ? 'bg-stone-100' : ''}`}
+              >
+                <svg className="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6-4a3 3 0 11-3-3m-9 3a3 3 0 10-3-3" />
+                </svg>
+                <span className="text-sm font-medium text-stone-700">Team Workspace</span>
               </button>
             </div>
             
@@ -572,13 +584,24 @@ export default function App() {
           </div>
           
           {/* Data Viewer button */}
-          <button 
+          <button
             onClick={() => setActiveView('dashboard')}
             className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${activeView === 'dashboard' ? 'bg-[#E5E5E3]' : 'hover:bg-[#E5E5E3]'}`}
             title="Data Viewer"
           >
             <svg className={`w-5 h-5 ${activeView === 'dashboard' ? 'text-[#1A1A1A]' : 'text-stone-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          </button>
+
+          {/* Team Workspace button */}
+          <button
+            onClick={() => setActiveView('team')}
+            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${activeView === 'team' ? 'bg-[#E5E5E3]' : 'hover:bg-[#E5E5E3]'}`}
+            title="Team Workspace"
+          >
+            <svg className={`w-5 h-5 ${activeView === 'team' ? 'text-[#1A1A1A]' : 'text-stone-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
             </svg>
           </button>
         </nav>
@@ -665,6 +688,8 @@ export default function App() {
       {/* Main content */}
       {activeView === 'dashboard' ? (
         <Dashboard />
+      ) : activeView === 'team' ? (
+        <TeamWorkspaceView />
       ) : (
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Scrollable content area */}

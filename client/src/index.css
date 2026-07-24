@@ -1664,3 +1664,32 @@ body {
     transition: none !important;
   }
 }
+
+/* =====================================================================
+ * Team settings — restrained section and inline-panel motion.
+ * All motion is disabled under prefers-reduced-motion.
+ * ===================================================================== */
+
+.tw-step-in {
+  animation: tw-step-in 220ms ease-out both;
+}
+
+@keyframes tw-step-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.tw-panel-in {
+  animation: tw-panel-in 180ms ease-out both;
+}
+
+@keyframes tw-panel-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tw-step-in, .tw-panel-in {
+    animation: none !important;
+  }
+}
