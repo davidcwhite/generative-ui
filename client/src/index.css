@@ -1693,3 +1693,163 @@ body {
     animation: none !important;
   }
 }
+
+/* =====================================================================
+ * Dashboard prototypes — source-owned, shadcn-style primitives with a
+ * curated CSS Grid view and an explicit react-grid-layout edit mode.
+ * ===================================================================== */
+
+.dashboard-panel,
+.workspace-widget {
+  overflow: hidden;
+  border: 1px solid #e7e5e4;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.dashboard-canvas {
+  container-type: inline-size;
+}
+
+.dash-layout {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.dash-span-4 { grid-column: span 4 / span 4; }
+.dash-span-5 { grid-column: span 5 / span 5; }
+.dash-span-7 { grid-column: span 7 / span 7; }
+.dash-span-8 { grid-column: span 8 / span 8; }
+.dash-span-12 { grid-column: span 12 / span 12; }
+
+.dash-metric-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
+  border-top: 1px solid #e7e5e4;
+  border-bottom: 1px solid #e7e5e4;
+  background: #ffffff;
+}
+
+.dash-metric {
+  min-width: 0;
+  padding: 18px 20px;
+  border-right: 1px solid #e7e5e4;
+}
+
+.dash-metric:last-child {
+  border-right: 0;
+}
+
+@container (max-width: 900px) {
+  .dash-span-4,
+  .dash-span-5,
+  .dash-span-7,
+  .dash-span-8 {
+    grid-column: span 12 / span 12;
+  }
+
+  .dash-metric-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dash-metric:nth-child(2) {
+    border-right: 0;
+  }
+
+  .dash-metric:nth-child(-n + 2) {
+    border-bottom: 1px solid #e7e5e4;
+  }
+}
+
+@container (max-width: 520px) {
+  .dash-metric-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .dash-metric {
+    border-right: 0;
+    border-bottom: 1px solid #e7e5e4;
+  }
+
+  .dash-metric:last-child {
+    border-bottom: 0;
+  }
+}
+
+/* Configurable workspace */
+.workspace-widget {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.workspace-widget--editing {
+  border-color: #a8a29e;
+}
+
+.workspace-widget__header {
+  display: flex;
+  min-height: 50px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #e7e5e4;
+  background: #ffffff;
+}
+
+.workspace-widget--editing .workspace-widget__header {
+  cursor: grab;
+  user-select: none;
+}
+
+.workspace-widget--editing .workspace-widget__header:active {
+  cursor: grabbing;
+}
+
+.workspace-widget .dash-metric-strip {
+  height: 100%;
+  border: 0;
+}
+
+.workspace-widget .dash-metric {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 12px 16px;
+}
+
+.workspace-grid .react-grid-item {
+  min-width: 0;
+}
+
+.workspace-grid .react-grid-item.react-grid-placeholder {
+  border: 1px dashed #78716c;
+  border-radius: 12px;
+  background: #e7e5e4;
+  opacity: 0.65;
+}
+
+.workspace-grid .react-grid-item > .react-resizable-handle::after {
+  right: 5px;
+  bottom: 5px;
+  width: 7px;
+  height: 7px;
+  border-right-color: #78716c;
+  border-bottom-color: #78716c;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-widget,
+  .workspace-grid .react-grid-item,
+  .react-grid-layout {
+    transition: none !important;
+  }
+}
