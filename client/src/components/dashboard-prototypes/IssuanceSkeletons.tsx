@@ -99,7 +99,7 @@ export function RefreshIndicator({ label = 'Updating' }: { label?: string }) {
   return (
     <span
       role="status"
-      className="dash-fade-in inline-flex items-center gap-1.5 text-[10px] font-medium text-stone-400"
+      className="dash-fade-soft inline-flex items-center gap-1.5 text-[10px] font-medium text-stone-400"
     >
       <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
       {label}
