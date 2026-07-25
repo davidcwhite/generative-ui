@@ -75,6 +75,8 @@ export function ChartTooltipContent({
   hideLabel = false,
   nameKey,
   valueFormatter,
+  labelFormatter,
+  footer,
 }: {
   active?: boolean;
   payload?: TooltipItem[];
@@ -83,6 +85,9 @@ export function ChartTooltipContent({
   hideLabel?: boolean;
   nameKey?: string;
   valueFormatter?: (value: TooltipItem['value'], item: TooltipItem) => React.ReactNode;
+  labelFormatter?: (label: React.ReactNode, payload: TooltipItem[]) => React.ReactNode;
+  /** Rendered under the rows — a stack total, for instance. */
+  footer?: (payload: TooltipItem[]) => React.ReactNode;
 }) {
   const { config } = useChart();
   if (!active || !payload?.length) return null;
@@ -95,7 +100,9 @@ export function ChartTooltipContent({
       )}
     >
       {!hideLabel && label != null && (
-        <p className="font-medium text-foreground">{String(label)}</p>
+        <p className="font-medium text-foreground">
+          {labelFormatter ? labelFormatter(label, payload) : String(label)}
+        </p>
       )}
       {payload.map((item, index) => {
         const payloadName =
@@ -124,6 +131,9 @@ export function ChartTooltipContent({
           </div>
         );
       })}
+      {footer && (
+        <div className="mt-0.5 border-t border-border/70 pt-1.5">{footer(payload)}</div>
+      )}
     </div>
   );
 }

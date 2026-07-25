@@ -1,11 +1,14 @@
 import {
   SHADCN_ISSUANCE_ROWS,
-  aggregateMonthlyIssuance,
-  aggregateSectorIssuance,
-  otherSectorMembers,
+  buildSeries,
+  categoryUniverse,
+  otherMembers,
+  rankCategories,
+  type CategorySlice,
+  type Dimension,
+  type Granularity,
   type IssuanceRecord,
-  type MonthlyIssuance,
-  type SectorIssuance,
+  type SeriesPoint,
 } from './shadcnIssuanceData';
 
 /**
@@ -13,20 +16,51 @@ import {
  * the UI has to cope with latency exactly as it would in production.
  */
 
+/** Fields a filter clause can target. List fields all resolve to a string on the row. */
+export type ListField = 'issuer' | 'ticker' | 'region' | 'sector' | 'rating' | 'currency' | 'status';
+export type FilterField = ListField | 'size' | 'pricingDate';
+
+/** At most one clause per field, so a clause is identified by its field alone. */
+export type FilterClause =
+  | { field: ListField; values: string[] }
+  | { field: 'size'; min: number | null; max: number | null }
+  | { field: 'pricingDate'; from: string | null; to: string | null };
+
 export interface IssuanceQuery {
-  months: string[];
-  currencies: string[];
-  ratings: string[];
-  sectors: string[];
+  /** Inclusive ISO date window covering the whole dashboard. */
+  from: string;
+  to: string;
+  granularity: Granularity;
+  /** Null renders a single unstacked series. */
+  stackBy: Dimension | null;
+  breakdownBy: Dimension;
+  filters: FilterClause[];
   search: string;
 }
 
-export interface IssuanceAggregates {
-  monthly: MonthlyIssuance[];
-  sectors: SectorIssuance[];
+export interface IssuanceStats {
   totalVolume: number;
   dealCount: number;
-  otherSectors: string[];
+  averageSize: number;
+  largest: { issuer: string; ticker: string; volume: number } | null;
+}
+
+export interface IssuanceAggregates {
+  /**
+   * Echoed back so the charts render the dimensions the data was built for.
+   * While a new query is in flight the previous payload stays on screen, and
+   * reading these off component state instead would draw empty bands.
+   */
+  stackBy: Dimension | null;
+  breakdownBy: Dimension;
+  series: SeriesPoint[];
+  /** Stack bands, largest first. A single "Volume" band when stacking is off. */
+  categories: CategorySlice[];
+  stackOther: string[];
+  breakdown: CategorySlice[];
+  breakdownOther: string[];
+  breakdownTotal: number;
+  stats: IssuanceStats;
 }
 
 export interface IssuanceRowSort {
@@ -66,44 +100,100 @@ function delay<T>(value: T, ms: number, signal?: AbortSignal): Promise<T> {
   });
 }
 
-/**
- * Charts intentionally ignore the sector filter: the donut has to keep showing
- * the whole composition while the table narrows to the picked sector.
- */
-function matchesChartScope(row: IssuanceRecord, query: IssuanceQuery) {
-  if (!query.months.includes(row.monthKey)) return false;
-  if (query.currencies.length > 0 && !query.currencies.includes(row.currency)) return false;
-  if (query.ratings.length > 0 && !query.ratings.includes(row.rating)) return false;
-  return true;
+function matchesClause(row: IssuanceRecord, clause: FilterClause) {
+  if (clause.field === 'size') {
+    if (clause.min !== null && row.size < clause.min) return false;
+    if (clause.max !== null && row.size > clause.max) return false;
+    return true;
+  }
+  if (clause.field === 'pricingDate') {
+    if (clause.from && row.pricingDate < clause.from) return false;
+    if (clause.to && row.pricingDate > clause.to) return false;
+    return true;
+  }
+  if (clause.values.length === 0) return true;
+  return clause.values.includes(row[clause.field]);
 }
 
-function matchesRowScope(row: IssuanceRecord, query: IssuanceQuery) {
-  if (!matchesChartScope(row, query)) return false;
-  if (query.sectors.length > 0 && !query.sectors.includes(row.sector)) return false;
-  const search = query.search.trim().toLowerCase();
-  if (
-    search &&
-    !`${row.issuer} ${row.sector} ${row.rating} ${row.currency} ${row.tenor} ${row.status}`
-      .toLowerCase()
-      .includes(search)
-  ) {
-    return false;
+function matchesSearch(row: IssuanceRecord, search: string) {
+  const term = search.trim().toLowerCase();
+  if (!term) return true;
+  return `${row.issuer} ${row.ticker} ${row.sector} ${row.region} ${row.rating} ${row.currency} ${row.tenor} ${row.status}`
+    .toLowerCase()
+    .includes(term);
+}
+
+/**
+ * `ignoreField` lets a chart drop the filter on the dimension it is breaking
+ * down by, so the composition stays whole while the table narrows to the
+ * clicked slice.
+ */
+function scope(query: IssuanceQuery, ignoreField?: FilterField) {
+  return SHADCN_ISSUANCE_ROWS.filter((row) => {
+    if (row.pricingDate < query.from || row.pricingDate > query.to) return false;
+    if (!matchesSearch(row, query.search)) return false;
+    return query.filters.every((clause) =>
+      clause.field === ignoreField ? true : matchesClause(row, clause),
+    );
+  });
+}
+
+function computeStats(rows: IssuanceRecord[]): IssuanceStats {
+  if (rows.length === 0) {
+    return { totalVolume: 0, dealCount: 0, averageSize: 0, largest: null };
   }
-  return true;
+  let total = 0;
+  let largest = rows[0];
+  rows.forEach((row) => {
+    total += row.eurEquivalent;
+    if (row.eurEquivalent > largest.eurEquivalent) largest = row;
+  });
+  return {
+    totalVolume: total / 1000,
+    dealCount: rows.length,
+    averageSize: total / rows.length,
+    largest: {
+      issuer: largest.issuer,
+      ticker: largest.ticker,
+      volume: largest.eurEquivalent,
+    },
+  };
 }
 
 export function fetchIssuanceAggregates(
   query: IssuanceQuery,
   signal?: AbortSignal,
 ): Promise<IssuanceAggregates> {
-  const scoped = SHADCN_ISSUANCE_ROWS.filter((row) => matchesChartScope(row, query));
+  const filtered = scope(query);
+  const stackRows = query.stackBy ? scope(query, query.stackBy) : filtered;
+  const breakdownRows = scope(query, query.breakdownBy);
+
+  const categories = query.stackBy ? rankCategories(stackRows, query.stackBy) : null;
+  const stackOther = categories ? otherMembers(categories, categoryUniverse(query.stackBy!)) : [];
+
+  const breakdown = rankCategories(breakdownRows, query.breakdownBy);
+  const breakdownOther = otherMembers(breakdown, categoryUniverse(query.breakdownBy));
+
   const aggregates: IssuanceAggregates = {
-    monthly: aggregateMonthlyIssuance(scoped, query.months),
-    sectors: aggregateSectorIssuance(scoped),
-    totalVolume: scoped.reduce((sum, row) => sum + row.eurEquivalent, 0) / 1000,
-    dealCount: scoped.length,
-    otherSectors: otherSectorMembers(scoped),
+    stackBy: query.stackBy,
+    breakdownBy: query.breakdownBy,
+    series: buildSeries(
+      stackRows,
+      query.from,
+      query.to,
+      query.granularity,
+      categories,
+      stackOther,
+      query.stackBy,
+    ),
+    categories: categories ?? [{ category: 'Volume', volume: 0, deals: 0, fill: 'var(--chart-1)' }],
+    stackOther,
+    breakdown,
+    breakdownOther,
+    breakdownTotal: breakdown.reduce((sum, slice) => sum + slice.volume, 0),
+    stats: computeStats(filtered),
   };
+
   return delay(aggregates, latency(AGGREGATE_LATENCY_MS), signal);
 }
 
@@ -114,8 +204,8 @@ export function fetchIssuanceRows(
   sort: IssuanceRowSort | null,
   signal?: AbortSignal,
 ): Promise<IssuanceRowPage> {
-  const scoped = SHADCN_ISSUANCE_ROWS.filter((row) => matchesRowScope(row, query));
-  const sorted = sort ? [...scoped].sort(compareBy(sort)) : scoped;
+  const rows = scope(query);
+  const sorted = sort ? [...rows].sort(compareBy(sort)) : rows;
   const page: IssuanceRowPage = {
     rows: sorted.slice(startRow, endRow),
     totalRows: sorted.length,

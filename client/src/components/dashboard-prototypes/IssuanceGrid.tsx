@@ -101,6 +101,8 @@ const LOADING_CELL_WIDTHS: Record<string, string> = {
   status: '52px',
   pricingDate: '48px',
   issuer: '78%',
+  ticker: '44px',
+  region: '72%',
   currency: '28px',
   size: '72px',
   tenor: '30px',
@@ -165,6 +167,8 @@ export function IssuanceGrid({
         pinned: 'left',
         cellClass: 'font-medium text-stone-950',
       },
+      { field: 'ticker', headerName: 'TICKER', width: 92, cellClass: 'text-stone-500' },
+      { field: 'region', headerName: 'REGION', minWidth: 130, flex: 0.7 },
       { field: 'currency', headerName: 'CCY', width: 72 },
       {
         field: 'size',
