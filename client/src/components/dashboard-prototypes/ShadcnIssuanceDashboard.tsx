@@ -29,6 +29,7 @@ import { useIssuanceAggregates, useSettledFlag } from './useIssuanceAggregates';
 import {
   DIMENSION_LABELS,
   OTHER_CATEGORY,
+  type CategorySlice,
   type Dimension,
   type Granularity,
   type IssuanceRecord,
@@ -47,6 +48,13 @@ const DATASETS: { id: DatasetId; label: string }[] = [
 
 /** Both charts and their skeletons occupy this exact height. */
 const CHART_BAND = 372;
+
+/** Rows a tooltip lists before the tail collapses into one line. */
+const TOOLTIP_ROWS = 7;
+
+/** Legend entries each chart shows before it offers to expand. */
+const LEGEND_ROWS = 6;
+const STACK_CHIPS = 8;
 
 function formatBn(value: number) {
   return value >= 1000 ? `€${(value / 1000).toFixed(2)}tn` : `€${value.toFixed(1)}bn`;
@@ -263,6 +271,12 @@ export default function ShadcnIssuanceDashboard() {
                                 String(payload?.[0]?.payload?.labelLong ?? '')
                               }
                               valueFormatter={(value) => formatBn(Number(value))}
+                              /* A long-tail dimension can put a dozen bands in
+                                 one bar, so the tooltip stays a fixed size. */
+                              maxRows={TOOLTIP_ROWS}
+                              hideEmpty
+                              rankRows={Boolean(shownStackBy)}
+                              emptyLabel="No issuance"
                               footer={
                                 shownStackBy
                                   ? (payload) => (
@@ -313,29 +327,14 @@ export default function ShadcnIssuanceDashboard() {
                     </ChartContainer>
 
                     {shownStackBy && (
-                      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 pl-11">
-                        {categories.map((item) => {
-                          const active = isActive(shownStackBy, item.category, stackOther);
-                          return (
-                            <button
-                              key={item.category}
-                              type="button"
-                              onClick={() => toggleCategory(shownStackBy, item.category, stackOther)}
-                              aria-pressed={active === true}
-                              className={`flex items-center gap-1.5 rounded text-[11px] transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900/15 ${
-                                active === false ? 'opacity-40' : ''
-                              }`}
-                            >
-                              <span
-                                className="h-2 w-2 rounded-[2px]"
-                                style={{ backgroundColor: item.fill }}
-                                aria-hidden
-                              />
-                              <span className="text-stone-600">{item.category}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <StackLegend
+                        key={shownStackBy}
+                        categories={categories}
+                        activeOf={(category) => isActive(shownStackBy, category, stackOther)}
+                        onToggle={(category) =>
+                          toggleCategory(shownStackBy, category, stackOther)
+                        }
+                      />
                     )}
                   </div>
                 )}
@@ -351,16 +350,20 @@ export default function ShadcnIssuanceDashboard() {
                   <BreakdownMenu value={breakdownBy} onChange={setBreakdownBy} />
                 </ChartBar>
 
+                {/* Min height, not height: expanding the legend grows the
+                    column rather than hiding rows behind a scrollbar. */}
                 <div
-                  className={`mt-5 ${showRefreshing ? 'dash-stale' : ''}`}
-                  style={{ height: CHART_BAND }}
+                  className={`mt-5 flex flex-col justify-center ${
+                    showRefreshing ? 'dash-stale' : ''
+                  }`}
+                  style={{ minHeight: CHART_BAND }}
                 >
                   {isFirstLoad ? (
                     <DonutChartSkeleton />
                   ) : breakdown.length === 0 ? (
                     <EmptyBand message="Nothing to break down" onClear={clearAll} />
                   ) : (
-                    <div className="grid h-full content-center gap-4 sm:grid-cols-[minmax(180px,0.8fr)_1fr] xl:grid-cols-1">
+                    <div className="grid content-center gap-4 sm:grid-cols-[minmax(180px,0.8fr)_1fr] xl:grid-cols-1">
                       <div className="relative mx-auto h-[184px] w-full max-w-[230px]">
                         <ChartContainer config={chartConfig} className="h-full w-full">
                           <PieChart accessibilityLayer>
@@ -413,38 +416,17 @@ export default function ShadcnIssuanceDashboard() {
                         </div>
                       </div>
 
-                      <div className="grid content-center gap-0.5">
-                        {breakdown.map((slice) => {
-                          const percentage =
-                            breakdownTotal > 0 ? (slice.volume / breakdownTotal) * 100 : 0;
-                          const active = isActive(shownBreakdownBy, slice.category, breakdownOther);
-                          return (
-                            <button
-                              key={slice.category}
-                              type="button"
-                              onClick={() =>
-                                toggleCategory(shownBreakdownBy, slice.category, breakdownOther)
-                              }
-                              aria-pressed={active === true}
-                              className={`flex items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${
-                                active === false ? 'opacity-40' : ''
-                              }`}
-                            >
-                              <span
-                                className="h-2 w-2 shrink-0 rounded-[2px]"
-                                style={{ backgroundColor: slice.fill }}
-                                aria-hidden
-                              />
-                              <span className="min-w-0 flex-1 truncate text-[11px] text-stone-600">
-                                {slice.category}
-                              </span>
-                              <span className="text-[10px] tabular-nums text-stone-400">
-                                {percentage.toFixed(0)}%
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <BreakdownLegend
+                        key={shownBreakdownBy}
+                        slices={breakdown}
+                        total={breakdownTotal}
+                        activeOf={(category) =>
+                          isActive(shownBreakdownBy, category, breakdownOther)
+                        }
+                        onToggle={(category) =>
+                          toggleCategory(shownBreakdownBy, category, breakdownOther)
+                        }
+                      />
                     </div>
                   )}
                 </div>
@@ -503,6 +485,125 @@ export default function ShadcnIssuanceDashboard() {
         </section>
       </div>
     </DashboardShell>
+  );
+}
+
+/**
+ * Under the bars, where the legend competes with the chart for the band's
+ * height. Chips are ranked, so the head is the part worth reading.
+ */
+function StackLegend({
+  categories,
+  activeOf,
+  onToggle,
+}: {
+  categories: CategorySlice[];
+  activeOf: (category: string) => boolean | null;
+  onToggle: (category: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const collapsible = categories.length > STACK_CHIPS + 1;
+  const shown = !collapsible || expanded ? categories : categories.slice(0, STACK_CHIPS);
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 pl-11">
+      {shown.map((item) => {
+        const active = activeOf(item.category);
+        return (
+          <button
+            key={item.category}
+            type="button"
+            onClick={() => onToggle(item.category)}
+            aria-pressed={active === true}
+            className={`flex min-w-0 items-center gap-1.5 rounded text-[11px] transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900/15 ${
+              active === false ? 'opacity-40' : ''
+            }`}
+          >
+            <span
+              className="h-2 w-2 shrink-0 rounded-[2px]"
+              style={{ backgroundColor: item.fill }}
+              aria-hidden
+            />
+            <span className="max-w-[160px] truncate text-stone-600">{item.category}</span>
+          </button>
+        );
+      })}
+      {collapsible && (
+        <button
+          type="button"
+          onClick={() => setExpanded((current) => !current)}
+          aria-expanded={expanded}
+          className="rounded text-[11px] text-stone-400 transition-colors hover:text-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900/15"
+        >
+          {expanded ? 'Show fewer' : `${categories.length - shown.length} more`}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The legend is the one place every category wants a line of its own, which a
+ * fifty-issuer breakdown cannot have. It shows the ranked head and keeps the
+ * tail one click away rather than pushing the chart out of its band.
+ */
+function BreakdownLegend({
+  slices,
+  total,
+  activeOf,
+  onToggle,
+}: {
+  slices: CategorySlice[];
+  total: number;
+  activeOf: (category: string) => boolean | null;
+  onToggle: (category: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const collapsible = slices.length > LEGEND_ROWS + 1;
+  const shown = !collapsible || expanded ? slices : slices.slice(0, LEGEND_ROWS);
+  const hidden = slices.length - shown.length;
+
+  return (
+    <div className="grid content-center gap-0.5">
+      {shown.map((slice) => {
+        const percentage = total > 0 ? (slice.volume / total) * 100 : 0;
+        const active = activeOf(slice.category);
+        return (
+          <button
+            key={slice.category}
+            type="button"
+            onClick={() => onToggle(slice.category)}
+            aria-pressed={active === true}
+            className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${
+              active === false ? 'opacity-40' : ''
+            }`}
+          >
+            <span
+              className="h-2 w-2 shrink-0 rounded-[2px]"
+              style={{ backgroundColor: slice.fill }}
+              aria-hidden
+            />
+            <span className="min-w-0 flex-1 truncate text-[11px] text-stone-600">
+              {slice.category}
+            </span>
+            <span className="text-[10px] tabular-nums text-stone-400">
+              {percentage.toFixed(0)}%
+            </span>
+          </button>
+        );
+      })}
+      {collapsible && (
+        <button
+          type="button"
+          onClick={() => setExpanded((current) => !current)}
+          aria-expanded={expanded}
+          className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[11px] text-stone-400 transition-colors hover:bg-stone-50 hover:text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        >
+          <span className="h-2 w-2 shrink-0" aria-hidden />
+          {expanded ? 'Show fewer' : `${hidden} more`}
+        </button>
+      )}
+    </div>
   );
 }
 

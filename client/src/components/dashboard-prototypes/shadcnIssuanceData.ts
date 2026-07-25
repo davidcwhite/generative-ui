@@ -7,8 +7,12 @@ export type IssuanceRegion =
   | 'APAC (EM)'
   | 'CEEMEA';
 
-/** Any field the charts can group by. */
-export type Dimension = 'sector' | 'region' | 'currency';
+/**
+ * Any field the charts can group by. Sector, region and currency are small,
+ * closed lists; rating and issuer are long tails, which is what the charts have
+ * to survive with real data.
+ */
+export type Dimension = 'sector' | 'region' | 'currency' | 'rating' | 'issuer';
 export type Granularity = 'daily' | 'weekly' | 'monthly' | 'quarterly';
 
 export interface IssuanceRecord {
@@ -160,16 +164,24 @@ const SIZES = [300, 500, 600, 750, 1000, 1250, 1500, 1750, 2000, 2500] as const;
 const TENORS = ['3Y', '4Y', '5Y', '6Y', '7Y', '8Y', '10Y', '12Y', '15Y', '20Y'] as const;
 const EUR_RATES: Record<IssuanceCurrency, number> = { EUR: 1, USD: 0.91, GBP: 1.17 };
 
-/** Assigned by volume rank so a ramp always reads largest to smallest. */
-const CATEGORY_RAMP = [
-  'var(--chart-1)',
-  'var(--chart-2)',
-  'var(--chart-3)',
-  'var(--chart-4)',
-  'var(--chart-5)',
-] as const;
+/**
+ * A sequential ramp, generated rather than listed, so any number of bands
+ * spans the same two endpoints instead of running out of tokens. Colours are
+ * assigned by volume rank, so a stack always reads darkest to lightest.
+ */
+const RAMP_START = { l: 0.52, c: 0.17, h: 258 };
+const RAMP_END = { l: 0.87, c: 0.045, h: 240 };
 const OTHER_COLOR = '#e7e5e4';
 export const OTHER_CATEGORY = 'Other';
+
+function rampColor(index: number, count: number) {
+  const t = count <= 1 ? 0 : index / (count - 1);
+  const mix = (from: number, to: number) => from + (to - from) * t;
+  return `oklch(${mix(RAMP_START.l, RAMP_END.l).toFixed(3)} ${mix(
+    RAMP_START.c,
+    RAMP_END.c,
+  ).toFixed(3)} ${mix(RAMP_START.h, RAMP_END.h).toFixed(1)})`;
+}
 
 /** Books build Tuesday to Thursday; Mondays and Fridays are thinner. */
 const WEEKDAY_WEIGHTS = [0, 0.9, 1.25, 1.3, 1.1, 0.5, 0] as const;
@@ -430,6 +442,8 @@ export const DIMENSION_LABELS: Record<Dimension, string> = {
   sector: 'Sector',
   region: 'Region',
   currency: 'Currency',
+  rating: 'Rating',
+  issuer: 'Issuer',
 };
 
 export function dimensionValue(row: IssuanceRecord, dimension: Dimension) {
@@ -437,8 +451,20 @@ export function dimensionValue(row: IssuanceRecord, dimension: Dimension) {
 }
 
 /**
- * Ranks categories by volume and folds everything past the ramp into "Other",
- * so a stack never grows more bands than the palette can distinguish.
+ * Bands a dimension is allowed to paint before its tail folds into "Other".
+ * A top five describes a five-region split perfectly and fifty-seven issuers
+ * not at all, so long tails get a longer ramp.
+ */
+const COMPACT_BANDS = 5;
+const LONG_TAIL_BANDS = 10;
+
+function categoryLimit(dimension: Dimension) {
+  return categoryUniverse(dimension).length > 12 ? LONG_TAIL_BANDS : COMPACT_BANDS;
+}
+
+/**
+ * Ranks categories by volume and folds everything past the limit into "Other",
+ * so a stack never grows more bands than the ramp can distinguish.
  */
 export function rankCategories(rows: IssuanceRecord[], dimension: Dimension): CategorySlice[] {
   const totals = new Map<string, { volume: number; deals: number }>();
@@ -458,11 +484,15 @@ export function rankCategories(rows: IssuanceRecord[], dimension: Dimension): Ca
     }))
     .sort((a, b) => b.volume - a.volume);
 
-  const leading = sorted.slice(0, CATEGORY_RAMP.length).map((item, index) => ({
+  // Folding a single leftover costs a name and saves nothing, so it stays out.
+  const limit = categoryLimit(dimension);
+  const bands = sorted.length <= limit + 1 ? sorted.length : limit;
+
+  const leading = sorted.slice(0, bands).map((item, index) => ({
     ...item,
-    fill: CATEGORY_RAMP[index],
+    fill: rampColor(index, bands),
   }));
-  const remaining = sorted.slice(CATEGORY_RAMP.length);
+  const remaining = sorted.slice(bands);
   if (remaining.length === 0) return leading;
 
   return [
@@ -486,6 +516,8 @@ export function otherMembers(slices: CategorySlice[], universe: string[]) {
 export function categoryUniverse(dimension: Dimension): string[] {
   if (dimension === 'sector') return ISSUANCE_SECTORS;
   if (dimension === 'region') return [...ISSUANCE_REGIONS];
+  if (dimension === 'rating') return ISSUANCE_RATINGS;
+  if (dimension === 'issuer') return ISSUANCE_ISSUERS;
   return [...ISSUANCE_CURRENCIES];
 }
 

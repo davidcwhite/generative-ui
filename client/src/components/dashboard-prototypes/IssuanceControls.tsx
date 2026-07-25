@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { addMonths, format, isValid, parse, startOfMonth } from 'date-fns';
 import { CalendarDays, ChevronDown } from 'lucide-react';
@@ -171,7 +171,9 @@ export function DateRangeCalendar({
 
 const TYPED_FORMATS = ['d MMM yyyy', 'd MMM yy', 'yyyy-MM-dd', 'd/M/yyyy', 'd.M.yyyy'];
 const DISPLAY_FORMAT = 'd MMM yyyy';
-const TYPING_HINT = 'Type a date, for example 15 Jan 2026 or 2026-01-15';
+const PLACEHOLDER_FORMAT = 'DD MMM YYYY';
+const FORMAT_HINT = 'Type or pick — 15 Jan 2026, 15/01/2026 or 2026-01-15';
+const INVALID_HINT = 'Not a date we recognise — try 15 Jan 2026';
 
 /** First format that yields a real date wins; out-of-range dates clamp. */
 function parseTyped(text: string): Date | null {
@@ -198,49 +200,69 @@ function DateField({
   value,
   onCommit,
   onEnter,
+  onValidityChange,
 }: {
   label: string;
   value: Date | undefined;
   onCommit: (date: Date | null) => void;
   onEnter: (date: Date | null) => void;
+  onValidityChange: (invalid: boolean) => void;
 }) {
+  const id = useId();
   const [text, setText] = useState('');
   const [invalid, setInvalid] = useState(false);
 
   useEffect(() => {
     setText(value ? format(value, DISPLAY_FORMAT) : '');
     setInvalid(false);
-  }, [value]);
+    onValidityChange(false);
+  }, [value, onValidityChange]);
+
+  const flag = (failed: boolean) => {
+    setInvalid(failed);
+    onValidityChange(failed);
+  };
 
   const commit = () => {
     const parsed = parseTyped(text);
     const failed = text.trim() !== '' && parsed === null;
-    setInvalid(failed);
+    flag(failed);
     if (!failed) onCommit(parsed);
     return failed ? undefined : parsed;
   };
 
   return (
-    <input
-      type="text"
-      value={text}
-      aria-label={label}
-      aria-invalid={invalid}
-      placeholder={label}
-      title={TYPING_HINT}
-      spellCheck={false}
-      onChange={(event) => setText(event.target.value)}
-      onBlur={commit}
-      onKeyDown={(event) => {
-        if (event.key !== 'Enter') return;
-        event.preventDefault();
-        const parsed = commit();
-        if (parsed !== undefined) onEnter(parsed);
-      }}
-      className={`h-7 w-[98px] rounded-md border bg-white px-2 text-[11px] tabular-nums text-stone-800 transition-colors placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900/10 ${
-        invalid ? 'border-red-300 text-red-600' : 'border-stone-200 focus:border-stone-300'
-      }`}
-    />
+    <span className="inline-flex flex-col gap-1">
+      <label
+        className="text-[9px] font-medium uppercase tracking-[0.1em] text-stone-400"
+        htmlFor={id}
+      >
+        {label}
+      </label>
+      <input
+        id={id}
+        type="text"
+        value={text}
+        aria-invalid={invalid}
+        placeholder={PLACEHOLDER_FORMAT}
+        title={FORMAT_HINT}
+        spellCheck={false}
+        onChange={(event) => {
+          setText(event.target.value);
+          if (invalid) flag(false);
+        }}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter') return;
+          event.preventDefault();
+          const parsed = commit();
+          if (parsed !== undefined) onEnter(parsed);
+        }}
+        className={`h-7 w-[104px] rounded-md border bg-white px-2 text-[11px] tabular-nums text-stone-800 transition-colors placeholder:tracking-tight placeholder:text-stone-300 focus:outline-none focus:ring-2 focus:ring-stone-900/10 ${
+          invalid ? 'border-red-300 text-red-600' : 'border-stone-200 focus:border-stone-300'
+        }`}
+      />
+    </span>
   );
 }
 
@@ -261,6 +283,18 @@ export function DateRangeFooter({
   onApply: (range: DateRange) => void;
   onReset?: () => void;
 }) {
+  const [invalid, setInvalid] = useState({ from: false, to: false });
+  const flag = useCallback(
+    (side: 'from' | 'to', failed: boolean) =>
+      setInvalid((current) =>
+        current[side] === failed ? current : { ...current, [side]: failed },
+      ),
+    [],
+  );
+  const flagFrom = useCallback((failed: boolean) => flag('from', failed), [flag]);
+  const flagTo = useCallback((failed: boolean) => flag('to', failed), [flag]);
+  const rejected = invalid.from || invalid.to;
+
   /** Typing an end date before the start reads as a correction, so they swap. */
   const commit = (side: 'from' | 'to', date: Date | null): DateRange | undefined => {
     const from = side === 'from' ? date ?? undefined : draft?.from;
@@ -272,40 +306,56 @@ export function DateRangeFooter({
   };
 
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-stone-100 px-2.5 py-2">
-      <div className="flex items-center gap-1.5">
-        <DateField
-          label="Start"
-          value={draft?.from}
-          onCommit={(date) => commit('from', date)}
-          onEnter={(date) => {
-            const next = commit('from', date);
-            if (canApply(next)) onApply(next as DateRange);
-          }}
-        />
-        <span className="text-[11px] text-stone-300" aria-hidden>
-          –
-        </span>
-        <DateField
-          label="End"
-          value={draft?.to}
-          onCommit={(date) => commit('to', date)}
-          onEnter={(date) => {
-            const next = commit('to', date);
-            if (canApply(next)) onApply(next as DateRange);
-          }}
-        />
-      </div>
-      <div className="flex items-center gap-1">
-        {onReset && (
-          <Button variant="ghost" size="xs" onClick={onReset}>
-            Reset
+    <div className="border-t border-stone-100 px-2.5 py-2.5">
+      <div className="flex items-end justify-between gap-3">
+        <div className="flex items-end gap-1.5">
+          <DateField
+            label="Start"
+            value={draft?.from}
+            onValidityChange={flagFrom}
+            onCommit={(date) => commit('from', date)}
+            onEnter={(date) => {
+              const next = commit('from', date);
+              if (canApply(next)) onApply(next as DateRange);
+            }}
+          />
+          <span className="pb-2 text-[11px] text-stone-300" aria-hidden>
+            –
+          </span>
+          <DateField
+            label="End"
+            value={draft?.to}
+            onValidityChange={flagTo}
+            onCommit={(date) => commit('to', date)}
+            onEnter={(date) => {
+              const next = commit('to', date);
+              if (canApply(next)) onApply(next as DateRange);
+            }}
+          />
+        </div>
+        <div className="flex items-center gap-1">
+          {onReset && (
+            <Button variant="ghost" size="xs" onClick={onReset}>
+              Reset
+            </Button>
+          )}
+          {/* Applying while a field is unparsed would silently ignore it. */}
+          <Button
+            size="xs"
+            disabled={rejected || !canApply(draft)}
+            onClick={() => onApply(draft as DateRange)}
+          >
+            Apply
           </Button>
-        )}
-        <Button size="xs" disabled={!canApply(draft)} onClick={() => onApply(draft as DateRange)}>
-          Apply
-        </Button>
+        </div>
       </div>
+      {/* Always on show: the fields accept text, and this is the grammar. */}
+      <p
+        className={`mt-1.5 text-[10px] ${rejected ? 'text-red-600' : 'text-stone-400'}`}
+        role={rejected ? 'alert' : undefined}
+      >
+        {rejected ? INVALID_HINT : FORMAT_HINT}
+      </p>
     </div>
   );
 }
@@ -424,7 +474,7 @@ export function GranularityTabs({
  * Dimension pickers
  * ------------------------------------------------------------------ */
 
-const DIMENSIONS: Dimension[] = ['sector', 'region', 'currency'];
+const DIMENSIONS: Dimension[] = ['sector', 'region', 'currency', 'rating', 'issuer'];
 
 /** Ghost trigger that reads as a caption until hovered — quiet by default. */
 function MenuTrigger({ children }: { children: React.ReactNode }) {
