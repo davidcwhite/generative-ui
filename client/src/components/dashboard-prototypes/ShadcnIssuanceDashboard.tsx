@@ -185,21 +185,17 @@ export default function ShadcnIssuanceDashboard() {
       onDatasetChange={setDataset}
     >
       <div className="mx-auto w-full max-w-[1800px] px-5 py-7 lg:px-8">
-        <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        {/* The nav already names the dataset, so the headline figure is the title. */}
+        <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
-            {/* The indicator shares the title's line box; centring it against the
-                whole two-line stack drops it beside the description instead. */}
+            {/* The indicator shares the caption's line box, clear of the figure. */}
             <div className="flex items-center gap-2.5">
-              <h1 className="text-lg font-semibold tracking-[-0.025em] text-stone-900">
-                Issuance {viewMode === 'data' ? 'data' : 'dashboard'}
+              <h1 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-400">
+                Issuance volume
               </h1>
               {showRefreshing && <RefreshIndicator />}
             </div>
-            <p className="mt-1 text-xs text-stone-500">
-              {viewMode === 'data'
-                ? 'Search and inspect the full issuance record.'
-                : 'Volume, composition and execution-level detail in one view.'}
-            </p>
+            {isFirstLoad || !stats ? <StatStripSkeleton /> : <StatStrip stats={stats} />}
           </div>
 
           <RangeControl
@@ -222,25 +218,14 @@ export default function ShadcnIssuanceDashboard() {
               className={`flex flex-col ${prefs.showSectorMix ? 'xl:col-span-8' : 'xl:col-span-12'}`}
               aria-busy={isFirstLoad || isRefreshing}
             >
-              <SectionHeading
-                label="Issuance volume"
-                actions={
-                  <div className="flex items-center gap-2">
-                    <StackByMenu value={stackBy} onChange={setStackBy} />
-                    <GranularityTabs
-                      value={granularity}
-                      range={dateWindow}
-                      onChange={setGranularity}
-                    />
-                  </div>
-                }
-              >
-                {isFirstLoad || !stats ? <StatStripSkeleton /> : <StatStrip stats={stats} />}
-              </SectionHeading>
+              <ChartBar>
+                <StackByMenu value={stackBy} onChange={setStackBy} />
+                <GranularityTabs value={granularity} range={dateWindow} onChange={setGranularity} />
+              </ChartBar>
 
               {/* Fixed band height keeps the skeleton and the chart the same size. */}
               <div
-                className={`mt-6 ${showRefreshing ? 'dash-stale' : ''}`}
+                className={`mt-5 ${showRefreshing ? 'dash-stale' : ''}`}
                 style={{ height: CHART_BAND }}
               >
                 {isFirstLoad ? (
@@ -362,17 +347,12 @@ export default function ShadcnIssuanceDashboard() {
 
             {prefs.showSectorMix && (
               <div className="flex flex-col xl:col-span-4" aria-busy={isFirstLoad || isRefreshing}>
-                <SectionHeading
-                  label={`${DIMENSION_LABELS[shownBreakdownBy]} mix`}
-                  actions={<BreakdownMenu value={breakdownBy} onChange={setBreakdownBy} />}
-                >
-                  <p className="text-[11px] leading-6 text-stone-500">
-                    Click a segment or label to filter the table
-                  </p>
-                </SectionHeading>
+                <ChartBar label={`${DIMENSION_LABELS[shownBreakdownBy]} mix`}>
+                  <BreakdownMenu value={breakdownBy} onChange={setBreakdownBy} />
+                </ChartBar>
 
                 <div
-                  className={`mt-6 ${showRefreshing ? 'dash-stale' : ''}`}
+                  className={`mt-5 ${showRefreshing ? 'dash-stale' : ''}`}
                   style={{ height: CHART_BAND }}
                 >
                   {isFirstLoad ? (
@@ -529,11 +509,11 @@ export default function ShadcnIssuanceDashboard() {
 /** Headline figure first, supporting figures at caption weight beside it. */
 function StatStrip({ stats }: { stats: IssuanceStats }) {
   return (
-    <div className="flex flex-wrap items-end gap-x-5 gap-y-2">
-      <span className="text-2xl font-semibold leading-none tracking-[-0.035em] text-stone-950">
+    <div className={`${STRIP_BOX} flex-wrap gap-x-7 gap-y-2`}>
+      <span className="text-[32px] font-semibold leading-none tracking-[-0.04em] text-stone-950">
         {formatBn(stats.totalVolume)}
       </span>
-      <div className="flex items-end gap-5">
+      <div className="flex items-end gap-6">
         <Stat label="Deals" value={stats.dealCount.toLocaleString()} />
         <Stat label="Average" value={formatMm(stats.averageSize)} />
         <Stat
@@ -548,9 +528,9 @@ function StatStrip({ stats }: { stats: IssuanceStats }) {
 
 function Stat({ label, value, suffix }: { label: string; value: string; suffix?: string }) {
   return (
-    <div className="border-l border-stone-200/80 pl-5 first:border-l-0 first:pl-0">
+    <div className="border-l border-stone-200/80 pl-6 first:border-l-0 first:pl-0">
       <p className="text-[10px] uppercase tracking-[0.1em] text-stone-400">{label}</p>
-      <p className="mt-1 text-[13px] font-medium leading-none tabular-nums text-stone-800">
+      <p className="mt-1.5 text-sm font-medium leading-none tabular-nums text-stone-800">
         {value}
         {suffix && <span className="ml-1.5 text-[11px] text-stone-400">{suffix}</span>}
       </p>
@@ -558,16 +538,18 @@ function Stat({ label, value, suffix }: { label: string; value: string; suffix?:
   );
 }
 
-/** Matches the loaded strip's 32px box so the chart below never shifts. */
+/** The strip and its skeleton share this box, so the page never shifts. */
+const STRIP_BOX = 'mt-2 flex min-h-9 items-end';
+
 function StatStripSkeleton() {
   return (
-    <div className="flex h-8 items-end gap-5">
-      <Skeleton className="h-6 w-28" />
-      <div className="flex items-end gap-5">
+    <div className={`${STRIP_BOX} gap-7`}>
+      <Skeleton className="h-8 w-40" />
+      <div className="flex items-end gap-6">
         {[44, 52, 64].map((width) => (
-          <div key={width} className="space-y-1.5">
+          <div key={width} className="space-y-2">
             <Skeleton className="h-2 w-10" />
-            <Skeleton className="h-2.5" style={{ width }} />
+            <Skeleton className="h-3" style={{ width }} />
           </div>
         ))}
       </div>
@@ -587,27 +569,20 @@ function EmptyBand({ message, onClear }: { message: string; onClear: () => void 
 }
 
 /**
- * Small uppercase label over its content — replaces the old card header. Both
- * columns reserve the same height so their charts start on the same line.
+ * A chart's own controls, sat directly above it. Both columns reserve the same
+ * height so their charts start on the same line.
  */
-function SectionHeading({
-  label,
-  actions,
-  children,
-}: {
-  label: string;
-  actions?: React.ReactNode;
-  children: React.ReactNode;
-}) {
+function ChartBar({ label, children }: { label?: string; children: React.ReactNode }) {
   return (
-    <div className="flex min-h-[66px] flex-col gap-1.5">
-      <div className="flex min-h-7 items-center justify-between gap-3">
+    <div className="flex min-h-8 items-center justify-between gap-3">
+      {label ? (
         <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-400">
           {label}
         </p>
-        {actions}
-      </div>
-      {children}
+      ) : (
+        <span aria-hidden />
+      )}
+      <div className="flex items-center gap-2">{children}</div>
     </div>
   );
 }

@@ -314,11 +314,12 @@ function DateEditor({
       <DateRangeCalendar anchor={clause?.from ?? undefined} selected={draft} onSelect={setDraft} />
       <DateRangeFooter
         draft={draft}
-        applyDisabled={!draft?.from}
-        onApply={() =>
+        onDraftChange={setDraft}
+        canApply={(range) => Boolean(range?.from)}
+        onApply={(range) =>
           onApply(
-            draft?.from ? isoFromLocal(draft.from) : null,
-            draft?.to ? isoFromLocal(draft.to) : null,
+            range.from ? isoFromLocal(range.from) : null,
+            range.to ? isoFromLocal(range.to) : null,
           )
         }
       />
