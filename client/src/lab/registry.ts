@@ -5,6 +5,7 @@ import { V16SoftFocusStream } from './variants/V16SoftFocusStream';
 import { V17ParsedSignalStream } from './variants/V17ParsedSignalStream';
 import { V18DataRibbonStream } from './variants/V18DataRibbonStream';
 import { V19ThinkingTimeline } from './variants/V19ThinkingTimeline';
+import { BlockChatResponse } from '@/blocks/chat/BlockChatResponse';
 import type { VariantDef } from './types';
 
 export const variants: Record<string, VariantDef> = {
@@ -50,6 +51,13 @@ export const variants: Record<string, VariantDef> = {
     blurb: 'A reasoning-trace rail: a clean vertical line with checkpoints — a search node with source chips, tool steps whose narration types in, and a settled “Thought for Ns” node.',
     Render: V19ThinkingTimeline,
   },
+  blocks_in_chat: {
+    id: 'blocks_in_chat',
+    label: 'Blocks · In chat',
+    blurb:
+      'The chat form of a dashboard block: three numbers, one visual, an as-of stamp and a single Open. The response is fixed rather than streamed — this variant is about the block and the hop into the workspace, not the reasoning trace.',
+    Render: BlockChatResponse,
+  },
 };
 
 export const variantOrder = [
@@ -60,6 +68,7 @@ export const variantOrder = [
   'v17_parsed_signal_stream',
   'v18_data_ribbon_stream',
   'v19_thinking_timeline',
+  'blocks_in_chat',
 ] as const;
 
 export type VariantId = (typeof variantOrder)[number];

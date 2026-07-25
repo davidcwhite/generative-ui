@@ -29,6 +29,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import { BlocksWorkspace } from '@/blocks/BlocksWorkspace';
+import { useWorkspaceTarget } from '@/blocks/navigation';
 import { DashboardSettingsButton, useDashboardChrome } from './DashboardSettings';
 import { IssuanceDetail } from './IssuanceDetail';
 import { IssuanceGrid } from './IssuanceGrid';
@@ -49,7 +51,7 @@ import {
   type IssuanceRecord,
 } from './shadcnIssuanceData';
 
-type ViewMode = 'dashboards' | 'data';
+type ViewMode = 'dashboards' | 'data' | 'blocks';
 type DatasetId = 'issuance' | 'allocations' | 'market' | 'pipeline' | 'comparables';
 type Range = '6M' | 'YTD' | '12M' | '3Y';
 
@@ -76,6 +78,10 @@ const volumeChartConfig = {
 export default function ShadcnIssuanceDashboard() {
   const { prefs } = useDashboardChrome();
   const [viewMode, setViewMode] = useState<ViewMode>('dashboards');
+  const workspaceTarget = useWorkspaceTarget();
+  useEffect(() => {
+    if (workspaceTarget) setViewMode('blocks');
+  }, [workspaceTarget]);
   const [dataset, setDataset] = useState<DatasetId>('issuance');
   const [range, setRange] = useState<Range>('12M');
   const [search, setSearch] = useState('');
@@ -172,6 +178,20 @@ export default function ShadcnIssuanceDashboard() {
           .reduce((sum, item) => sum + item.volume, 0) /
           totalVolume) *
         100;
+
+  // Blocks own their whole surface, so they bypass the issuance layout entirely.
+  if (viewMode === 'blocks') {
+    return (
+      <DashboardShell
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        dataset={dataset}
+        onDatasetChange={setDataset}
+      >
+        <BlocksWorkspace />
+      </DashboardShell>
+    );
+  }
 
   if (dataset !== 'issuance') {
     return (
@@ -580,6 +600,9 @@ function DashboardShell({
                 </TabsTrigger>
                 <TabsTrigger value="data" className="h-7">
                   Data
+                </TabsTrigger>
+                <TabsTrigger value="blocks" className="h-7">
+                  Blocks
                 </TabsTrigger>
               </TabsList>
             </Tabs>

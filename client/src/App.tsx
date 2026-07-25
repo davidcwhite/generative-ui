@@ -15,6 +15,7 @@ import {
   MarketIssuance,
 } from './components/dcm';
 import { Dashboard } from './components/Dashboard';
+import { useWorkspaceTarget } from './blocks/navigation';
 import { TeamWorkspaceView } from './team-workspace/TeamWorkspaceView';
 import { LabChatView } from './lab/LabChatView';
 
@@ -131,6 +132,11 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [isCheckingAuth, setIsCheckingAuth] = useState(false);
   const [activeView, setActiveView] = useState<'chat' | 'dashboard' | 'team'>('chat');
+  // Opening a block from a chat response carries the user across to the dashboard.
+  const workspaceTarget = useWorkspaceTarget();
+  useEffect(() => {
+    if (workspaceTarget) setActiveView('dashboard');
+  }, [workspaceTarget]);
   const [isHistoryHovered, setIsHistoryHovered] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [labMode, setLabMode] = useState<boolean>(false);

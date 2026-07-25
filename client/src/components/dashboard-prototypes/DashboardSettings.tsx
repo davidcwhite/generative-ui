@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
+import { useWorkspaceTarget } from '@/blocks/navigation';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -103,6 +104,13 @@ export function DashboardChromeProvider({ children }: { children: ReactNode }) {
     ...DEFAULT_PREFS,
     ...readStored().prefs,
   }));
+
+  // Blocks live in the Shadcn dashboard, so a chat deep link has to land there
+  // whichever prototype the user last had open.
+  const workspaceTarget = useWorkspaceTarget();
+  useEffect(() => {
+    if (workspaceTarget) setPrototypeId('shadcn_issuance');
+  }, [workspaceTarget]);
 
   useEffect(() => {
     try {
