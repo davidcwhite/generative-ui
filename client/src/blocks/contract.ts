@@ -1,4 +1,4 @@
-import type { Currency, RatingBand, Sector } from './data/model';
+import type { Currency, DealStatus, RatingBand, Sector } from './data/model';
 import type { TenorBucket } from './data/queries';
 
 /**
@@ -35,8 +35,15 @@ export interface CompsSpec {
   asOf: string;
 }
 
-/** Only comps is implemented; the union is the extension point for the rest. */
-export type BlockSpec = CompsSpec;
+export interface DealFlashSpec {
+  blockType: 'deal_flash';
+  dealId: string;
+  /** Which tranche leads the view. Defaults to the largest. */
+  trancheId?: string;
+  asOf: string;
+}
+
+export type BlockSpec = CompsSpec | DealFlashSpec;
 
 export interface CompsPoint {
   id: string;
@@ -110,7 +117,73 @@ export interface CompsPayload {
   truncated: boolean;
 }
 
-export type BlockPayload = CompsPayload;
+/**
+ * A rung on the pricing ladder. `reached` is false for stages a live deal
+ * hasn't got to yet, which is how one component covers every lifecycle stage
+ * from announcement to pricing without inventing numbers for the ones ahead.
+ */
+export interface PricingStage {
+  label: 'IPT' | 'Guidance' | 'Reoffer';
+  spread: number | null;
+  reached: boolean;
+}
+
+export interface DealFlashTranche {
+  id: string;
+  key: string;
+  tenorLabel: string;
+  tenorYears: number;
+  sizeMm: number | null;
+  coupon: number | null;
+  maturity: string;
+  format: string;
+  reofferSpread: number | null;
+  compressionBp: number | null;
+  nipBp: number | null;
+  bookMm: number | null;
+  coverage: number | null;
+  stages: PricingStage[];
+}
+
+export interface DealFlashPayload {
+  deal: {
+    id: string;
+    issuer: string;
+    ticker: string;
+    rating: string;
+    ratingBand: RatingBand;
+    sector: Sector;
+    status: DealStatus;
+    pricingDate: string;
+    currency: Currency;
+    leads: string[];
+  };
+  tranches: DealFlashTranche[];
+  /** The tranche the block leads with. */
+  focus: DealFlashTranche;
+  totalSizeMm: number | null;
+  /**
+   * The tape the deal priced into. Execution is judged against the day, not
+   * against history: 95bp on a widening tape is a different piece of work from
+   * 95bp on a rallying one, and the spread alone can't tell you which it was.
+   */
+  market: {
+    level: number;
+    changeWeekBp: number;
+    series: { date: string; level: number }[];
+  };
+  spread?: Benchmark;
+  coverage?: Benchmark;
+  nip?: Benchmark;
+  /**
+   * The comps run for this deal, precomputed as a spec. Cross-block links are
+   * data rather than hardcoded routes, so a block can offer a way onward
+   * without knowing what else exists.
+   */
+  compsSpec: CompsSpec;
+}
+
+export type BlockPayload = CompsPayload | DealFlashPayload;
 
 /**
  * What the agent attaches to a message. `payload` is frozen at `computedAt`;
@@ -127,6 +200,8 @@ export interface BlockInstance {
 export const INLINE_ROW_CAP = 25;
 
 export function describeSpec(spec: BlockSpec): string {
+  if (spec.blockType === 'deal_flash') return 'Single deal · terms to book';
+
   const parts: string[] = [];
   if (spec.filters.ratingBands?.length) parts.push(spec.filters.ratingBands.join('/'));
   if (spec.filters.sectors?.length) parts.push(spec.filters.sectors.join(', '));

@@ -26,6 +26,9 @@ export const TRANCHE_ROWS: TrancheRow[] = DATASET.tranches
 
 export const ROW_BY_ID = new Map(TRANCHE_ROWS.map((row) => [row.id, row]));
 
+/** Daily credit backdrop, oldest first. */
+export const MARKET_SERIES = DATASET.market;
+
 export const SECTORS = [...new Set(DATASET.issuers.map((i) => i.sector))].sort() as Sector[];
 export const RATING_BANDS: RatingBand[] = ['AA', 'A', 'BBB'];
 export const CURRENCIES: Currency[] = ['EUR', 'USD', 'GBP'];

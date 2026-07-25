@@ -30,7 +30,7 @@ export function CompsInline({
   /** Current execution of the same spec, used only to detect drift. */
   live?: CompsPayload;
 }) {
-  const spec = instance.spec;
+  const spec = instance.spec as CompsSpec;
   const payload = instance.payload as CompsPayload;
   const subject = payload.subject;
   const moved = live ? drift(payload, live) : 0;

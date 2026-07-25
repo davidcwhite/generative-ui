@@ -1,15 +1,23 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, Search } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, ChevronDown, Clock3, Search } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { BlockType, CompsSpec } from './contract';
+import type { BlockSpec, BlockType, CompsSpec, DealFlashSpec } from './contract';
 import { DEFAULT_COMPS_SPEC } from './execute';
-import { TRANCHE_ROWS } from './data/queries';
+import { AS_OF, ROW_BY_ID, TRANCHE_ROWS } from './data/queries';
 import { CompsWorkspace } from './comps/CompsWorkspace';
-import { useWorkspaceTarget } from './navigation';
+import { DealFlashWorkspace } from './deal-flash/DealFlashWorkspace';
+import {
+  returnToChat,
+  useRecentBlocks,
+  useWorkspaceTarget,
+  type BlockSource,
+} from './navigation';
 import { readSpecFromUrl, writeSpecToUrl } from './urlState';
 
 interface BlockOption {
@@ -26,7 +34,7 @@ interface BlockOption {
  */
 const BLOCKS: BlockOption[] = [
   { id: 'comps', label: 'Comps', hint: 'Where a deal prices against its peer set', ready: true },
-  { id: 'deal_flash', label: 'Deal Flash', hint: 'Single deal, terms to book', ready: false },
+  { id: 'deal_flash', label: 'Deal Flash', hint: 'Single deal, terms to book', ready: true },
   {
     id: 'allocation_summary',
     label: 'Allocation Summary',
@@ -42,14 +50,20 @@ const BLOCKS: BlockOption[] = [
   { id: 'supply', label: 'Supply', hint: 'Volume and mix over time', ready: false },
 ];
 
-/** Searchable subject picker over the tranche universe. */
-function SubjectPicker({
-  spec,
-  onChange,
-}: {
-  spec: CompsSpec;
-  onChange: (next: CompsSpec) => void;
-}) {
+/** A multi-tranche priced deal, so the default view shows the block complete. */
+const DEFAULT_DEAL_FLASH_SPEC: DealFlashSpec = {
+  blockType: 'deal_flash',
+  dealId:
+    TRANCHE_ROWS.find((row) => row.multiTranche && row.deal.status === 'priced')?.dealId ??
+    TRANCHE_ROWS[0].dealId,
+  asOf: AS_OF,
+};
+
+const blockLabel = (spec: BlockSpec) =>
+  BLOCKS.find((block) => block.id === spec.blockType)?.label ?? 'Block';
+
+/** Searchable picker over the tranche universe, shared by both block types. */
+function SubjectPicker({ spec, onChange }: { spec: BlockSpec; onChange: (next: BlockSpec) => void }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
 
@@ -65,9 +79,23 @@ function SubjectPicker({
     return pool.slice(0, 40);
   }, [query]);
 
-  const current = spec.subject
-    ? TRANCHE_ROWS.find((row) => row.id === spec.subject?.trancheId)
-    : undefined;
+  const currentId =
+    spec.blockType === 'comps'
+      ? spec.subject?.trancheId
+      : spec.trancheId ??
+        TRANCHE_ROWS.find((row) => row.dealId === spec.dealId)?.id;
+  const current = currentId ? ROW_BY_ID.get(currentId) : undefined;
+
+  const select = (trancheId: string) => {
+    const row = ROW_BY_ID.get(trancheId);
+    if (!row) return;
+    onChange(
+      spec.blockType === 'comps'
+        ? { ...spec, subject: { trancheId } }
+        : { ...spec, dealId: row.dealId, trancheId },
+    );
+    setOpen(false);
+  };
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -78,7 +106,11 @@ function SubjectPicker({
         >
           <Search className="h-3.5 w-3.5 shrink-0 text-stone-400" aria-hidden />
           <span className="truncate">
-            {current ? `${current.issuer.name} ${current.tenorLabel}` : 'Set a subject deal'}
+            {current
+              ? `${current.issuer.name} ${current.tenorLabel}`
+              : spec.blockType === 'comps'
+                ? 'Set a subject deal'
+                : 'Choose a deal'}
           </span>
           <ChevronDown className="h-3 w-3 shrink-0 text-stone-400" aria-hidden />
         </button>
@@ -94,14 +126,14 @@ function SubjectPicker({
           />
         </div>
         <div className="max-h-72 overflow-auto p-1">
+          {matches.length === 0 && (
+            <p className="px-2 py-6 text-center text-xs text-stone-400">No issuer matches that.</p>
+          )}
           {matches.map((row) => (
             <button
               key={row.id}
               type="button"
-              onClick={() => {
-                onChange({ ...spec, subject: { trancheId: row.id } });
-                setOpen(false);
-              }}
+              onClick={() => select(row.id)}
               className="flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-stone-100"
             >
               <span className="min-w-0">
@@ -124,32 +156,40 @@ function SubjectPicker({
 }
 
 function BlockPicker({
-  active,
+  spec,
   onChange,
+  recents,
 }: {
-  active: BlockType;
-  onChange: (next: BlockType) => void;
+  spec: BlockSpec;
+  onChange: (next: BlockSpec) => void;
+  recents: ReturnType<typeof useRecentBlocks>;
 }) {
-  const current = BLOCKS.find((block) => block.id === active) ?? BLOCKS[0];
+  const [open, setOpen] = useState(false);
+
+  const choose = (id: BlockType) => {
+    setOpen(false);
+    if (id === spec.blockType) return;
+    onChange(id === 'comps' ? DEFAULT_COMPS_SPEC : DEFAULT_DEAL_FLASH_SPEC);
+  };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
           className="inline-flex h-8 items-center gap-2 rounded-md bg-stone-100 px-3 text-xs font-medium text-stone-800 transition-colors hover:bg-stone-200/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-300"
         >
-          {current.label}
+          {blockLabel(spec)}
           <ChevronDown className="h-3 w-3 text-stone-400" aria-hidden />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-72">
+      <DropdownMenuContent align="start" className="w-80">
         {BLOCKS.map((block) => (
           <button
             key={block.id}
             type="button"
             disabled={!block.ready}
-            onClick={() => onChange(block.id)}
+            onClick={() => choose(block.id)}
             className="flex w-full items-start gap-2 rounded-md px-2 py-2 text-left transition-colors enabled:hover:bg-stone-100 disabled:cursor-default disabled:opacity-45"
           >
             <span className="min-w-0 flex-1">
@@ -163,39 +203,102 @@ function BlockPicker({
             )}
           </button>
         ))}
+
+        {/* Labelled by the question, not the block type: a list of four comps
+            runs is unreadable, a list of four questions is obvious. */}
+        {recents.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Opened this session</DropdownMenuLabel>
+            {recents.map((entry) => (
+              <button
+                key={`${entry.at}`}
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  onChange(entry.spec);
+                }}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-stone-100"
+              >
+                <Clock3 className="h-3 w-3 shrink-0 text-stone-300" aria-hidden />
+                <span className="min-w-0 flex-1 truncate text-xs text-stone-700">
+                  {entry.source?.question ?? blockLabel(entry.spec)}
+                </span>
+                <span className="shrink-0 text-[10px] text-stone-400">
+                  {blockLabel(entry.spec)}
+                </span>
+              </button>
+            ))}
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
 
-/**
- * The container for every block: a block picker and a subject picker, and
- * nothing else. Arriving from chat sets both, which is the entire interaction.
- */
-export function BlocksWorkspace() {
-  const [blockType, setBlockType] = useState<BlockType>('comps');
-  const [spec, setSpec] = useState<CompsSpec>(() => readSpecFromUrl() ?? DEFAULT_COMPS_SPEC);
-  const target = useWorkspaceTarget();
+/** Names where you came from and takes you back to that spot in the thread. */
+function ReturnToChat({ source }: { source: BlockSource }) {
+  return (
+    <button
+      type="button"
+      onClick={() => returnToChat(source.anchorId)}
+      className="group inline-flex h-7 max-w-[340px] items-center gap-1.5 rounded-md px-2 text-[11px] text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-300"
+    >
+      <ArrowLeft
+        className="h-3 w-3 shrink-0 transition-transform group-hover:-translate-x-0.5"
+        aria-hidden
+      />
+      <span className="shrink-0">Back to chat</span>
+      <span className="truncate text-stone-400">· {source.question}</span>
+    </button>
+  );
+}
 
-  // A spec arriving from chat replaces the current one, including on a repeat
-  // click of the same block, which is why the target carries a nonce.
+export function BlocksWorkspace() {
+  const [spec, setSpec] = useState<BlockSpec>(() => readSpecFromUrl() ?? DEFAULT_COMPS_SPEC);
+  const [source, setSource] = useState<BlockSource | undefined>();
+  const target = useWorkspaceTarget();
+  const recents = useRecentBlocks();
+
+  // A spec arriving from chat replaces the current one, and brings with it the
+  // question that produced it so the way back can be labelled.
   useEffect(() => {
-    if (target) setSpec(target.spec);
+    if (!target) return;
+    setSpec(target.spec);
+    setSource(target.source);
   }, [target]);
 
   useEffect(() => {
     writeSpecToUrl(spec);
   }, [spec]);
 
+  // Following a cross-block link is a move within the workspace, so the trail
+  // back to the conversation survives it.
+  const changeSpec = useCallback((next: BlockSpec) => setSpec(next), []);
+
   return (
     <div className="mx-auto w-full max-w-[1800px] px-5 py-7 lg:px-8">
+      {source && (
+        <div className="-ml-2 mb-3">
+          <ReturnToChat source={source} />
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <BlockPicker active={blockType} onChange={setBlockType} />
-        <SubjectPicker spec={spec} onChange={setSpec} />
+        <BlockPicker spec={spec} onChange={changeSpec} recents={recents} />
+        <SubjectPicker spec={spec} onChange={changeSpec} />
       </div>
 
       <div className="mt-6">
-        <CompsWorkspace spec={spec} onSpecChange={setSpec} />
+        {spec.blockType === 'comps' ? (
+          <CompsWorkspace spec={spec} onSpecChange={changeSpec} />
+        ) : (
+          <DealFlashWorkspace
+            spec={spec}
+            onSpecChange={changeSpec}
+            onOpenComps={(next: CompsSpec) => changeSpec(next)}
+          />
+        )}
       </div>
     </div>
   );

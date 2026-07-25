@@ -1,4 +1,4 @@
-import type { CompsSpec } from './contract';
+import type { BlockSpec } from './contract';
 import { AS_OF } from './data/queries';
 
 /**
@@ -10,41 +10,54 @@ import { AS_OF } from './data/queries';
 const PARAM = 'spec';
 
 /** Plain JSON; URLSearchParams owns the percent-encoding at the edges. */
-export function encodeSpec(spec: CompsSpec): string {
+export function encodeSpec(spec: BlockSpec): string {
   return JSON.stringify(spec);
 }
 
-export function decodeSpec(raw: string): CompsSpec | null {
+export function decodeSpec(raw: string): BlockSpec | null {
   try {
-    const parsed = JSON.parse(raw) as Partial<CompsSpec>;
-    if (parsed?.blockType !== 'comps') return null;
-    return {
-      blockType: 'comps',
-      subject: parsed.subject,
-      filters: parsed.filters ?? {},
-      windowMonths: parsed.windowMonths ?? 6,
-      asOf: parsed.asOf ?? AS_OF,
-    };
+    const parsed = JSON.parse(raw) as Partial<BlockSpec>;
+
+    if (parsed?.blockType === 'comps') {
+      return {
+        blockType: 'comps',
+        subject: parsed.subject,
+        filters: parsed.filters ?? {},
+        windowMonths: parsed.windowMonths ?? 12,
+        asOf: parsed.asOf ?? AS_OF,
+      };
+    }
+
+    if (parsed?.blockType === 'deal_flash' && parsed.dealId) {
+      return {
+        blockType: 'deal_flash',
+        dealId: parsed.dealId,
+        trancheId: parsed.trancheId,
+        asOf: parsed.asOf ?? AS_OF,
+      };
+    }
+
+    return null;
   } catch {
     return null;
   }
 }
 
-export function readSpecFromUrl(): CompsSpec | null {
+export function readSpecFromUrl(): BlockSpec | null {
   if (typeof window === 'undefined') return null;
   const raw = new URLSearchParams(window.location.search).get(PARAM);
   return raw ? decodeSpec(raw) : null;
 }
 
 /** Replace rather than push: filter fiddling shouldn't fill the back stack. */
-export function writeSpecToUrl(spec: CompsSpec) {
+export function writeSpecToUrl(spec: BlockSpec) {
   if (typeof window === 'undefined') return;
   const params = new URLSearchParams(window.location.search);
   params.set(PARAM, encodeSpec(spec));
   window.history.replaceState(null, '', `${window.location.pathname}?${params}`);
 }
 
-export function specHref(spec: CompsSpec): string {
+export function specHref(spec: BlockSpec): string {
   const params = new URLSearchParams({ [PARAM]: encodeSpec(spec) });
   return `${window.location.pathname}?${params}`;
 }

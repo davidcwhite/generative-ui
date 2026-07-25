@@ -38,6 +38,7 @@ export function Metric({
   benchmark,
   direction = 'lower-better',
   size = 'full',
+  pending = false,
 }: {
   label: string;
   value: string;
@@ -45,6 +46,8 @@ export function Metric({
   benchmark?: Benchmark;
   direction?: Direction;
   size?: 'full' | 'compact';
+  /** The figure doesn't exist yet. Rendered quietly — an absence, not a value. */
+  pending?: boolean;
 }) {
   const compact = size === 'compact';
   return (
@@ -57,8 +60,10 @@ export function Metric({
         {label}
       </p>
       <p
-        className={`mt-1 font-semibold tracking-[-0.03em] text-stone-950 tabular-nums ${
-          compact ? 'text-lg' : 'text-2xl'
+        className={`mt-1 tabular-nums ${
+          pending
+            ? `font-normal text-stone-300 ${compact ? 'pt-0.5 text-sm' : 'pt-1.5 text-base'}`
+            : `font-semibold tracking-[-0.03em] text-stone-950 ${compact ? 'text-lg' : 'text-2xl'}`
         }`}
       >
         {value}

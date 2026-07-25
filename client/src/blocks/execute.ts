@@ -1,13 +1,19 @@
 import {
   INLINE_ROW_CAP,
   type Benchmark,
+  type BlockPayload,
   type BlockSpec,
   type CompsPayload,
   type CompsPoint,
   type CompsSpec,
+  type DealFlashPayload,
+  type DealFlashSpec,
+  type DealFlashTranche,
+  type PricingStage,
 } from './contract';
 import {
   AS_OF,
+  MARKET_SERIES,
   ROW_BY_ID,
   TRANCHE_ROWS,
   dateMinusMonths,
@@ -16,7 +22,7 @@ import {
   percentileRank,
   tenorBucket,
 } from './data/queries';
-import type { TrancheRow } from './data/model';
+import type { DealStatus, TrancheRow } from './data/model';
 
 /**
  * One execution path.
@@ -205,12 +211,136 @@ function executeComps(spec: CompsSpec, cap?: number): CompsPayload {
   };
 }
 
-export function executeSync(spec: BlockSpec, cap?: number): CompsPayload {
-  return executeComps(spec, cap);
+/**
+ * How far down the pricing ladder a deal has got.
+ *
+ * A deal in guidance has no reoffer and no final book, and showing one because
+ * the row happens to hold a number would be the worst class of error this
+ * product can make: a confident figure for something that hasn't happened.
+ */
+const STAGES_REACHED: Record<DealStatus, number> = {
+  announced: 0,
+  guidance: 1,
+  launched: 2,
+  priced: 3,
+};
+
+function toFlashTranche(row: TrancheRow, reached: number): DealFlashTranche {
+  const rungs: PricingStage[] = [
+    { label: 'IPT', spread: row.iptSpread, reached: reached >= 1 },
+    { label: 'Guidance', spread: row.guidanceSpread, reached: reached >= 2 },
+    { label: 'Reoffer', spread: row.reofferSpread, reached: reached >= 3 },
+  ];
+  const stages = rungs.map((stage) => ({
+    ...stage,
+    spread: stage.reached ? stage.spread : null,
+  }));
+
+  const priced = reached >= 3;
+  return {
+    id: row.id,
+    key: row.key,
+    tenorLabel: row.tenorLabel,
+    tenorYears: row.tenorYears,
+    // Size is only firm once the deal launches; before that it's "benchmark".
+    sizeMm: reached >= 2 ? row.sizeMm : null,
+    coupon: priced ? row.coupon : null,
+    maturity: row.maturity,
+    format: row.format,
+    reofferSpread: priced ? row.reofferSpread : null,
+    compressionBp: priced ? row.compressionBp : null,
+    nipBp: priced ? row.nipBp : null,
+    bookMm: reached >= 2 ? row.bookMm : null,
+    coverage: reached >= 2 ? row.coverage : null,
+    stages,
+  };
+}
+
+/** Six weeks of credit index either side of the print, plus the weekly move. */
+function marketAround(pricingDate: string): DealFlashPayload['market'] {
+  const index = MARKET_SERIES.findIndex((point) => point.date >= pricingDate);
+  const at = index === -1 ? MARKET_SERIES.length - 1 : index;
+  const window = MARKET_SERIES.slice(Math.max(0, at - 29), at + 1);
+  const weekAgo = MARKET_SERIES[Math.max(0, at - 5)];
+
+  return {
+    level: MARKET_SERIES[at].iboxxCorp,
+    changeWeekBp: Number((MARKET_SERIES[at].iboxxCorp - weekAgo.iboxxCorp).toFixed(1)),
+    series: window.map((point) => ({ date: point.date, level: point.iboxxCorp })),
+  };
+}
+
+function executeDealFlash(spec: DealFlashSpec): DealFlashPayload {
+  const rows = TRANCHE_ROWS.filter((row) => row.dealId === spec.dealId).sort(
+    (a, b) => a.tenorYears - b.tenorYears,
+  );
+  if (rows.length === 0) throw new Error(`Unknown deal ${spec.dealId}`);
+
+  const { deal, issuer } = rows[0];
+  const reached = STAGES_REACHED[deal.status];
+
+  // Default focus is the biggest tranche: the one the deal is remembered by.
+  const focusRow =
+    rows.find((row) => row.id === spec.trancheId) ??
+    rows.reduce((best, row) => (row.sizeMm > best.sizeMm ? row : best));
+
+  const tranches = rows.map((row) => toFlashTranche(row, reached));
+  const focus = tranches.find((tranche) => tranche.id === focusRow.id)!;
+
+  // The peer set for this deal, expressed as a spec so it can be opened.
+  const compsSpec: CompsSpec = {
+    blockType: 'comps',
+    subject: { trancheId: focusRow.id },
+    filters: { ratingBands: [issuer.ratingBand], currencies: [deal.currency] },
+    windowMonths: 12,
+    asOf: spec.asOf,
+  };
+
+  const market = marketAround(deal.pricingDate);
+
+  // Benchmarks only once priced; there is nothing final to judge before that.
+  const peers =
+    reached >= 3
+      ? selectPeers(compsSpec).filter((row) => row.id !== focusRow.id)
+      : [];
+  const scored = peers.length ? buildSubject(focusRow, peers) : undefined;
+
+  return {
+    deal: {
+      id: deal.id,
+      issuer: issuer.name,
+      ticker: issuer.ticker,
+      rating: issuer.rating,
+      ratingBand: issuer.ratingBand,
+      sector: issuer.sector,
+      status: deal.status,
+      pricingDate: deal.pricingDate,
+      currency: deal.currency,
+      leads: deal.leads,
+    },
+    tranches,
+    focus,
+    totalSizeMm: reached >= 2 ? rows.reduce((sum, row) => sum + row.sizeMm, 0) : null,
+    market,
+    spread: scored?.spread,
+    coverage: scored?.coverage,
+    nip: scored?.nip,
+    compsSpec,
+  };
+}
+
+export function executeSync(spec: CompsSpec, cap?: number): CompsPayload;
+export function executeSync(spec: DealFlashSpec): DealFlashPayload;
+export function executeSync(spec: BlockSpec, cap?: number): BlockPayload;
+export function executeSync(spec: BlockSpec, cap?: number): BlockPayload {
+  return spec.blockType === 'comps' ? executeComps(spec, cap) : executeDealFlash(spec);
 }
 
 /** Async wrapper so the workspace exercises real loading states. */
-export function execute(spec: BlockSpec, signal?: AbortSignal): Promise<CompsPayload> {
+export function execute(spec: CompsSpec, signal?: AbortSignal): Promise<CompsPayload>;
+export function execute(spec: DealFlashSpec, signal?: AbortSignal): Promise<DealFlashPayload>;
+export function execute(spec: BlockSpec, signal?: AbortSignal): Promise<BlockPayload>;
+export function execute(spec: BlockSpec, signal?: AbortSignal): Promise<BlockPayload> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => resolve(executeSync(spec)), LATENCY_MS);
     signal?.addEventListener('abort', () => {
@@ -221,7 +351,7 @@ export function execute(spec: BlockSpec, signal?: AbortSignal): Promise<CompsPay
 }
 
 /** What the agent would attach to a message: capped rows, frozen at compute time. */
-export function executeForChat(spec: BlockSpec): CompsPayload {
+export function executeForChat(spec: BlockSpec): BlockPayload {
   return executeSync(spec, INLINE_ROW_CAP);
 }
 

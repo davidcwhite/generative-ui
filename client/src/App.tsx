@@ -15,7 +15,7 @@ import {
   MarketIssuance,
 } from './components/dcm';
 import { Dashboard } from './components/Dashboard';
-import { useWorkspaceTarget } from './blocks/navigation';
+import { useChatReturn, useWorkspaceTarget } from './blocks/navigation';
 import { TeamWorkspaceView } from './team-workspace/TeamWorkspaceView';
 import { LabChatView } from './lab/LabChatView';
 
@@ -137,6 +137,19 @@ export default function App() {
   useEffect(() => {
     if (workspaceTarget) setActiveView('dashboard');
   }, [workspaceTarget]);
+
+  // …and the way back lands on the block you left from, not the top of the thread.
+  const chatReturn = useChatReturn();
+  useEffect(() => {
+    if (!chatReturn) return;
+    setActiveView('chat');
+    if (!chatReturn.anchorId) return;
+    requestAnimationFrame(() => {
+      document
+        .getElementById(chatReturn.anchorId!)
+        ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+  }, [chatReturn]);
   const [isHistoryHovered, setIsHistoryHovered] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [labMode, setLabMode] = useState<boolean>(false);
@@ -692,12 +705,17 @@ export default function App() {
       )}
 
       {/* Main content */}
-      {activeView === 'dashboard' ? (
-        <Dashboard />
-      ) : activeView === 'team' ? (
-        <TeamWorkspaceView />
-      ) : (
-        <div className="flex-1 flex flex-col overflow-hidden">
+      {activeView === 'dashboard' && <Dashboard />}
+      {activeView === 'team' && <TeamWorkspaceView />}
+      {/* Chat stays mounted rather than unmounting on navigation. Opening a
+          block from a response and coming back to an emptied conversation
+          would be worse than having no way back at all. */}
+      {
+        <div
+          className={`flex-1 flex-col overflow-hidden ${
+            activeView === 'chat' ? 'flex' : 'hidden'
+          }`}
+        >
           {/* Scrollable content area */}
           <div className="flex-1 overflow-auto">
             {/* Header */}
@@ -1282,7 +1300,7 @@ export default function App() {
         </footer>
           )}
         </div>
-      )}
+      }
     </div>
   );
 }
