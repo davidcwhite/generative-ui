@@ -19,6 +19,7 @@ import {
   StatusPill,
 } from './shared';
 import { useDashboardData } from './useDashboardData';
+import { DashboardSettingsButton } from './DashboardSettings';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -172,9 +173,12 @@ export default function DataWorkbench() {
             Scan, filter and inspect execution data without leaving the dashboard.
           </p>
         </div>
-        <div className="flex items-center gap-2 text-[11px] text-stone-400">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
-          Live market snapshot · {data.asOf}
+        <div className="flex items-center gap-3 text-[11px] text-stone-400">
+          <span className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
+            Live market snapshot · {data.asOf}
+          </span>
+          <DashboardSettingsButton />
         </div>
       </div>
 

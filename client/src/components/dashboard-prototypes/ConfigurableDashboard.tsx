@@ -23,6 +23,7 @@ import {
   VolumeTrendChart,
 } from './shared';
 import { useDashboardData } from './useDashboardData';
+import { DashboardSettingsButton } from './DashboardSettings';
 
 type DashboardBreakpoint = 'lg' | 'md' | 'sm' | 'xs';
 type WidgetId = 'metrics' | 'trend' | 'pipeline' | 'relative' | 'investor' | 'deals';
@@ -231,6 +232,7 @@ export default function ConfigurableDashboard() {
               <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />
               {editing ? 'Finish editing' : 'Edit dashboard'}
             </button>
+            <DashboardSettingsButton />
           </div>
         </div>
 

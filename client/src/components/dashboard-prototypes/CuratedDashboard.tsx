@@ -12,6 +12,7 @@ import {
   VolumeTrendChart,
 } from './shared';
 import { useDashboardData } from './useDashboardData';
+import { DashboardSettingsButton } from './DashboardSettings';
 
 type Range = '3M' | '6M' | '12M';
 
@@ -48,9 +49,12 @@ export default function CuratedDashboard({
             A decision-first view of supply, execution and relative value.
           </p>
         </div>
-        <div className="inline-flex items-center gap-2 text-[11px] text-stone-500">
-          <CalendarDays className="h-3.5 w-3.5" aria-hidden />
-          As of {data.asOf}
+        <div className="inline-flex items-center gap-3 text-[11px] text-stone-500">
+          <span className="inline-flex items-center gap-2">
+            <CalendarDays className="h-3.5 w-3.5" aria-hidden />
+            As of {data.asOf}
+          </span>
+          <DashboardSettingsButton />
         </div>
       </div>
 
