@@ -195,18 +195,20 @@ export default function ShadcnIssuanceDashboard() {
     >
       <div className="mx-auto w-full max-w-[1800px] px-5 py-7 lg:px-8">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div>
+          <div className="min-w-0">
+            {/* The indicator shares the title's line box; centring it against the
+                whole two-line stack drops it beside the description instead. */}
+            <div className="flex items-center gap-2.5">
               <h1 className="text-lg font-semibold tracking-[-0.025em] text-stone-900">
                 Issuance {viewMode === 'data' ? 'data' : 'dashboard'}
               </h1>
-              <p className="mt-1 text-xs text-stone-500">
-                {viewMode === 'data'
-                  ? 'Search and inspect the full issuance record.'
-                  : 'Volume, sector composition and execution-level detail in one view.'}
-              </p>
+              {showRefreshing && <RefreshIndicator />}
             </div>
-            {showRefreshing && <RefreshIndicator />}
+            <p className="mt-1 text-xs text-stone-500">
+              {viewMode === 'data'
+                ? 'Search and inspect the full issuance record.'
+                : 'Volume, sector composition and execution-level detail in one view.'}
+            </p>
           </div>
 
           <div
