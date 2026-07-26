@@ -4,6 +4,7 @@ Every value here is literal. Where a Tailwind class is quoted, that exact class
 produces the intended result; substituting a near neighbour (`text-xs` for
 `text-[11px]`, `stone` for `gray`) visibly changes the page.
 
+- [Page map](#page-map)
 - [Principles](#principles)
 - [Colour](#colour)
 - [Typography](#typography)
@@ -13,6 +14,106 @@ produces the intended result; substituting a near neighbour (`text-xs` for
 - [Motion](#motion)
 - [Stylesheet](#stylesheet)
 - [Chart wrapper](#chart-wrapper)
+
+---
+
+## Page map
+
+Eight regions, top to bottom. Widths are at `xl` and above.
+
+```
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ ① TOP BAR                     sticky · z-20 · h-12 · white/70 + backdrop-blur ║
+║                                                                              ║
+║  Issuance  Allocations  Market  Pipeline  Comparables   [Dashboards│Data] ⚙  ║
+║  └─ dataset tabs, underline on active ─┘                 └─ view ─┘  toolbar  ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                            mx-auto max-w-[1800px] px-5 py-7  ║
+║  ② HEADER                                          flex · lg:row · items-end ║
+║                                                                              ║
+║  ISSUANCE VOLUME  ◌ Updating          ③  ┌────────────────────────────────┐  ║
+║  ┌───────────────────────────────┐        │ 1M 3M 6M YTD 1Y All │ 📅 Custom│  ║
+║  │ €199.8bn │ DEALS │ AVERAGE │ LARGEST │ └────────────────────────────────┘  ║
+║  │  32px    │  167  │  €1.2bn │ €2.5bn  │        RangeControl (segmented)     ║
+║  └───────────────────────────────┘                                           ║
+║   StatStrip — hero + 3 stats, left-bordered                                  ║
+║                                                                       mt-8   ║
+║  ┌─ ④ col-span-8 ──────────────────────────┐ ┌─ ⑤ col-span-4 ─────────────┐  ║
+║  │              Stack ▾  [D│W│M│Q]         │ │ SECTOR MIX          By ▾   │  ║
+║  │  ChartBar  (min-h-8, both aligned)      │ │  ChartBar                  │  ║
+║  │ ─────────────────────────────── mt-5 ─── │ │ ──────────────────── mt-5 ─│  ║
+║  │ €28bn┤                                  │ │        ╭───────╮           │  ║
+║  │      │  ▇  ▇     ▇  ▇                   │ │      ╭─┤  167  ├─╮         │  ║
+║  │ €14bn┤  ▇  ▇  ▇  ▇  ▇  ▇                │ │      │ │ deals │ │        │  ║
+║  │      │  ▇  ▇  ▇  ▇  ▇  ▇  ▇             │ │      ╰─┤       ├─╯         │  ║
+║  │  €0bn└──┴──┴──┴──┴──┴──┴──┴───          │ │        ╰───────╯           │  ║
+║  │        Jul  Aug  Sep  Oct  Nov          │ │  184px ring, 62→82 radius  │  ║
+║  │                                         │ │                            │  ║
+║  │ ▪ Financials ▪ Autos ▪ Telecoms  2 more │ │ ▪ Financials         22%   │  ║
+║  │   StackLegend (only when stacked)       │ │ ▪ Automobiles        14%   │  ║
+║  │                                         │ │ ▪ Telecoms           12%   │  ║
+║  │ monthly gross supply, EUR equivalent    │ │   … 3 more                 │  ║
+║  │ height: 372px (CHART_BAND)              │ │ BreakdownLegend            │  ║
+║  └─────────────────────────────────────────┘ │ minHeight: 372px           │  ║
+║                                              └────────────────────────────┘  ║
+║ ──────────────────────────────────────────────────────────────── mt-10 ───── ║
+║  ⑥ FILTER BAR                                                        pt-5    ║
+║  ┌──────────────┐ ┌────────┐ ┌──────────────┐                                ║
+║  │ 🔍 Search…   │ │+ Filter│ │Sector Fins ✕ │      ◌ Loading   167 issues    ║
+║  └──────────────┘ └────────┘ └──────────────┘             └─ ml-auto ─┘      ║
+║                                                                       mt-4   ║
+║  ┌─ ⑦ minmax(0,1fr) ───────────────────────┐ ┌─ ⑧ 282px ──────────────────┐  ║
+║  │ STATUS │ ISSUER    │ PRICED │ TICKER │… │ │ ╭────────────────────────╮ │  ║
+║  │ ● Live │ Orange SA │ 23 Jul │ ORAFP  │  │ │ │ Orange SA       [Live] │ │  ║
+║  │ ○ Pricd│ SAP SE    │ 20 May │ SAP    │  │ │ │ Telecoms · BBB+ / Baa1 │ │  ║
+║  │ ○ Pricd│ Santander │ 10 Jun │ SANTAN │  │ │ │ ─────────────────────  │ │  ║
+║  │        │           │        │        │  │ │ │ STRUCTURE   SIZE       │ │  ║
+║  │  IssuanceGrid · h-[560px] · infinite   │ │ │ EUR 10Y     EUR 500m   │ │  ║
+║  │  pinned: status + issuer               │ │ │ COUPON      PRICING    │ │  ║
+║  │                                        │ │ │ ┌────┬─────┬─────────┐ │ │  ║
+║  │                                        │ │ │ │ 143│  6  │  3.3x   │ │ │  ║
+║  │                                        │ │ │ └────┴─────┴─────────┘ │ │  ║
+║  │                                        │ │ │ LEADS · EXECUTION READ │ │  ║
+║  └────────────────────────────────────────┘ │ ╰────────────────────────╯ │  ║
+║                                     gap-7 → │  sticky top-[76px]         │  ║
+║                                             └────────────────────────────┘  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+```
+
+| # | Region | Does | Spec |
+| --- | --- | --- | --- |
+| ① | Top bar | Switches dataset and view mode; hosts the toolbar slot | [Top bar](#top-bar) |
+| ② | Header | Headline volume plus deals, average, largest | [Hero](#hero) |
+| ③ | Range control | Sets the date window for everything below | [Segmented control](#segmented-control) |
+| ④ | Volume chart | Gross supply over time; stack menu and granularity tabs; bands click to filter | [Bar chart](#bar-chart) |
+| ⑤ | Mix donut | Composition by dimension; segments and rows click to filter | [Donut](#donut) |
+| ⑥ | Filter bar | Free-text search, filter popover, clause chips, row count | [Filter bar](#filter-bar) |
+| ⑦ | Grid | Paged, sortable table of individual deals | [AG Grid theme](#ag-grid-theme) |
+| ⑧ | Detail panel | The selected deal in full | [Detail card](#detail-card) |
+
+Only ⑧ is a bordered card. Everything else is separated by whitespace and two
+hairlines: one under ① once scrolled, one above ⑥.
+
+**Reading order.** The eye should land on the hero figure, then the charts, then
+the table. That is why the eyebrow label above the hero is 10px `stone-400` and
+the figure is 32px `stone-950` — the label names the number, it does not compete
+with it.
+
+**Responsive collapse.** Below `xl` the two chart columns stack full width and
+the detail panel moves below the grid. Below `lg` the header stacks, putting the
+range control under the stats. The top bar's dataset tabs scroll horizontally
+rather than wrapping.
+
+**Optional regions.** ⑤ and ⑧ can each be switched off by the host through
+`DisplayPrefs`. With ⑤ hidden, ④ takes the full twelve columns. With ⑧ hidden,
+⑦ spans the full width.
+
+**In `Data` view mode**, ④ and ⑤ are not rendered at all, and ⑧ widens from
+282px to 300px.
+
+Where each region gets its data, and what every control does, is in
+[02-functional-spec.md](./02-functional-spec.md). What each looks like while
+loading is in [05-loading.md](./05-loading.md).
 
 ---
 

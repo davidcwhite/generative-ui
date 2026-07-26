@@ -15,13 +15,17 @@ data that is already on screen is never blanked out while newer data loads.
 
 | Document | Answers |
 | --- | --- |
-| [01-design-system.md](./01-design-system.md) | What every colour, size, space and animation is, exactly |
+| [01-design-system.md](./01-design-system.md) | Where everything sits on the page, then what every colour, size, space and animation is |
 | [02-functional-spec.md](./02-functional-spec.md) | What each control does, including the non-obvious cases |
 | [03-architecture.md](./03-architecture.md) | How the layers fit together, and how to extend or substitute them |
 | [04-performance.md](./04-performance.md) | Which patterns keep it fast, and which will quietly break it |
+| [05-loading.md](./05-loading.md) | Every skeleton and loading indicator, in full |
 
-Read 01 and 02 to build it. Read 03 before changing it. Read 04 before
-optimising it, because several things that look like waste are load-bearing.
+Start with the [page map](./01-design-system.md#page-map) — it names the eight
+regions and links each to its own specification. Then read 01 and 02 to build
+it, 05 alongside them for the loading states, 03 before changing it, and 04
+before optimising it, because several things that look like waste are
+load-bearing.
 
 ---
 

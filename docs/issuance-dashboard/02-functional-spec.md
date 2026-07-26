@@ -499,6 +499,9 @@ and per-cell shimmer for unfetched rows.
 In-flight requests are aborted when superseded, so a slow early response cannot
 overwrite a fast later one.
 
+Every placeholder and indicator is given in full in
+[05-loading.md](./05-loading.md).
+
 ---
 
 ## High-cardinality dimensions
