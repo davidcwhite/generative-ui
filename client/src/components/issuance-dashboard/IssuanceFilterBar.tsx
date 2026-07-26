@@ -365,24 +365,37 @@ function FilterChip({
   );
 }
 
+/**
+ * The search term is debounced here rather than upstream, so a keystroke
+ * re-renders the bar alone and leaves the charts and the table untouched until
+ * the query actually changes. `onSearchChange` must be stable.
+ *
+ * Clearing everything remounts this bar (see the `key` at the call site), which
+ * is what empties the draft — the parent only holds the committed term.
+ */
 export function IssuanceFilterBar({
   filters,
   onFiltersChange,
-  searchDraft,
-  onSearchDraftChange,
+  onSearchChange,
   onClearAll,
   children,
 }: {
   filters: FilterClause[];
   onFiltersChange: (filters: FilterClause[]) => void;
-  searchDraft: string;
-  onSearchDraftChange: (value: string) => void;
+  onSearchChange: (value: string) => void;
   onClearAll: () => void;
   /** Right-aligned status area: refresh indicator and row count. */
   children: React.ReactNode;
 }) {
   const [addOpen, setAddOpen] = useState(false);
+  const [searchDraft, setSearchDraft] = useState('');
   const hasFilters = filters.length > 0 || searchDraft.length > 0;
+
+  // Typing shouldn't fire a request per keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => onSearchChange(searchDraft), 300);
+    return () => clearTimeout(timer);
+  }, [searchDraft, onSearchChange]);
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -395,7 +408,7 @@ export function IssuanceFilterBar({
         <Input
           type="search"
           value={searchDraft}
-          onChange={(event) => onSearchDraftChange(event.target.value)}
+          onChange={(event) => setSearchDraft(event.target.value)}
           placeholder="Search issuer, ticker or sector"
           className="h-8 border-stone-200 bg-white pl-8 text-xs"
         />

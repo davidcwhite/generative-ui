@@ -1,5 +1,5 @@
 import { Badge } from '@/components/ui/badge';
-import type { IssuanceRecord } from './shadcnIssuanceData';
+import type { IssuanceRecord } from './issuanceData';
 
 /**
  * The one contained surface in the layout: everything else groups by whitespace,
@@ -97,10 +97,12 @@ function Note({ label, value }: { label: string; value: string }) {
   );
 }
 
+const PRICING_DATE = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+});
+
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(value));
+  return PRICING_DATE.format(new Date(value));
 }

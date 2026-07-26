@@ -1,7 +1,11 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { memo, useEffect, useMemo, useRef } from 'react';
 import {
-  AllCommunityModule,
+  CellStyleModule,
+  InfiniteRowModelModule,
   ModuleRegistry,
+  RowSelectionModule,
+  ScrollApiModule,
+  ValidationModule,
   themeQuartz,
   type ColDef,
   type GridApi,
@@ -9,12 +13,32 @@ import {
 } from 'ag-grid-community';
 import { AgGridReact, type CustomCellRendererProps } from 'ag-grid-react';
 import { fetchIssuanceRows, type IssuanceQuery, type IssuanceRowSort } from './issuanceApi';
-import type { IssuanceRecord, IssuanceStatus } from './shadcnIssuanceData';
+import type { IssuanceRecord, IssuanceStatus } from './issuanceData';
 
-ModuleRegistry.registerModules([AllCommunityModule]);
+/**
+ * Only the features this grid uses. `AllCommunityModule` would pull in the
+ * client-side row model, every filter and the editing stack — roughly four
+ * times the code, none of it reachable from here. The validation module is
+ * dev-only: it names any module a feature is missing, and ships nothing to
+ * production.
+ */
+ModuleRegistry.registerModules([
+  InfiniteRowModelModule,
+  RowSelectionModule,
+  CellStyleModule,
+  ScrollApiModule,
+  ...(import.meta.env.DEV ? [ValidationModule] : []),
+]);
 
 /** One network round trip per block; small enough that scrolling stays responsive. */
 const BLOCK_SIZE = 25;
+
+/** Built once: a formatter per cell would allocate on every scroll. */
+const PRICED_DATE = new Intl.DateTimeFormat('en-GB', {
+  day: '2-digit',
+  month: 'short',
+  year: '2-digit',
+});
 
 /**
  * The grid sits directly on the white page canvas: no wrapper, no column rules,
@@ -114,7 +138,95 @@ const LOADING_CELL_WIDTHS: Record<string, string> = {
   cover: '32px',
 };
 
-export function IssuanceGrid({
+const COLUMNS: ColDef<IssuanceRecord>[] = [
+  {
+    field: 'status',
+    headerName: 'STATUS',
+    width: 104,
+    pinned: 'left',
+    sortable: false,
+    cellRenderer: StatusCell,
+  },
+  {
+    field: 'pricingDate',
+    headerName: 'PRICED',
+    width: 104,
+    sort: 'desc',
+    valueFormatter: ({ value }) => (value ? PRICED_DATE.format(new Date(String(value))) : ''),
+  },
+  {
+    field: 'issuer',
+    headerName: 'ISSUER',
+    minWidth: 170,
+    flex: 1.2,
+    pinned: 'left',
+    cellClass: 'font-medium text-stone-950',
+  },
+  { field: 'ticker', headerName: 'TICKER', width: 92, cellClass: 'text-stone-500' },
+  { field: 'region', headerName: 'REGION', minWidth: 130, flex: 0.7 },
+  { field: 'currency', headerName: 'CCY', width: 72 },
+  {
+    field: 'size',
+    headerName: 'SIZE',
+    width: 112,
+    type: 'numericColumn',
+    valueFormatter: ({ data }) => (data ? `${data.currency} ${data.size.toLocaleString()}m` : ''),
+  },
+  { field: 'tenor', headerName: 'TENOR', width: 82 },
+  { field: 'rating', headerName: 'RATING', width: 106 },
+  { field: 'sector', headerName: 'SECTOR', minWidth: 125, flex: 0.8 },
+  {
+    field: 'spread',
+    headerName: 'SPREAD',
+    width: 92,
+    type: 'numericColumn',
+    valueFormatter: ({ value }) => (value == null ? '' : `${value}bp`),
+  },
+  {
+    field: 'nip',
+    headerName: 'NIP',
+    width: 76,
+    type: 'numericColumn',
+    cellClass: 'font-medium text-stone-950',
+    valueFormatter: ({ value }) => (value == null ? '' : `${value}bp`),
+  },
+  {
+    field: 'book',
+    headerName: 'BOOK',
+    width: 100,
+    type: 'numericColumn',
+    valueFormatter: ({ data }) =>
+      data ? `${data.currency} ${(data.book / 1000).toFixed(1)}bn` : '',
+  },
+  {
+    field: 'cover',
+    headerName: 'COVER',
+    width: 84,
+    type: 'numericColumn',
+    valueFormatter: ({ value }) => (value == null ? '' : `${value}x`),
+  },
+];
+
+const DEFAULT_COL_DEF: ColDef<IssuanceRecord> = {
+  sortable: true,
+  filter: false,
+  resizable: true,
+  suppressHeaderMenuButton: true,
+  cellRendererSelector: loadingAwareRenderer,
+};
+
+const ROW_SELECTION = {
+  mode: 'singleRow',
+  enableClickSelection: true,
+  checkboxes: false,
+} as const;
+
+/**
+ * Memoised: selecting a row or paging the table re-renders the surrounding
+ * page, and re-rendering the grid for that would be pure waste. Callers must
+ * pass a memoised query and stable callbacks.
+ */
+export const IssuanceGrid = memo(function IssuanceGrid({
   query,
   density = 'comfortable',
   onSelect,
@@ -133,87 +245,13 @@ export function IssuanceGrid({
   const apiRef = useRef<GridApi<IssuanceRecord> | null>(null);
   const sortRef = useRef<IssuanceRowSort | null>({ colId: 'pricingDate', direction: 'desc' });
   const pendingBlocks = useRef(0);
-  const queryKey = JSON.stringify(query);
 
-  const columns = useMemo<ColDef<IssuanceRecord>[]>(
-    () => [
-      {
-        field: 'status',
-        headerName: 'STATUS',
-        width: 104,
-        pinned: 'left',
-        sortable: false,
-        cellRenderer: StatusCell,
-      },
-      {
-        field: 'pricingDate',
-        headerName: 'PRICED',
-        width: 104,
-        sort: 'desc',
-        valueFormatter: ({ value }) =>
-          value
-            ? new Intl.DateTimeFormat('en-GB', {
-                day: '2-digit',
-                month: 'short',
-                year: '2-digit',
-              }).format(new Date(String(value)))
-            : '',
-      },
-      {
-        field: 'issuer',
-        headerName: 'ISSUER',
-        minWidth: 170,
-        flex: 1.2,
-        pinned: 'left',
-        cellClass: 'font-medium text-stone-950',
-      },
-      { field: 'ticker', headerName: 'TICKER', width: 92, cellClass: 'text-stone-500' },
-      { field: 'region', headerName: 'REGION', minWidth: 130, flex: 0.7 },
-      { field: 'currency', headerName: 'CCY', width: 72 },
-      {
-        field: 'size',
-        headerName: 'SIZE',
-        width: 112,
-        type: 'numericColumn',
-        valueFormatter: ({ data }) =>
-          data ? `${data.currency} ${data.size.toLocaleString()}m` : '',
-      },
-      { field: 'tenor', headerName: 'TENOR', width: 82 },
-      { field: 'rating', headerName: 'RATING', width: 106 },
-      { field: 'sector', headerName: 'SECTOR', minWidth: 125, flex: 0.8 },
-      {
-        field: 'spread',
-        headerName: 'SPREAD',
-        width: 92,
-        type: 'numericColumn',
-        valueFormatter: ({ value }) => (value == null ? '' : `${value}bp`),
-      },
-      {
-        field: 'nip',
-        headerName: 'NIP',
-        width: 76,
-        type: 'numericColumn',
-        cellClass: 'font-medium text-stone-950',
-        valueFormatter: ({ value }) => (value == null ? '' : `${value}bp`),
-      },
-      {
-        field: 'book',
-        headerName: 'BOOK',
-        width: 100,
-        type: 'numericColumn',
-        valueFormatter: ({ data }) =>
-          data ? `${data.currency} ${(data.book / 1000).toFixed(1)}bn` : '',
-      },
-      {
-        field: 'cover',
-        headerName: 'COVER',
-        width: 84,
-        type: 'numericColumn',
-        valueFormatter: ({ value }) => (value == null ? '' : `${value}x`),
-      },
-    ],
-    [],
-  );
+  /**
+   * Rebuilding the datasource purges every cached block, so it may only depend
+   * on the query. Reporting callbacks are read through a ref instead.
+   */
+  const report = useRef({ onDefaultRow, onTotalRowsChange, onLoadingChange });
+  report.current = { onDefaultRow, onTotalRowsChange, onLoadingChange };
 
   /**
    * A new datasource per query purges the block cache, so changing a filter
@@ -229,32 +267,30 @@ export function IssuanceGrid({
           : null;
 
         pendingBlocks.current += 1;
-        onLoadingChange(true);
+        report.current.onLoadingChange(true);
 
         fetchIssuanceRows(query, params.startRow, params.endRow, sortRef.current)
           .then(({ rows, totalRows }) => {
             params.successCallback(rows, totalRows);
-            onTotalRowsChange(totalRows);
+            report.current.onTotalRowsChange(totalRows);
             if (params.startRow === 0) {
-              onDefaultRow(rows[0] ?? null);
+              report.current.onDefaultRow(rows[0] ?? null);
             }
           })
           .catch(() => params.failCallback())
           .finally(() => {
             pendingBlocks.current = Math.max(0, pendingBlocks.current - 1);
-            if (pendingBlocks.current === 0) onLoadingChange(false);
+            if (pendingBlocks.current === 0) report.current.onLoadingChange(false);
           });
       },
     }),
-    // Rebuilt only when the serialised query changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [queryKey],
+    [query],
   );
 
   // Scroll back to the top whenever the result set changes underneath the user.
   useEffect(() => {
     apiRef.current?.ensureIndexVisible(0, 'top');
-  }, [queryKey]);
+  }, [query]);
 
   const sizing = DENSITY[density];
 
@@ -262,7 +298,7 @@ export function IssuanceGrid({
     <div className="issuance-grid h-[560px] w-full">
       <AgGridReact<IssuanceRecord>
         theme={sizing.theme}
-        columnDefs={columns}
+        columnDefs={COLUMNS}
         rowModelType="infinite"
         datasource={datasource}
         cacheBlockSize={BLOCK_SIZE}
@@ -273,20 +309,10 @@ export function IssuanceGrid({
         /** Skips blocks the user has already scrolled past. */
         blockLoadDebounceMillis={90}
         rowBuffer={4}
-        defaultColDef={{
-          sortable: true,
-          filter: false,
-          resizable: true,
-          suppressHeaderMenuButton: true,
-          cellRendererSelector: loadingAwareRenderer,
-        }}
+        defaultColDef={DEFAULT_COL_DEF}
         rowHeight={sizing.rowHeight}
         headerHeight={sizing.headerHeight}
-        rowSelection={{
-          mode: 'singleRow',
-          enableClickSelection: true,
-          checkboxes: false,
-        }}
+        rowSelection={ROW_SELECTION}
         onGridReady={({ api }) => {
           apiRef.current = api;
         }}
@@ -297,4 +323,4 @@ export function IssuanceGrid({
       />
     </div>
   );
-}
+});

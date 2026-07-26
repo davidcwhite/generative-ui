@@ -9,7 +9,7 @@ import {
   type Granularity,
   type IssuanceRecord,
   type SeriesPoint,
-} from './shadcnIssuanceData';
+} from './issuanceData';
 
 /**
  * Stands in for a real issuance service. Every read is asynchronous and paged so
@@ -115,13 +115,14 @@ function matchesClause(row: IssuanceRecord, clause: FilterClause) {
   return clause.values.includes(row[clause.field]);
 }
 
-function matchesSearch(row: IssuanceRecord, search: string) {
-  const term = search.trim().toLowerCase();
-  if (!term) return true;
-  return `${row.issuer} ${row.ticker} ${row.sector} ${row.region} ${row.rating} ${row.currency} ${row.tenor} ${row.status}`
-    .toLowerCase()
-    .includes(term);
-}
+/**
+ * One lowercased haystack per row, built once. A real service would push this
+ * down to the database; here it keeps free-text search off the hot path, since
+ * a single query scopes the table three times over.
+ */
+const SEARCH_BLOBS = SHADCN_ISSUANCE_ROWS.map((row) =>
+  `${row.issuer} ${row.ticker} ${row.sector} ${row.region} ${row.rating} ${row.currency} ${row.tenor} ${row.status}`.toLowerCase(),
+);
 
 /**
  * `ignoreField` lets a chart drop the filter on the dimension it is breaking
@@ -129,9 +130,10 @@ function matchesSearch(row: IssuanceRecord, search: string) {
  * clicked slice.
  */
 function scope(query: IssuanceQuery, ignoreField?: FilterField) {
-  return SHADCN_ISSUANCE_ROWS.filter((row) => {
+  const term = query.search.trim().toLowerCase();
+  return SHADCN_ISSUANCE_ROWS.filter((row, index) => {
     if (row.pricingDate < query.from || row.pricingDate > query.to) return false;
-    if (!matchesSearch(row, query.search)) return false;
+    if (term && !SEARCH_BLOBS[index].includes(term)) return false;
     return query.filters.every((clause) =>
       clause.field === ignoreField ? true : matchesClause(row, clause),
     );

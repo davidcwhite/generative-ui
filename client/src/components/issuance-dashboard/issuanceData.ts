@@ -213,10 +213,11 @@ function pick<T>(items: readonly T[], weights: readonly number[], random: () => 
 
 interface MonthSeed {
   key: string;
-  year: number;
   month: number;
   /** Business days available for pricing, capped at the latest date. */
   days: number[];
+  /** Pricing likelihood of each entry in `days`, in the same order. */
+  weights: number[];
 }
 
 function buildMonths(): MonthSeed[] {
@@ -229,11 +230,14 @@ function buildMonths(): MonthSeed[] {
     const lastDay = isLatest ? LATEST.day : new Date(Date.UTC(year, month, 0)).getUTCDate();
 
     const days: number[] = [];
+    const weights: number[] = [];
     for (let day = 1; day <= lastDay; day += 1) {
       const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
-      if (weekday !== 0 && weekday !== 6) days.push(day);
+      if (weekday === 0 || weekday === 6) continue;
+      days.push(day);
+      weights.push(WEEKDAY_WEIGHTS[weekday]);
     }
-    return { key: `${year}-${pad(month)}`, year, month, days };
+    return { key: `${year}-${pad(month)}`, month, days, weights };
   });
 }
 
@@ -257,14 +261,7 @@ function buildRows(): IssuanceRecord[] {
       const spread = 48 + Math.round(random() * 118);
       const nip = 1 + Math.round(random() * 11);
       const cover = Number((1.6 + random() * 3.4).toFixed(1));
-      const day = pick(
-        month.days,
-        month.days.map((value) => {
-          const weekday = new Date(Date.UTC(month.year, month.month - 1, value)).getUTCDay();
-          return WEEKDAY_WEIGHTS[weekday];
-        }),
-        random,
-      );
+      const day = pick(month.days, month.weights, random);
 
       rows.push({
         id: `issue-${month.key}-${dealIndex + 1}`,
@@ -324,11 +321,11 @@ export const ISSUANCE_TICKERS = distinct(SHADCN_ISSUANCE_ROWS.map((row) => row.t
  * bucket keys never drift across time zones.
  * ------------------------------------------------------------------ */
 
-export function toDate(iso: string) {
+function toDate(iso: string) {
   return new Date(`${iso}T00:00:00Z`);
 }
 
-export function toIso(date: Date) {
+function toIso(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
@@ -360,7 +357,7 @@ function startOfWeek(iso: string) {
   return toIso(date);
 }
 
-export function bucketKeyOf(iso: string, granularity: Granularity) {
+function bucketKeyOf(iso: string, granularity: Granularity) {
   if (granularity === 'daily') return iso;
   if (granularity === 'weekly') return startOfWeek(iso);
   if (granularity === 'monthly') return iso.slice(0, 7);
@@ -369,7 +366,7 @@ export function bucketKeyOf(iso: string, granularity: Granularity) {
 }
 
 /** Every bucket in the window, including empty ones, oldest first. */
-export function bucketKeysBetween(from: string, to: string, granularity: Granularity) {
+function bucketKeysBetween(from: string, to: string, granularity: Granularity) {
   const keys: string[] = [];
   if (granularity === 'daily') {
     for (let cursor = from; cursor <= to; cursor = shiftDays(cursor, 1)) {
@@ -407,7 +404,7 @@ export function bucketKeysBetween(from: string, to: string, granularity: Granula
   return keys;
 }
 
-export function bucketLabel(key: string, granularity: Granularity, multiYear: boolean) {
+function bucketLabel(key: string, granularity: Granularity, multiYear: boolean) {
   if (granularity === 'quarterly') {
     return multiYear ? `${key.slice(5)} ${key.slice(2, 4)}` : key.slice(5);
   }
@@ -420,17 +417,20 @@ export function bucketLabel(key: string, granularity: Granularity, multiYear: bo
   return `${day} ${month}`;
 }
 
-export function bucketLabelLong(key: string, granularity: Granularity) {
+/** Formatters are costly to build, so the hot paths share one. */
+const LONG_DATE = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
+function bucketLabelLong(key: string, granularity: Granularity) {
   if (granularity === 'quarterly') return `${key.slice(5)} ${key.slice(0, 4)}`;
   if (granularity === 'monthly') {
     return `${MONTH_NAMES[Number(key.slice(5, 7)) - 1]} ${key.slice(0, 4)}`;
   }
-  const label = new Intl.DateTimeFormat('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(toDate(key));
+  const label = LONG_DATE.format(toDate(key));
   return granularity === 'weekly' ? `Week of ${label}` : label;
 }
 
@@ -445,10 +445,6 @@ export const DIMENSION_LABELS: Record<Dimension, string> = {
   rating: 'Rating',
   issuer: 'Issuer',
 };
-
-export function dimensionValue(row: IssuanceRecord, dimension: Dimension) {
-  return row[dimension];
-}
 
 /**
  * Bands a dimension is allowed to paint before its tail folds into "Other".
@@ -469,7 +465,7 @@ function categoryLimit(dimension: Dimension) {
 export function rankCategories(rows: IssuanceRecord[], dimension: Dimension): CategorySlice[] {
   const totals = new Map<string, { volume: number; deals: number }>();
   rows.forEach((row) => {
-    const key = dimensionValue(row, dimension);
+    const key = row[dimension];
     const current = totals.get(key) ?? { volume: 0, deals: 0 };
     current.volume += row.eurEquivalent / 1000;
     current.deals += 1;
@@ -562,7 +558,7 @@ export function buildSeries(
     point.total = (point.total as number) + volume;
     point.deals = (point.deals as number) + 1;
     if (!categories || !dimension) return;
-    const raw = dimensionValue(row, dimension);
+    const raw = row[dimension];
     const category = otherSet.has(raw) ? OTHER_CATEGORY : raw;
     if (typeof point[category] === 'number') {
       point[category] = (point[category] as number) + volume;

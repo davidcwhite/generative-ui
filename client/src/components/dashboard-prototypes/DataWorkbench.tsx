@@ -1,7 +1,15 @@
 import { useMemo, useRef, useState } from 'react';
 import {
-  AllCommunityModule,
+  CellStyleModule,
+  ClientSideRowModelModule,
+  CsvExportModule,
+  DateFilterModule,
   ModuleRegistry,
+  NumberFilterModule,
+  PaginationModule,
+  RowSelectionModule,
+  TextFilterModule,
+  ValidationModule,
   themeQuartz,
   type ColDef,
 } from 'ag-grid-community';
@@ -21,7 +29,21 @@ import {
 import { useDashboardData } from './useDashboardData';
 import { DashboardSettingsButton } from './DashboardSettings';
 
-ModuleRegistry.registerModules([AllCommunityModule]);
+/**
+ * Registration is global, so this list has to stay narrow too: pulling in
+ * everything here would put it back into the chunk the issuance grid shares.
+ */
+ModuleRegistry.registerModules([
+  ClientSideRowModelModule,
+  RowSelectionModule,
+  PaginationModule,
+  CsvExportModule,
+  CellStyleModule,
+  TextFilterModule,
+  NumberFilterModule,
+  DateFilterModule,
+  ...(import.meta.env.DEV ? [ValidationModule] : []),
+]);
 
 const gridTheme = themeQuartz.withParams({
   accentColor: '#57534e',

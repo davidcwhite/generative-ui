@@ -5,7 +5,7 @@ import {
   shiftDays,
   shiftMonths,
   type Granularity,
-} from './shadcnIssuanceData';
+} from './issuanceData';
 
 export type RangePreset = '1M' | '3M' | '6M' | 'YTD' | '1Y' | 'ALL';
 

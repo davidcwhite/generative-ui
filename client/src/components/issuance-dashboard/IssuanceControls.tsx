@@ -28,13 +28,13 @@ import {
   shiftMonths,
   type Dimension,
   type Granularity,
-} from './shadcnIssuanceData';
+} from './issuanceData';
 
 /* ------------------------------------------------------------------ *
  * Shared segmented control
  * ------------------------------------------------------------------ */
 
-export function Segmented({
+function Segmented({
   children,
   label,
   size = 'md',
@@ -56,7 +56,7 @@ export function Segmented({
   );
 }
 
-export function SegmentedButton({
+function SegmentedButton({
   active,
   disabled,
   title,

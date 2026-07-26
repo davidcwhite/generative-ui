@@ -12,9 +12,11 @@ export interface AggregatesState {
 /**
  * Stale-while-revalidate: the previous aggregates stay mounted while a new query
  * loads, so changing a filter never blanks out a chart the user is reading.
+ *
+ * `query` is the effect's dependency, so callers must memoise it — a fresh
+ * object each render would refetch on every render.
  */
 export function useIssuanceAggregates(query: IssuanceQuery): AggregatesState {
-  const key = JSON.stringify(query);
   const [data, setData] = useState<IssuanceAggregates | null>(null);
   const [isPending, setIsPending] = useState(true);
   const hasData = useRef(false);
@@ -35,9 +37,7 @@ export function useIssuanceAggregates(query: IssuanceQuery): AggregatesState {
       });
 
     return () => controller.abort();
-    // The serialised query is the real dependency; `query` is rebuilt every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [query]);
 
   return useMemo(
     () => ({
@@ -57,14 +57,11 @@ export function useSettledFlag(active: boolean, delayMs = 220, minVisibleMs = 42
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (active) {
-      const timer = setTimeout(() => setVisible(true), delayMs);
-      return () => clearTimeout(timer);
-    }
-    if (!visible) return;
-    const timer = setTimeout(() => setVisible(false), minVisibleMs);
+    const timer = active
+      ? setTimeout(() => setVisible(true), delayMs)
+      : setTimeout(() => setVisible(false), minVisibleMs);
     return () => clearTimeout(timer);
-  }, [active, delayMs, minVisibleMs, visible]);
+  }, [active, delayMs, minVisibleMs]);
 
   return visible;
 }

@@ -7,8 +7,7 @@ import {
   ISSUANCE_SECTORS,
   ISSUANCE_STATUSES,
   ISSUANCE_TICKERS,
-  type Dimension,
-} from './shadcnIssuanceData';
+} from './issuanceData';
 
 export interface FieldDef {
   field: FilterField;
@@ -31,7 +30,7 @@ export const FILTER_FIELDS: FieldDef[] = [
   { field: 'pricingDate', label: 'Pricing date', kind: 'date' },
 ];
 
-export const FIELD_LABELS: Record<FilterField, string> = Object.fromEntries(
+const FIELD_LABELS: Record<FilterField, string> = Object.fromEntries(
   FILTER_FIELDS.map((field) => [field.field, field.label]),
 ) as Record<FilterField, string>;
 
@@ -79,11 +78,6 @@ export function selectedValues(filters: FilterClause[], field: ListField): strin
   return clause && 'values' in clause ? clause.values : [];
 }
 
-/** Dimensions map one-to-one onto list fields, so charts can filter directly. */
-export function dimensionField(dimension: Dimension): ListField {
-  return dimension;
-}
-
 export function describeClause(clause: FilterClause): string {
   const label = FIELD_LABELS[clause.field];
   if (clause.field === 'size') {
@@ -102,11 +96,13 @@ export function describeClause(clause: FilterClause): string {
   return `${label} ${clause.values.length} selected`;
 }
 
+const SHORT_DATE = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  year: '2-digit',
+  timeZone: 'UTC',
+});
+
 export function shortDate(iso: string) {
-  return new Intl.DateTimeFormat('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: '2-digit',
-    timeZone: 'UTC',
-  }).format(new Date(`${iso}T00:00:00Z`));
+  return SHORT_DATE.format(new Date(`${iso}T00:00:00Z`));
 }
