@@ -47,7 +47,7 @@ Eight regions, top to bottom. Widths are at `xl` and above.
 ║  │ €14bn┤  ▇  ▇  ▇  ▇  ▇  ▇                │ │      │ │ deals │ │        │  ║
 ║  │      │  ▇  ▇  ▇  ▇  ▇  ▇  ▇             │ │      ╰─┤       ├─╯         │  ║
 ║  │  €0bn└──┴──┴──┴──┴──┴──┴──┴───          │ │        ╰───────╯           │  ║
-║  │        Jul  Aug  Sep  Oct  Nov          │ │  184px ring, 62→82 radius  │  ║
+║  │        Jul  Aug  Sep  Oct  Nov          │ │  184px box, 62→82 radius   │  ║
 ║  │                                         │ │                            │  ║
 ║  │ ▪ Financials ▪ Autos ▪ Telecoms  2 more │ │ ▪ Financials         22%   │  ║
 ║  │   StackLegend (only when stacked)       │ │ ▪ Automobiles        14%   │  ║
