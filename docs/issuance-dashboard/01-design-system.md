@@ -697,6 +697,129 @@ switching to `text-red-600` with `role="alert"` when parsing fails. It is
 permanent rather than conditional because it is the only signal that the field
 accepts typing at all.
 
+### Calendar
+
+The calendar is `react-day-picker` v10 driven directly. It lives in the shadcn
+`ui/` folder and follows the same conventions — composed with `cn`, forwarding
+both `className` and `classNames` — but it is **not** the shadcn calendar. Every
+visual class is replaced, so generating the stock component and expecting a match
+will not work. Copy the source below verbatim instead.
+
+Two structural decisions produce the look, and both are easy to lose.
+
+**The range is one continuous band, not a row of pills.** The fill sits on the
+day *cell* through `range_start` / `range_middle` / `range_end`, and the inner
+button is then neutralised with `[&>button]:!bg-transparent`. Styling the buttons
+instead — which is what the stock component does — leaves a visible gap between
+every day, because the button is inset within its cell.
+
+**The nav floats over the caption.** The `nav` container is
+`absolute inset-x-1 top-1` with `pointer-events-none`, and each arrow re-enables
+`pointer-events-auto`. This keeps the month label optically centred in its own
+panel with two months side by side; in-flow arrows would push each caption
+off-centre.
+
+```tsx
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { DayPicker, getDefaultClassNames, type DayPickerProps } from 'react-day-picker';
+import { cn } from '@/lib/utils';
+
+export function Calendar({ className, classNames, ...props }: DayPickerProps) {
+  const defaults = getDefaultClassNames();
+
+  return (
+    <DayPicker
+      className={cn('p-2 text-stone-900', className)}
+      classNames={{
+        root: defaults.root,
+        months: 'flex gap-5',
+        month: 'space-y-2.5',
+        nav: 'flex items-center justify-between absolute inset-x-1 top-1 z-10 pointer-events-none',
+        button_previous:
+          'pointer-events-auto inline-flex h-6 w-6 items-center justify-center rounded-md text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-800 disabled:opacity-30',
+        button_next:
+          'pointer-events-auto inline-flex h-6 w-6 items-center justify-center rounded-md text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-800 disabled:opacity-30',
+        month_caption: 'relative flex h-6 items-center justify-center',
+        caption_label: 'text-[11px] font-semibold tracking-[-0.01em] text-stone-800',
+        month_grid: 'w-full border-collapse',
+        weekdays: 'flex',
+        weekday:
+          'w-8 text-center text-[9px] font-medium uppercase tracking-[0.08em] text-stone-400',
+        week: 'mt-0.5 flex',
+        day: 'relative h-8 w-8 p-0 text-center text-[11px] first:rounded-l-md last:rounded-r-md',
+        range_start: 'rounded-l-md bg-stone-100',
+        range_middle:
+          'bg-stone-100 [&>button]:!bg-transparent [&>button]:!text-stone-800 [&>button]:hover:!bg-stone-200',
+        range_end: 'rounded-r-md bg-stone-100',
+        day_button:
+          'relative h-8 w-8 rounded-md tabular-nums transition-colors hover:bg-stone-200/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900/20',
+        selected: '[&>button]:bg-stone-900 [&>button]:text-white [&>button]:hover:bg-stone-800',
+        today: 'font-semibold',
+        outside: 'text-stone-300',
+        disabled: 'text-stone-300 opacity-60',
+        hidden: 'invisible',
+        ...classNames,
+      }}
+      components={{
+        Chevron: ({ orientation }) =>
+          orientation === 'left' ? (
+            <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+          ),
+      }}
+      {...props}
+    />
+  );
+}
+```
+
+The type scale is a step below the rest of the page, because a two-month grid is
+dense and full-size type makes it shout:
+
+| Element | Size | Colour | Notes |
+| --- | --- | --- | --- |
+| Month caption | `text-[11px]` semibold | `stone-800` | `tracking-[-0.01em]` |
+| Weekday header | `text-[9px]` medium | `stone-400` | uppercase, `tracking-[0.08em]` |
+| Day number | `text-[11px]` | inherits | `tabular-nums` on the button |
+| Nav arrow | `h-3.5 w-3.5` | `stone-400` | `stone-800` on hover |
+
+Day cells are a fixed 32px square (`h-8 w-8`), which the `w-8` weekday header
+matches so the columns line up. Months are separated by `gap-5`, rows by
+`mt-0.5`, and the whole thing is padded `p-2`.
+
+State colours, in specificity order:
+
+```
+selected      [&>button]:bg-stone-900 [&>button]:text-white
+range_*       bg-stone-100                    (on the cell)
+today         font-semibold                   (weight only, no colour)
+outside       text-stone-300
+disabled      text-stone-300 opacity-60
+hover         hover:bg-stone-200/70           (day button)
+focus         focus-visible:ring-2 ring-stone-900/20
+```
+
+`today` deliberately carries weight rather than colour or a ring. Inside a range
+selection a coloured today marker competes with the band, and the user is picking
+a window, not locating the present date.
+
+Three things will silently break the styling:
+
+- **Do not import `react-day-picker/style.css`.** The `classNames` map above is
+  complete — layout comes from `months: 'flex gap-5'`, `weekdays: 'flex'`,
+  `week: 'flex'` and the fixed 32px cells. `getDefaultClassNames()` is called for
+  `root` only. Adding the stylesheet reintroduces the library's own table layout,
+  which fights the flex rules.
+- **Pin `react-day-picker` to v10.** These keys are v9+ naming. On v8 they match
+  nothing and the grid renders unstyled.
+- **The grid key is `month_grid`, not `table`.** `table` was deprecated in v9 and
+  removed in v10, so it fails strict TypeScript.
+
+Behaviour — two months, month-controlled paging, and bounds clamped to the
+dataset — belongs to the wrapper around this component, not to the component
+itself. That is in [02-functional-spec.md](./02-functional-spec.md#date-range).
+
 ---
 
 ## AG Grid theme

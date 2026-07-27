@@ -114,28 +114,32 @@ those above it, so they can be read top to bottom.
 | `IssuanceDashboard.tsx` | 254 | Orchestrator |
 
 The folder's only outside imports are React, the libraries above, and these ten
-shadcn primitives:
+files from the shadcn `ui/` directory:
 
 ```
 badge  button  calendar  chart  command
 dropdown-menu  input  popover  skeleton  tabs
 ```
 
+Eight are the stock primitives, two of them patched. `chart` and `calendar` only
+follow the shadcn conventions — both are written by hand and share no styling
+with the generated versions. The setup checklist covers all four cases.
+
 ---
 
 ## Setup checklist
 
-The components alone are not enough. Three of these four steps are easy to skip
+The components alone are not enough. Four of these five steps are easy to skip
 and each produces a silently broken result.
 
 **1. Add the primitives.**
 
 ```bash
-npx shadcn@latest add badge button calendar command \
+npx shadcn@latest add badge button command \
   dropdown-menu input popover skeleton tabs
 ```
 
-`chart` is not on that list on purpose — see step 3.
+`chart` and `calendar` are missing from that list on purpose — see steps 3 and 4.
 
 **2. Patch two primitives.** Both diverge from stock, and both are relied on.
 
@@ -168,7 +172,14 @@ per-point ranking and a footer slot. None of that exists upstream, and the
 charts pass all four. The full source is in
 [01-design-system.md](./01-design-system.md#chart-wrapper).
 
-**4. Copy the stylesheet blocks.** Roughly 120 lines of CSS live outside the
+**4. Write `calendar.tsx` by hand as well.** It is `react-day-picker` v10 with
+every class replaced, so the generated component shares no styling with it — the
+palette differs and a selected range renders as separate pills rather than one
+band. Pin `react-day-picker` to v10 and do not import its stylesheet. Full source
+and the reasoning behind both decisions are in
+[01-design-system.md](./01-design-system.md#calendar).
+
+**5. Copy the stylesheet blocks.** Roughly 120 lines of CSS live outside the
 components: the shimmer, the stale-data dim, the refresh fade, the popover
 transitions, two AG Grid overrides, the chart colour tokens, and the
 reduced-motion block. Without them the skeletons are static grey, popovers snap,
