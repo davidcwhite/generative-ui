@@ -23,6 +23,9 @@ export const RANGE_PRESETS: { id: RangePreset; label: string }[] = [
   { id: 'ALL', label: 'All' },
 ];
 
+/** Where the dashboard opens, and where Reset returns to. */
+export const DEFAULT_RANGE_PRESET: RangePreset = '1Y';
+
 /** The dataset's last pricing date stands in for "today". */
 export const TODAY = ISSUANCE_END;
 

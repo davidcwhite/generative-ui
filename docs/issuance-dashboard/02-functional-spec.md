@@ -79,20 +79,50 @@ calendar is bounded by the dataset at both ends, so paging into an empty future
 is impossible. The draft resets to whatever is currently applied each time the
 popover opens, and nothing is committed until **Apply**.
 
+**Reset** discards the custom window entirely, returns to the default preset and
+closes the popover. It must not merely clear the draft: `Apply` requires both
+ends of a range, so a cleared draft leaves the applied window untouched *and*
+disables the only button that could change it — a dead end where the control
+appears broken. The default lives in one place so the initial state and Reset
+cannot drift:
+
+```ts
+/** Where the dashboard opens, and where Reset returns to. */
+export const DEFAULT_RANGE_PRESET: RangePreset = '1Y';
+```
+
+Reset appears only on the custom range. The pricing-date filter uses **Clear** in
+its editor header instead, which removes the clause outright and is only shown
+once a clause exists.
+
 ---
 
 ## Typed dates
 
-Both date fields accept typing as well as clicking. Five input formats are
-recognised, tried in order:
+Both date fields accept typing as well as clicking. Dates are **displayed** as
+`dd/MM/yyyy`, and seven input formats are recognised, tried in this order:
 
 | Pattern | Example |
 | --- | --- |
-| `d MMM yyyy` | `15 Jan 2026` |
-| `d MMM yy` | `15 Jan 26` |
-| `yyyy-MM-dd` | `2026-01-15` |
+| `d/M/yy` | `15/1/26` |
 | `d/M/yyyy` | `15/1/2026` |
+| `d.M.yy` | `15.1.26` |
 | `d.M.yyyy` | `15.1.2026` |
+| `yyyy-MM-dd` | `2026-01-15` |
+| `d MMM yy` | `15 Jan 26` |
+| `d MMM yyyy` | `15 Jan 2026` |
+
+Two things about that order are load-bearing.
+
+**Day-first slash formats come first**, which resolves the `01/02/2026`
+ambiguity in favour of 1 February rather than 2 January. Display and input agree,
+so a value round-trips unchanged.
+
+**Two-digit years precede four-digit ones.** `yyyy` is lenient and will happily
+match `26`, yielding the year 26 AD; that then trips the clamp below and silently
+becomes the dataset's first date, so the field looks like it ignored the input.
+Putting `d/M/yy` ahead of `d/M/yyyy` prevents it, and four-digit input is
+unaffected because `yy` leaves two trailing digits unconsumed and fails.
 
 ```ts
 function parseTyped(text: string): Date | null {
@@ -114,8 +144,8 @@ function parseTyped(text: string): Date | null {
 Behaviour:
 
 - **Commit on blur or Enter, never per keystroke.** Parsing as the user types
-  means `2` matches `d/M/yyyy` and yanks the calendar to the year 2000 after the
-  first character.
+  means a lone `2` matches a day-first pattern and yanks the calendar to another
+  year after the first character.
 - **Out-of-range dates clamp** to the dataset bounds rather than being rejected.
 - **Enter in a field applies the whole range** if both ends are now valid.
 - **Reversed dates swap.** Typing an end date earlier than the start reads as a

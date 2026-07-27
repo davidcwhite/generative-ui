@@ -14,6 +14,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { shortDate } from './issuanceFilters';
 import {
+  DEFAULT_RANGE_PRESET,
   GRANULARITIES,
   RANGE_PRESETS,
   TODAY,
@@ -169,11 +170,24 @@ export function DateRangeCalendar({
  * Typed dates
  * ------------------------------------------------------------------ */
 
-const TYPED_FORMATS = ['d MMM yyyy', 'd MMM yy', 'yyyy-MM-dd', 'd/M/yyyy', 'd.M.yyyy'];
-const DISPLAY_FORMAT = 'd MMM yyyy';
-const PLACEHOLDER_FORMAT = 'DD MMM YYYY';
-const FORMAT_HINT = 'Type or pick — 15 Jan 2026, 15/01/2026 or 2026-01-15';
-const INVALID_HINT = 'Not a date we recognise — try 15 Jan 2026';
+/**
+ * Day-first, and two-digit years are tried before four so `yyyy` cannot
+ * greedily read "26" as the year 26 AD — which would then clamp to the dataset
+ * floor and look like the field had ignored the input.
+ */
+const TYPED_FORMATS = [
+  'd/M/yy',
+  'd/M/yyyy',
+  'd.M.yy',
+  'd.M.yyyy',
+  'yyyy-MM-dd',
+  'd MMM yy',
+  'd MMM yyyy',
+];
+const DISPLAY_FORMAT = 'dd/MM/yyyy';
+const PLACEHOLDER_FORMAT = 'DD/MM/YYYY';
+const FORMAT_HINT = 'Type or pick — 15/01/2026, 15 Jan 2026 or 2026-01-15';
+const INVALID_HINT = 'Not a date we recognise — try 15/01/2026';
 
 /** First format that yields a real date wins; out-of-range dates clamp. */
 function parseTyped(text: string): Date | null {
@@ -422,7 +436,12 @@ export function RangeControl({
             draft={draft}
             onDraftChange={setDraft}
             canApply={(range) => Boolean(range?.from && range?.to)}
-            onReset={() => setDraft(undefined)}
+            /* Clearing only the draft would strand the applied range with Apply
+               disabled, so Reset drops the custom window altogether. */
+            onReset={() => {
+              onPresetSelect(DEFAULT_RANGE_PRESET);
+              setOpen(false);
+            }}
             onApply={(range) => {
               if (!range.from || !range.to) return;
               onCustomSelect({ from: isoFromLocal(range.from), to: isoFromLocal(range.to) });

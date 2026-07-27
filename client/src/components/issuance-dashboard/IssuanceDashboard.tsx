@@ -13,7 +13,13 @@ import { VolumeChart } from './VolumeChart';
 import { RangeControl } from './IssuanceControls';
 import { RefreshIndicator } from './IssuanceSkeletons';
 import { selectedValues, toggleValues } from './issuanceFilters';
-import { resolvePreset, snapGranularity, type DateWindow, type RangePreset } from './issuanceRange';
+import {
+  DEFAULT_RANGE_PRESET,
+  resolvePreset,
+  snapGranularity,
+  type DateWindow,
+  type RangePreset,
+} from './issuanceRange';
 import type { FilterClause, IssuanceQuery } from './issuanceApi';
 import { useIssuanceAggregates, useSettledFlag } from './useIssuanceAggregates';
 import {
@@ -56,7 +62,7 @@ export function IssuanceDashboard({
   const [viewMode, setViewMode] = useState<ViewMode>('dashboards');
   const [dataset, setDataset] = useState<DatasetId>('issuance');
 
-  const [preset, setPreset] = useState<RangePreset | 'CUSTOM'>('1Y');
+  const [preset, setPreset] = useState<RangePreset | 'CUSTOM'>(DEFAULT_RANGE_PRESET);
   const [custom, setCustom] = useState<DateWindow | null>(null);
   const [granularity, setGranularity] = useState<Granularity>('monthly');
   const [stackBy, setStackBy] = useState<Dimension | null>(null);
