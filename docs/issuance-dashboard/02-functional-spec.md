@@ -79,6 +79,13 @@ calendar is bounded by the dataset at both ends, so paging into an empty future
 is impossible. The draft resets to whatever is currently applied each time the
 popover opens, and nothing is committed until **Apply**.
 
+Calendar clicks follow the standard range-picker cycle: the first click anchors
+a start, the second completes the range (swapping if it lands before the
+anchor), and any click on a *complete* range starts a new one at that day. The
+last rule is hand-rolled — react-day-picker's default instead moves the nearest
+endpoint, which makes a start date inside the current range unreachable (see
+[06-date-picker.md](06-date-picker.md) for the handler).
+
 **Reset** discards the custom window entirely, returns to the default preset and
 closes the popover. It must not merely clear the draft: `Apply` requires both
 ends of a range, so a cleared draft leaves the applied window untouched *and*

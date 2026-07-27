@@ -225,13 +225,58 @@ export function DateRangeCalendar({ anchor, selected, onSelect }: {
       startMonth={FIRST_MONTH}
       endMonth={LAST_MONTH}
       selected={selected}
-      onSelect={onSelect}
+      /* Clicks run a three-state machine — empty → anchored → complete → back
+         to anchored — instead of the library's `addToRange`, which has two
+         habits that read as bugs here: the first click yields a complete
+         single-day range, and a click on a complete range moves the nearest
+         endpoint, so a start inside 5–30 can never be reselected. */
+      onSelect={(_, day) => {
+        if (!selected?.from || selected.to) {
+          onSelect({ from: day, to: undefined });
+        } else {
+          onSelect(
+            day < selected.from
+              ? { from: day, to: selected.from }
+              : { from: selected.from, to: day },
+          );
+        }
+      }}
       disabled={{ before: localFromIso(ISSUANCE_START), after: localFromIso(TODAY) }}
       required={false}
     />
   );
 }
 ```
+
+### Click behaviour is hand-rolled
+
+Do **not** pass the parent's `onSelect` straight through to the calendar.
+react-day-picker computes range selections with its `addToRange` util, and two
+of its defaults conflict with how people expect a range picker to behave:
+
+- **The first click completes a single-day range** (`{ from: day, to: day }`),
+  not an anchored start. That immediately puts the picker in the
+  "complete range" state, so the second click edits an endpoint instead of
+  completing the pair.
+- **A click on a complete range moves the nearest endpoint.** With 5–30
+  selected, clicking the 15th produces 5–15; clicking before the 5th moves the
+  start. There is no click that restarts the selection, so a start *inside*
+  the current range is unreachable — the classic symptom is "the start date is
+  stuck and only the end date changes".
+
+The handler above ignores the library's computed range (first argument) and
+uses only the clicked day (second argument) to run a plain state machine:
+
+| Current draft            | Click on a day     | Result                        |
+| ------------------------ | ------------------ | ----------------------------- |
+| Empty                    | any day            | `{ from: day }` — anchored    |
+| Anchored (`from` only)   | day ≥ `from`       | `{ from, to: day }` — complete |
+| Anchored (`from` only)   | day < `from`       | swapped: `{ from: day, to: from }` |
+| Complete (`from` + `to`) | any day            | `{ from: day }` — restart     |
+
+Two consequences worth knowing: a single-day range now takes two clicks on the
+same day (matching every mainstream range picker), and the Apply button stays
+disabled in the anchored state because the draft has no `to` yet.
 
 `clampMonth` keeps the **left** panel far enough back that the right one never
 pages past the dataset:
@@ -252,9 +297,10 @@ The effect makes the view follow a typed date, but **only when that date is not
 already visible**. Following unconditionally means clicking a day in the
 right-hand panel shunts the whole view left by a month under the cursor.
 
-`required={false}` allows deselection. `disabled` greys out-of-range days while
-`startMonth`/`endMonth` stop the paging, so the user cannot reach empty months at
-all.
+`disabled` greys out-of-range days while `startMonth`/`endMonth` stop the
+paging, so the user cannot reach empty months at all. (`required={false}` is the
+library default posture; it no longer affects selection because the click
+handler above bypasses the library's range computation entirely.)
 
 ---
 
@@ -460,6 +506,11 @@ exactly the case that exposes a missing `relative` on the calendar root.
 
 ## Gotchas
 
+- **Never pass the parent's `onSelect` straight into the calendar.** The
+  library's own range logic makes the first click a complete single-day range
+  and never restarts on a complete range, so a start inside the current
+  selection becomes unreachable. Run the click state machine from
+  [Click behaviour is hand-rolled](#click-behaviour-is-hand-rolled) instead.
 - **`relative` on the calendar root.** Without it the nav arrows anchor to the
   popover and drift onto whatever is above the calendar. Only shows up in a
   layout that puts something there, so it survives a long time unnoticed.

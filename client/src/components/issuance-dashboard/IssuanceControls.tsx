@@ -167,7 +167,22 @@ export function DateRangeCalendar({
       startMonth={FIRST_MONTH}
       endMonth={LAST_MONTH}
       selected={selected}
-      onSelect={onSelect}
+      /* Clicks run a three-state machine — empty → anchored → complete → back
+         to anchored — instead of the library's `addToRange`, which has two
+         habits that read as bugs here: the first click yields a complete
+         single-day range, and a click on a complete range moves the nearest
+         endpoint, so a start inside 5–30 can never be reselected. */
+      onSelect={(_, day) => {
+        if (!selected?.from || selected.to) {
+          onSelect({ from: day, to: undefined });
+        } else {
+          onSelect(
+            day < selected.from
+              ? { from: day, to: selected.from }
+              : { from: selected.from, to: day },
+          );
+        }
+      }}
       disabled={{ before: localFromIso(ISSUANCE_START), after: localFromIso(TODAY) }}
       required={false}
     />
