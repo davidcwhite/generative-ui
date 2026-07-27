@@ -15,6 +15,7 @@ categories. Everything below is verbatim from a working implementation.
 - [The legend](#the-legend)
 - [The controls above it](#the-controls-above-it)
 - [Loading, stale and empty](#loading-stale-and-empty)
+- [The animation](#the-animation)
 - [Wiring it up](#wiring-it-up)
 - [Gotchas](#gotchas)
 - [Parity checklist](#parity-checklist)
@@ -471,6 +472,9 @@ Stacked and unstacked are two branches, not one parameterised `Bar`:
   where they meet, so a stack reads as a broken column. The unstacked bar takes
   the fuller `[4,4,0,0]`.
 - **`maxBarSize={40}`** stops six buckets from rendering as slabs.
+- **`animationDuration={450}`** is tied to the grey-out timings; the two are
+  choreographed in [The animation](#the-animation). `isAnimationActive` is
+  deliberately not passed.
 - **Selection dims rather than highlights** — deselected bands drop to `0.25`.
   An unfiltered chart therefore has no visual state to reset.
 - **`activeOf` returns `boolean | null`**, and only an explicit `false` dims. A
@@ -815,6 +819,182 @@ is what tells assistive technology the region is mid-update.
 
 ---
 
+## The animation
+
+Change a filter and the chart holds still, greys out, then the bars glide to
+their new heights. That is three separate mechanisms in sequence — a hook that
+refuses to clear its data, a CSS class, and Recharts interpolating from the
+rectangles it drew last time. None of them knows about the others; the timings
+are what make them read as one gesture.
+
+### The sequence
+
+Every number below comes from the code, not from taste. The measured trace is a
+`1Y → 3M` switch against the 620ms mock latency.
+
+| Time | What happens | Driven by |
+| --- | --- | --- |
+| 0ms | Query object changes; fetch starts and the previous one aborts | `useMemo` on `query`, effect cleanup |
+| 0–220ms | **Nothing changes on screen.** Old bars, old axis, full colour | 220ms delay in `useSettledFlag` |
+| ~220–400ms | `.dash-stale` applied; opacity 1 → 0.45, saturation 1 → 0.55 | 180ms CSS transition |
+| ~680ms | Response lands, `series` is replaced | Request latency |
+| ~680–1130ms | Bars interpolate from the old rectangles to the new ones | `animationDuration={450}` |
+| ~1100ms | Dim released; 180ms fade back to full colour | 420ms hold in `useSettledFlag` |
+
+Only 220, 420, 180 and 450 are fixed. Everything else follows the response, so
+the wall-clock marks move with latency and with how busy the main thread is —
+under load the dim can appear closer to 500ms after the click, because its
+`setTimeout` and the style recalculation both queue behind other work. The
+*order* is what the design depends on, not the absolute times.
+
+The dim lifts at ~1100ms and the bars settle at ~1130ms, and that is deliberate:
+the 420ms hold after
+the data lands is set just under the 450ms the bars take to move, so the colour
+returns as the movement finishes rather than halfway through it. Lengthen
+`animationDuration` without lengthening the hold and the chart brightens with the
+bars still visibly sliding.
+
+### Why nothing moves for the first 220ms
+
+The fetch hook never clears what it is holding. Only the pending flag changes, so
+the previous `series` stays mounted and the chart keeps rendering it:
+
+```ts
+return useMemo(
+  () => ({
+    data,
+    isFirstLoad: isPending && !hasData.current,
+    isRefreshing: isPending && hasData.current,
+  }),
+  [data, isPending],
+);
+```
+
+That is the whole "freeze": there is no frozen state, just data that was never
+taken away. A hook that set `data` to `null` while fetching would blank the band
+and no amount of animation could recover the continuity.
+
+The 220ms delay in front of the dim then means a fast response never dims at all
+— the bars simply move. Only a request slow enough to notice earns the grey-out.
+
+### Where the smooth part comes from
+
+Not CSS. `.dash-stale` transitions opacity and saturation only:
+
+```css
+/* Data is still readable while the next response lands. */
+.dash-stale {
+  opacity: 0.45;
+  filter: saturate(0.55);
+  transition: opacity 180ms ease, filter 180ms ease;
+}
+```
+
+The movement is Recharts. Each `Bar` keeps a ref to the rectangles it last drew
+and, on a data change, interpolates from those to the new ones:
+
+```ts
+// Recharts 3.8 internals, simplified from the compiled source (horizontal layout)
+const stepData = t === 1 ? data : data.map((entry, index) => {
+  const prev = prevData && prevData[index];
+  if (prev) {
+    return { ...entry,
+      x: interpolate(prev.x, entry.x, t),
+      y: interpolate(prev.y, entry.y, t),
+      width: interpolate(prev.width, entry.width, t),
+      height: interpolate(prev.height, entry.height, t) };
+  }
+  // No previous rectangle at this index — grow from the stack base.
+  return { ...entry,
+    y: interpolate(entry.stackedBarStart, entry.y, t),
+    height: interpolate(0, entry.height, t) };
+});
+```
+
+Two consequences worth internalising:
+
+- **Rectangles are matched by array index, not by bucket key.** Recharts has no
+  idea that `series[2]` used to be October and is now Q3. The bar at position 2
+  morphs into the bar at position 2 whatever they represent.
+- **A missing previous rectangle grows from zero** rather than morphing.
+
+The restart is keyed off props identity. `useAnimationId` mints a new id whenever
+the props object changes by reference, and that id is the `key` on the animation
+wrapper, so the wrapper remounts and `t` runs from 0 again. `Bar` renders through
+a `PureComponent`, which is what stops unrelated parent renders from restarting
+the animation on every hover.
+
+### Three behaviours that follow
+
+| Change | What the bars do | Why |
+| --- | --- | --- |
+| Date range or granularity | Morph — every bar slides and stretches into the next one at its index | Same `Bar` keys, so `prevData` survives |
+| Stack dimension | Grow up from the axis | Keys change, `Bar`s remount, `prevData` is null |
+| Click a band or chip | Nothing moves | Scope exclusion means the data is identical |
+
+Measured, first frame after each swap: a `1Y → 3M` change starts at `48/88` (the
+old geometry) and ends at `27/265`. Switching stack to Sector starts at `1/3/4` —
+effectively zero — and grows to `17/55/68`. Clicking the `Energy` chip holds
+`17/56/69/71` from the first frame to the last.
+
+The third row is the one worth understanding. Because the chart drops the filter
+on its own stack dimension
+([scope exclusion](./02-functional-spec.md#scope-exclusion)), clicking a band
+produces identical data, so the animation runs against unchanged geometry and is
+invisible. The band still dims immediately, because that comes from local filter
+state rather than from the response:
+
+```tsx
+opacity={activeOf(item.category) === false ? 0.25 : 1}
+```
+
+So a band click reads as: instant selection feedback, a grey-out while the table
+and hero catch up, and bars that never move. The grey-out is honest — a request
+really is in flight — but the chart is deliberately not the thing that changed.
+
+Note the asymmetry with the donut, which sets `transition-opacity` on its cells.
+Bar bands carry only `cursor-pointer`, so their dimming snaps rather than fades.
+
+### What does not animate
+
+Only graphical items use the animation wrapper. `CartesianAxis` and
+`CartesianGrid` do not, so **the axis and gridlines snap to the new scale the
+instant the data lands**, while the bars take another 450ms to agree with them.
+For the length of the movement the bars are drawn against a scale they have not
+reached yet.
+
+This is the strongest argument for the dim. The re-labelling and the rescale both
+happen while the chart is at 45% opacity and 55% saturation, which is precisely
+where the eye is least likely to be reading exact heights.
+
+### Reduced motion
+
+The whole choreography collapses to an instant swap, and it takes no extra code.
+
+`isAnimationActive` defaults to `'auto'` in Recharts 3.8, which resolves through
+the library's own media query — `isActiveProp === 'auto' ? !isSsr &&
+!prefersReducedMotion : isActiveProp`. Leaving the prop off, as this chart does,
+is therefore the accessible choice; hard-coding `isAnimationActive={true}` would
+override the user's preference.
+
+The dim loses its transition from the stylesheet — one rule inside the shared
+reduced-motion block, which also flattens the shimmer and the popovers
+([full block](./01-design-system.md#stylesheet)):
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  /* …shimmer and popover rules… */
+  .dash-stale {
+    transition: none;
+  }
+}
+```
+
+It still dims — the state is real and worth showing — it just arrives without a
+fade.
+
+---
+
 ## Wiring it up
 
 The parent owns the query and passes the response straight through. Two pairs of
@@ -938,6 +1118,15 @@ in [02-functional-spec.md](./02-functional-spec.md#scope-exclusion).
   skeleton's `w-11`, the legend's `pl-11`. They move together or not at all.
 - **Do not import a stock `ChartTooltipContent`.** Four of the props used here
   do not exist upstream, and they are what keeps a long-tail tooltip usable.
+- **Never clear the data while fetching.** Setting it to `null` blanks the band
+  and destroys the bar-to-bar animation the whole loading pattern depends on.
+- **Keep the 420ms hold just under `animationDuration`.** Raise the duration on
+  its own and the chart returns to full colour with the bars still sliding.
+- **Do not pass `isAnimationActive={true}`.** The `'auto'` default already
+  respects `prefers-reduced-motion`; hard-coding it overrides the user.
+- **Recharts matches rectangles by index, not by key**, so a bar can morph from
+  October into Q3. Harmless here, but it rules out treating the movement as
+  meaningful.
 
 ---
 
@@ -957,5 +1146,8 @@ in [02-functional-spec.md](./02-functional-spec.md#scope-exclusion).
 - [ ] Legend: 8 chips, `pl-11`, `aria-pressed`, truncation at 160px, `N more` toggle, keyed by dimension
 - [ ] Deselected bands `0.25`, chips `opacity-40`; nothing highlighted when unfiltered
 - [ ] Skeleton on first load, `.dash-stale` on refresh, empty band with a Clear filters action
+- [ ] Refresh keeps the old series mounted, so bars morph into the new data rather than rebuilding
+- [ ] 220ms before the dim, 420ms hold after the data lands, 450ms bar movement — in that relation
+- [ ] `isAnimationActive` left at its default so reduced motion is honoured
 - [ ] `aria-busy` on the wrapping column while loading or refreshing
 - [ ] Stack menu reads `Stack off` / `Stack sector`; granularity tabs disabled with a hint, not hidden
