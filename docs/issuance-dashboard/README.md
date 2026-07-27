@@ -22,6 +22,7 @@ data that is already on screen is never blanked out while newer data loads.
 | [05-loading.md](./05-loading.md) | Every skeleton and loading indicator, in full |
 | [06-date-picker.md](./06-date-picker.md) | The date range popover on its own: layout, calendar, footer, Reset |
 | [07-filter-bar.md](./07-filter-bar.md) | The filter row: clause model, two-mode popover, editors, chips |
+| [08-volume-chart.md](./08-volume-chart.md) | The bar chart end to end: bucketing, ranking, Recharts config, tooltip, legend |
 
 Start with the [page map](./01-design-system.md#page-map) — it names the eight
 regions and links each to its own specification. Then read 01 and 02 to build
