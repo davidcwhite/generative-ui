@@ -21,6 +21,7 @@ data that is already on screen is never blanked out while newer data loads.
 | [04-performance.md](./04-performance.md) | Which patterns keep it fast, and which will quietly break it |
 | [05-loading.md](./05-loading.md) | Every skeleton and loading indicator, in full |
 | [06-date-picker.md](./06-date-picker.md) | The date range popover on its own: layout, calendar, footer, Reset |
+| [07-filter-bar.md](./07-filter-bar.md) | The filter row: clause model, two-mode popover, editors, chips |
 
 Start with the [page map](./01-design-system.md#page-map) — it names the eight
 regions and links each to its own specification. Then read 01 and 02 to build
