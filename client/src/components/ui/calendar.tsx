@@ -14,12 +14,18 @@ export function Calendar({ className, classNames, ...props }: DayPickerProps) {
 
   return (
     <DayPicker
-      className={cn('p-2 text-stone-900 [--cell-size:2rem]', className)}
+      // `relative` is load-bearing: the nav is absolutely positioned, and
+      // react-day-picker's stylesheet — which would supply this — is not
+      // imported. Without it the arrows anchor to the nearest positioned
+      // ancestor, landing on whatever sits above the calendar in the popover.
+      className={cn('relative p-2 text-stone-900 [--cell-size:2rem]', className)}
       classNames={{
         root: defaults.root,
         months: 'flex gap-5',
         month: 'space-y-2.5',
-        nav: 'flex items-center justify-between absolute inset-x-1 top-1 z-10 pointer-events-none',
+        // `top-2` matches the root's `p-2`, so the nav shares the caption's
+        // 24px band instead of floating 4px above it.
+        nav: 'flex items-center justify-between absolute inset-x-1 top-2 z-10 pointer-events-none',
         button_previous:
           'pointer-events-auto inline-flex h-6 w-6 items-center justify-center rounded-md text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-800 disabled:opacity-30',
         button_next:

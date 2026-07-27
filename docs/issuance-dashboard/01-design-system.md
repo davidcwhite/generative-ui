@@ -748,10 +748,14 @@ the cell corners round outward only at the two ends (`rounded-l-md` on the start
 `rounded-r-md` on the end) so the band has square internal joins.
 
 **The nav floats over the caption.** The `nav` container is
-`absolute inset-x-1 top-1` with `pointer-events-none`, and each arrow re-enables
+`absolute inset-x-1 top-2` with `pointer-events-none`, and each arrow re-enables
 `pointer-events-auto`. This keeps the month label optically centred in its own
 panel with two months side by side; in-flow arrows would push each caption
-off-centre.
+off-centre. Two values are load-bearing: `relative` on the root, which
+react-day-picker's unimported stylesheet would otherwise supply, and `top-2`,
+which matches the root's `p-2` so the arrows share the caption's 24px band. See
+[06-date-picker.md](./06-date-picker.md#how-the-nav-row-works) for what breaks
+without each.
 
 ```tsx
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -763,12 +767,12 @@ export function Calendar({ className, classNames, ...props }: DayPickerProps) {
 
   return (
     <DayPicker
-      className={cn('p-2 text-stone-900 [--cell-size:2rem]', className)}
+      className={cn('relative p-2 text-stone-900 [--cell-size:2rem]', className)}
       classNames={{
         root: defaults.root,
         months: 'flex gap-5',
         month: 'space-y-2.5',
-        nav: 'flex items-center justify-between absolute inset-x-1 top-1 z-10 pointer-events-none',
+        nav: 'flex items-center justify-between absolute inset-x-1 top-2 z-10 pointer-events-none',
         button_previous:
           'pointer-events-auto inline-flex h-6 w-6 items-center justify-center rounded-md text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-800 disabled:opacity-30',
         button_next:

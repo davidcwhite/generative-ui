@@ -20,6 +20,7 @@ data that is already on screen is never blanked out while newer data loads.
 | [03-architecture.md](./03-architecture.md) | How the layers fit together, and how to extend or substitute them |
 | [04-performance.md](./04-performance.md) | Which patterns keep it fast, and which will quietly break it |
 | [05-loading.md](./05-loading.md) | Every skeleton and loading indicator, in full |
+| [06-date-picker.md](./06-date-picker.md) | The date range popover on its own: layout, calendar, footer, Reset |
 
 Start with the [page map](./01-design-system.md#page-map) — it names the eight
 regions and links each to its own specification. Then read 01 and 02 to build
