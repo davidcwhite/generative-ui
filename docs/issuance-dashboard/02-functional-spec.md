@@ -99,62 +99,118 @@ once a clause exists.
 
 ## Typed dates
 
-Both date fields accept typing as well as clicking. Dates are **displayed** as
-`dd/MM/yyyy`, and seven input formats are recognised, tried in this order:
+Both date fields are **segmented**: day, month and year are separate, individually
+focusable controls rather than one free-text box. Clicking `mm` lands on the
+month; typing digits fills the focused segment and advances to the next; up and
+down arrows step the focused segment; left and right move between them. Each
+segment is a `spinbutton` with its own label and `aria-valuemin`/`aria-valuemax`,
+so a screen reader announces "month, START" rather than leaving the user to guess
+at a format, and mobile gets the numeric keyboard.
 
-| Pattern | Example |
-| --- | --- |
-| `d/M/yy` | `15/1/26` |
-| `d/M/yyyy` | `15/1/2026` |
-| `d.M.yy` | `15.1.26` |
-| `d.M.yyyy` | `15.1.2026` |
-| `yyyy-MM-dd` | `2026-01-15` |
-| `d MMM yy` | `15 Jan 26` |
-| `d MMM yyyy` | `15 Jan 2026` |
+### Why not `<input type="date">`
 
-Two things about that order are load-bearing.
+The native control gives this interaction for free but cannot be pinned to a
+format. Segment order follows the browser's locale, which Chrome derives from a
+blend of browser language and **OS region** — the same markup renders `mm/dd/yyyy`
+on a US-imaged machine. The `lang` attribute does not help: the WHATWG suggests
+honouring it and Chrome and Firefox ignore it. The in-progress CSS Form Control
+Styling module adds `::field-component` and `::field-separator` for painting the
+segments, but states that structure is determined by internationalisation, so
+ordering stays out of reach. A native input would also bring its own calendar
+popup, which is redundant inside a popover that already contains one.
 
-**Day-first slash formats come first**, which resolves the `01/02/2026`
-ambiguity in favour of 1 February rather than 2 January. Display and input agree,
-so a value round-trips unchanged.
+### Pinning the order
 
-**Two-digit years precede four-digit ones.** `yyyy` is lenient and will happily
-match `26`, yielding the year 26 AD; that then trips the clamp below and silently
-becomes the dataset's first date, so the field looks like it ignored the input.
-Putting `d/M/yy` ahead of `d/M/yyyy` prevents it, and four-digit input is
-unaffected because `yy` leaves two trailing digits unconsumed and fails.
+React Aria formats through `Intl.DateTimeFormat`, which **is** deterministic from
+a locale string, so an `I18nProvider` fixes the order regardless of host machine:
+
+```tsx
+<I18nProvider locale="en-GB">
+  {/* START and END fields */}
+</I18nProvider>
+```
+
+`shouldForceLeadingZeros` renders `05/01/2026` rather than `5/1/2026`. Changing
+the locale changes the order — `en-US` yields `mm/dd/yyyy` — and nothing else in
+the dashboard needs to know.
+
+### Commit rules
+
+`minValue` and `maxValue` are the dataset bounds, which clamps arrow stepping and
+gives assistive technology the range. Typing is not clamped, so the field adds one
+rule of its own:
+
+```tsx
+const change = (next: CalendarDate | null) => {
+  setLocal(next);
+  const failed = next !== null && !inRange(next);
+  setRejected(failed);
+  onValidityChange(failed);
+  if (next === null) onCommit(null);
+  else if (!failed) onCommit(fromCalendar(next));
+};
+```
+
+**Only in-range values reach the draft.** Every keystroke in the year segment
+yields a complete date on the way to 2026 — 0002, 0020, 0202 — and committing
+those would drag the calendar back to the third century between keystrokes.
+
+**Red is deferred until focus leaves.** A half-typed year is not yet a mistake, so
+the invalid styling keys off `isFocusWithin` rather than firing mid-entry:
+
+```tsx
+rejected && !isFocusWithin ? 'border-red-300 text-red-600' : /* … */
+```
+
+**Apply is disabled while a field shows an out-of-range date**, because that date
+never reached the draft and applying would silently use the previous value.
+
+**Reversed dates swap.** An end date earlier than the start reads as a correction,
+so `from` and `to` exchange places.
+
+**Enter applies the whole range** if both ends are in range.
+
+**The hint line carries the bounds, not a format grammar.** The segments advertise
+their own format through their placeholders, so the only thing left to say is
+which dates the data covers. It turns red with `role="alert"` when a segment holds
+an out-of-range date.
+
+### Why the field needs local state
+
+It cannot be controlled straight from the draft. An out-of-range value has to stay
+on screen while the user finishes typing, yet is deliberately not committed — so
+if `value` were the only source, the prop would snap the segments back on the next
+render and the year would be impossible to edit. Hence a local mirror, resynced
+whenever the draft changes from outside:
+
+```tsx
+const [local, setLocal] = useState(() => toCalendar(value));
+
+useEffect(() => {
+  setLocal(toCalendar(value));
+  setRejected(false);
+  onValidityChange(false);
+}, [value, onValidityChange]);
+```
+
+### Conversion boundary
+
+React Aria works in `CalendarDate` from `@internationalized/date`; the rest of the
+dashboard uses local `Date`. Two functions bridge it, and are the only place the
+representations meet:
 
 ```ts
-function parseTyped(text: string): Date | null {
-  const trimmed = text.trim();
-  if (trimmed === '') return null;
-  for (const pattern of TYPED_FORMATS) {
-    const parsed = parse(trimmed, pattern, new Date());
-    if (!isValid(parsed)) continue;
-    const floor = localFromIso(ISSUANCE_START);
-    const ceiling = localFromIso(TODAY);
-    if (parsed < floor) return floor;
-    if (parsed > ceiling) return ceiling;
-    return parsed;
-  }
-  return null;
+function toCalendar(date: Date | undefined) {
+  return date ? new CalendarDate(date.getFullYear(), date.getMonth() + 1, date.getDate()) : null;
+}
+
+function fromCalendar(value: CalendarDate) {
+  return new Date(value.year, value.month - 1, value.day);
 }
 ```
 
-Behaviour:
-
-- **Commit on blur or Enter, never per keystroke.** Parsing as the user types
-  means a lone `2` matches a day-first pattern and yanks the calendar to another
-  year after the first character.
-- **Out-of-range dates clamp** to the dataset bounds rather than being rejected.
-- **Enter in a field applies the whole range** if both ends are now valid.
-- **Reversed dates swap.** Typing an end date earlier than the start reads as a
-  correction, not an error, so `from` and `to` exchange places.
-- **Unparseable text marks the field** with a red border, `aria-invalid`, and an
-  alert-role hint. Apply is disabled while either field is unparsed, because
-  applying would silently discard what was typed.
-- **The format hint is always visible**, not revealed on error. It is the only
-  cue that the field accepts typing.
+`CalendarDate` carries no time and no zone, which is exactly what a pricing date
+is, so the round trip is lossless and no timezone arithmetic is involved.
 
 The calendar and the fields are two views of one draft. Typing moves the
 calendar **only when the typed date falls outside the two visible months** —
@@ -628,7 +684,14 @@ panel visibility. Supplied by the host, not controlled in-page.
   where a visible title would only repeat context.
 - Chart columns set `aria-busy` while loading. The refresh indicator is
   `role="status"`.
-- Invalid date input sets `aria-invalid`, and its hint takes `role="alert"`.
+- Each date segment is a `spinbutton` labelled `"day, START"` and so on, carrying
+  `aria-valuemin` and `aria-valuemax`, so the expected format never has to be
+  inferred from a placeholder.
+- Invalid date input sets `aria-invalid`, and its hint takes `role="alert"`. The
+  attribute has to be passed to `DateInput` explicitly — `isInvalid` on the
+  `DateField` does not produce it, because React Aria's `Group` only *reads*
+  `aria-invalid` in order to derive its own `data-invalid`. Set one and you get
+  both; set neither and the field turns red with nothing announced.
 - Decorative marks — swatches, dots, chevrons, skeletons — are `aria-hidden`.
   Icon-only controls have `sr-only` labels or an `aria-label`.
 - Focus rings are explicit: `focus-visible:ring-2` with `ring-stone-900/15`.

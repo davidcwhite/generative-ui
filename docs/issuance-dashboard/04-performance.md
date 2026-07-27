@@ -89,11 +89,39 @@ the shared chunk and cancels the saving.
 
 ### Barrel imports
 
-`lucide-react`, `date-fns` and the Radix packages are barrels. Production
-bundlers tree-shake them, but development transform time suffers because the
-whole barrel is parsed per import site. Under Next, add them to
-`optimizePackageImports`. Under Vite, they can be left alone unless dev startup
+`lucide-react`, `date-fns`, `react-aria-components` and the Radix packages are
+barrels. Production bundlers tree-shake them, but development transform time
+suffers because the whole barrel is parsed per import site. Under Next, add them
+to `optimizePackageImports`. Under Vite, they can be left alone unless dev startup
 becomes slow, at which point import from source paths.
+
+`react-aria-components` is the largest of these by a wide margin and deserves a
+measurement rather than an assumption. Bundling only the five exports the date
+fields use — `DateField`, `DateInput`, `DateSegment`, `Label`, `I18nProvider` —
+against the whole package:
+
+| Imported | gzip |
+| --- | --- |
+| `@internationalized/date` (`CalendarDate`, `parseDate`) | 3.6 kB |
+| The five `react-aria-components` exports | 48.8 kB |
+| `import * as RAC from 'react-aria-components'` | 265.3 kB |
+
+Tree-shaking is therefore working — it strips 82% — but **49 kB gzip is the real
+price of two date fields**, and it does not shrink further, because `DateField`
+pulls in the shared focus, i18n, collection and overlay machinery that the rest of
+the library sits on. Two consequences:
+
+- The cost amortises to nothing if anything else in the application uses React
+  Aria, and stays at 49 kB if the date fields are the only consumers.
+- If they are the only consumers and the budget matters, a hand-written segmented
+  field is roughly a hundred lines, at the cost of owning per-segment `spinbutton`
+  semantics, arrow and type-ahead handling, and IME behaviour yourself. Read
+  [02-functional-spec.md](./02-functional-spec.md#typed-dates) first: the reason
+  the library is here is that a native `<input type="date">` cannot be pinned to a
+  format, and hand-rolling means reimplementing that guarantee too.
+
+Either way, keep the fields inside the lazy-loaded dashboard chunk so the weight
+never lands on an initial route that has no date picker.
 
 ### Code splitting
 

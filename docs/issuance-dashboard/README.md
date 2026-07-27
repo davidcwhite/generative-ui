@@ -38,13 +38,15 @@ load-bearing.
 | Primitives | shadcn/ui over Radix | Copied in, so they can be edited |
 | Charts | Recharts 3 | Composable, and the shadcn chart wrapper targets it |
 | Table | AG Grid Community 36 | Infinite row model and column pinning |
-| Dates | date-fns 4 + react-day-picker 10 | Multi-format parsing, range calendar |
+| Dates | date-fns 4 + react-day-picker 10 | Formatting, bucketing, range calendar |
+| Date entry | React Aria `DateField` + `@internationalized/date` | Segmented dd/mm/yyyy that a native `<input type="date">` cannot guarantee |
 | Command lists | cmdk 1 | Searchable filter field and option lists |
 | Icons | lucide-react | — |
 
 ```jsonc
 {
   "dependencies": {
+    "@internationalized/date": "^3.12.2",
     "@radix-ui/react-dropdown-menu": "^2.1.23",
     "@radix-ui/react-popover": "^1.1.23",
     "@radix-ui/react-slot": "^1.3.2",
@@ -57,6 +59,7 @@ load-bearing.
     "date-fns": "^4.4.0",
     "lucide-react": "^1.24.0",
     "react": "^18.3.0",
+    "react-aria-components": "^1.19.0",
     "react-day-picker": "^10.0.1",
     "react-dom": "^18.3.0",
     "recharts": "^3.8.0",
@@ -178,7 +181,14 @@ generated calendar. Pin `react-day-picker` to v10 and do not import its
 stylesheet. Full source and the reasoning behind each decision are in
 [01-design-system.md](./01-design-system.md#calendar).
 
-**5. Copy the stylesheet blocks.** Roughly 120 lines of CSS live outside the
+**5. Set the date-field locale deliberately.** The segmented start and end fields
+are React Aria's `DateField`, wrapped in `<I18nProvider locale="en-GB">` because
+that provider — not the host machine — decides whether they read `dd/mm/yyyy` or
+`mm/dd/yyyy`. Pick the locale your desk expects. `react-aria-components` ships no
+stylesheet you need to import; every class comes from the render props shown in
+[02-functional-spec.md](./02-functional-spec.md#typed-dates).
+
+**6. Copy the stylesheet blocks.** Roughly 120 lines of CSS live outside the
 components: the shimmer, the stale-data dim, the refresh fade, the popover
 transitions, two AG Grid overrides, the chart colour tokens, and the
 reduced-motion block. Without them the skeletons are static grey, popovers snap,

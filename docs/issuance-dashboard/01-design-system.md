@@ -681,21 +681,48 @@ border-t border-stone-100 px-2.5 py-2.5
 Internal rules are `stone-100`, one step lighter than the page's `stone-200/70`
 — inside a small overlay a full-weight rule dominates.
 
-Date fields:
+Date fields are React Aria `DateField`s, so the styling arrives through render
+props rather than pseudo-class variants. The wrapper keeps the geometry of the
+text input it replaced, which is what holds the footer's layout steady:
 
 ```
-h-7 w-[104px] rounded-md border bg-white px-2 text-[11px] tabular-nums text-stone-800
-transition-colors placeholder:tracking-tight placeholder:text-stone-300
-focus:outline-none focus:ring-2 focus:ring-stone-900/10
+// DateInput — ({ isFocusWithin }) =>
+flex h-7 w-[104px] items-center rounded-md border bg-white px-2 text-[11px]
+transition-colors
 
-valid:   border-stone-200 focus:border-stone-300
-invalid: border-red-300 text-red-600
+rest:     border-stone-200 text-stone-800
+focus:    border-stone-300 text-stone-800 ring-2 ring-stone-900/10
+invalid:  border-red-300 text-red-600      // only when !isFocusWithin
 ```
 
-The format hint below is always visible at `mt-1.5 text-[10px] text-stone-400`,
-switching to `text-red-600` with `role="alert"` when parsing fails. It is
-permanent rather than conditional because it is the only signal that the field
-accepts typing at all.
+`ring-2 ring-stone-900/10` replaces the `focus:ring` the input had, moved to
+focus-*within* because focus lands on a child segment, never the box itself.
+
+Segments carry their own state, keyed off `segment.type` and the render props:
+
+```
+// DateSegment — ({ isFocused, isPlaceholder }) =>
+literal ("/"):  text-stone-300   · text-red-300 when invalid
+otherwise:      rounded-sm px-px tabular-nums caret-transparent outline-none
+  focused:      bg-stone-200 text-stone-900
+  placeholder:  text-stone-300
+  filled:       inherits text-stone-800 from the wrapper
+```
+
+The separators need the invalid palette too. They are the one part of the field
+whose colour is set outright rather than inherited, so leaving them at
+`text-stone-300` strands grey slashes inside otherwise-red digits, which reads as
+a rendering fault rather than a warning.
+
+`bg-stone-200` rather than an accent fill is the one deliberate departure from
+platform convention: a native date input highlights the focused segment in the
+system accent, which would be the only saturated non-data colour on the page.
+`caret-transparent` hides the text caret, since a segment is stepped rather than
+edited character by character.
+
+Below the fields, the hint sits at `mt-1.5 text-[10px] text-stone-400`, switching
+to `text-red-600` with `role="alert"` on an out-of-range date. It is permanent
+rather than conditional so the line never collapses and shifts the footer.
 
 ### Calendar
 

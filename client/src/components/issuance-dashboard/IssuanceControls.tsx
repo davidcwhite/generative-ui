@@ -1,6 +1,14 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { DateRange } from 'react-day-picker';
-import { addMonths, format, isValid, parse, startOfMonth } from 'date-fns';
+import { addMonths, format, startOfMonth } from 'date-fns';
+import { CalendarDate, parseDate } from '@internationalized/date';
+import {
+  DateField as AriaDateField,
+  DateInput,
+  DateSegment,
+  I18nProvider,
+  Label,
+} from 'react-aria-components';
 import { CalendarDays, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -170,44 +178,36 @@ export function DateRangeCalendar({
  * Typed dates
  * ------------------------------------------------------------------ */
 
-/**
- * Day-first, and two-digit years are tried before four so `yyyy` cannot
- * greedily read "26" as the year 26 AD — which would then clamp to the dataset
- * floor and look like the field had ignored the input.
- */
-const TYPED_FORMATS = [
-  'd/M/yy',
-  'd/M/yyyy',
-  'd.M.yy',
-  'd.M.yyyy',
-  'yyyy-MM-dd',
-  'd MMM yy',
-  'd MMM yyyy',
-];
-const DISPLAY_FORMAT = 'dd/MM/yyyy';
-const PLACEHOLDER_FORMAT = 'DD/MM/YYYY';
-const FORMAT_HINT = 'Type or pick — 15/01/2026, 15 Jan 2026 or 2026-01-15';
-const INVALID_HINT = 'Not a date we recognise — try 15/01/2026';
+const MIN_DATE = parseDate(ISSUANCE_START);
+const MAX_DATE = parseDate(TODAY);
+const BOUNDS_HINT = `Type or arrow through each part — ${format(
+  localFromIso(ISSUANCE_START),
+  'dd/MM/yyyy',
+)} to ${format(localFromIso(TODAY), 'dd/MM/yyyy')}`;
+const OUT_OF_RANGE_HINT = 'That date sits outside the available data';
 
-/** First format that yields a real date wins; out-of-range dates clamp. */
-function parseTyped(text: string): Date | null {
-  const trimmed = text.trim();
-  if (trimmed === '') return null;
-  for (const pattern of TYPED_FORMATS) {
-    const parsed = parse(trimmed, pattern, new Date());
-    if (!isValid(parsed)) continue;
-    const floor = localFromIso(ISSUANCE_START);
-    const ceiling = localFromIso(TODAY);
-    if (parsed < floor) return floor;
-    if (parsed > ceiling) return ceiling;
-    return parsed;
-  }
-  return null;
+function toCalendar(date: Date | undefined) {
+  return date ? new CalendarDate(date.getFullYear(), date.getMonth() + 1, date.getDate()) : null;
+}
+
+function fromCalendar(value: CalendarDate) {
+  return new Date(value.year, value.month - 1, value.day);
+}
+
+function inRange(value: CalendarDate) {
+  return value.compare(MIN_DATE) >= 0 && value.compare(MAX_DATE) <= 0;
 }
 
 /**
- * Text in, date out. Commits on blur and Enter rather than per keystroke, so a
- * half-typed year never yanks the calendar to another decade.
+ * Day, month and year as separately focusable segments — the interaction a
+ * native `<input type="date">` gives you, minus its one fatal flaw: the browser
+ * derives segment order from the OS region, so the same markup renders
+ * mm/dd/yyyy on a US-imaged machine. React Aria formats through `Intl` instead,
+ * which the `I18nProvider` below pins to en-GB.
+ *
+ * Every keystroke in the year segment yields a complete date on the way to
+ * 2026 (0002, 0020, 0202), so only in-range values commit — otherwise the
+ * calendar would chase the user back to the third century.
  */
 function DateField({
   label,
@@ -222,61 +222,82 @@ function DateField({
   onEnter: (date: Date | null) => void;
   onValidityChange: (invalid: boolean) => void;
 }) {
-  const id = useId();
-  const [text, setText] = useState('');
-  const [invalid, setInvalid] = useState(false);
+  const [local, setLocal] = useState(() => toCalendar(value));
+  const [rejected, setRejected] = useState(false);
 
   useEffect(() => {
-    setText(value ? format(value, DISPLAY_FORMAT) : '');
-    setInvalid(false);
+    setLocal(toCalendar(value));
+    setRejected(false);
     onValidityChange(false);
   }, [value, onValidityChange]);
 
-  const flag = (failed: boolean) => {
-    setInvalid(failed);
+  const change = (next: CalendarDate | null) => {
+    setLocal(next);
+    const failed = next !== null && !inRange(next);
+    setRejected(failed);
     onValidityChange(failed);
-  };
-
-  const commit = () => {
-    const parsed = parseTyped(text);
-    const failed = text.trim() !== '' && parsed === null;
-    flag(failed);
-    if (!failed) onCommit(parsed);
-    return failed ? undefined : parsed;
+    if (next === null) onCommit(null);
+    else if (!failed) onCommit(fromCalendar(next));
   };
 
   return (
-    <span className="inline-flex flex-col gap-1">
-      <label
-        className="text-[9px] font-medium uppercase tracking-[0.1em] text-stone-400"
-        htmlFor={id}
+    <div
+      onKeyDown={(event) => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        if (local && inRange(local)) onEnter(fromCalendar(local));
+      }}
+    >
+      <AriaDateField
+        className="inline-flex flex-col gap-1"
+        value={local}
+        onChange={change}
+        minValue={MIN_DATE}
+        maxValue={MAX_DATE}
+        isInvalid={rejected}
+        shouldForceLeadingZeros
       >
-        {label}
-      </label>
-      <input
-        id={id}
-        type="text"
-        value={text}
-        aria-invalid={invalid}
-        placeholder={PLACEHOLDER_FORMAT}
-        title={FORMAT_HINT}
-        spellCheck={false}
-        onChange={(event) => {
-          setText(event.target.value);
-          if (invalid) flag(false);
-        }}
-        onBlur={commit}
-        onKeyDown={(event) => {
-          if (event.key !== 'Enter') return;
-          event.preventDefault();
-          const parsed = commit();
-          if (parsed !== undefined) onEnter(parsed);
-        }}
-        className={`h-7 w-[104px] rounded-md border bg-white px-2 text-[11px] tabular-nums text-stone-800 transition-colors placeholder:tracking-tight placeholder:text-stone-300 focus:outline-none focus:ring-2 focus:ring-stone-900/10 ${
-          invalid ? 'border-red-300 text-red-600' : 'border-stone-200 focus:border-stone-300'
-        }`}
-      />
-    </span>
+        <Label className="text-[9px] font-medium uppercase tracking-[0.1em] text-stone-400">
+          {label}
+        </Label>
+        {/* Red only once focus leaves: a half-typed year is not yet a mistake. */}
+        <DateInput
+          // `isInvalid` alone yields no ARIA on the group — Group only reads this
+          // prop to derive `data-invalid`, it never emits it.
+          aria-invalid={rejected || undefined}
+          className={({ isFocusWithin }) =>
+            `flex h-7 w-[104px] items-center rounded-md border bg-white px-2 text-[11px] transition-colors ${
+              rejected && !isFocusWithin
+                ? 'border-red-300 text-red-600'
+                : isFocusWithin
+                  ? 'border-stone-300 text-stone-800 ring-2 ring-stone-900/10'
+                  : 'border-stone-200 text-stone-800'
+            }`
+          }
+        >
+          {(segment) => (
+            <DateSegment
+              segment={segment}
+              className={({ isFocused, isPlaceholder }) =>
+                /* Separators sit one step back from the digits in either palette,
+                   so they don't stay grey inside an otherwise-red field. */
+                segment.type === 'literal'
+                  ? rejected
+                    ? 'text-red-300'
+                    : 'text-stone-300'
+                  : `rounded-sm px-px tabular-nums caret-transparent outline-none ${
+                      isFocused
+                        ? 'bg-stone-200 text-stone-900'
+                        : isPlaceholder
+                          ? 'text-stone-300'
+                          : ''
+                    }`
+              }
+            />
+          )}
+        </DateInput>
+      </AriaDateField>
+    </div>
   );
 }
 
@@ -322,38 +343,41 @@ export function DateRangeFooter({
   return (
     <div className="border-t border-stone-100 px-2.5 py-2.5">
       <div className="flex items-end justify-between gap-3">
-        <div className="flex items-end gap-1.5">
-          <DateField
-            label="Start"
-            value={draft?.from}
-            onValidityChange={flagFrom}
-            onCommit={(date) => commit('from', date)}
-            onEnter={(date) => {
-              const next = commit('from', date);
-              if (canApply(next)) onApply(next as DateRange);
-            }}
-          />
-          <span className="pb-2 text-[11px] text-stone-300" aria-hidden>
-            –
-          </span>
-          <DateField
-            label="End"
-            value={draft?.to}
-            onValidityChange={flagTo}
-            onCommit={(date) => commit('to', date)}
-            onEnter={(date) => {
-              const next = commit('to', date);
-              if (canApply(next)) onApply(next as DateRange);
-            }}
-          />
-        </div>
+        {/* Pins segment order to dd/mm/yyyy regardless of the machine's region. */}
+        <I18nProvider locale="en-GB">
+          <div className="flex items-end gap-1.5">
+            <DateField
+              label="Start"
+              value={draft?.from}
+              onValidityChange={flagFrom}
+              onCommit={(date) => commit('from', date)}
+              onEnter={(date) => {
+                const next = commit('from', date);
+                if (canApply(next)) onApply(next as DateRange);
+              }}
+            />
+            <span className="pb-2 text-[11px] text-stone-300" aria-hidden>
+              –
+            </span>
+            <DateField
+              label="End"
+              value={draft?.to}
+              onValidityChange={flagTo}
+              onCommit={(date) => commit('to', date)}
+              onEnter={(date) => {
+                const next = commit('to', date);
+                if (canApply(next)) onApply(next as DateRange);
+              }}
+            />
+          </div>
+        </I18nProvider>
         <div className="flex items-center gap-1">
           {onReset && (
             <Button variant="ghost" size="xs" onClick={onReset}>
               Reset
             </Button>
           )}
-          {/* Applying while a field is unparsed would silently ignore it. */}
+          {/* A field showing an out-of-range date never reached the draft. */}
           <Button
             size="xs"
             disabled={rejected || !canApply(draft)}
@@ -363,12 +387,12 @@ export function DateRangeFooter({
           </Button>
         </div>
       </div>
-      {/* Always on show: the fields accept text, and this is the grammar. */}
+      {/* The segments advertise their own format, so this carries the bounds. */}
       <p
         className={`mt-1.5 text-[10px] ${rejected ? 'text-red-600' : 'text-stone-400'}`}
         role={rejected ? 'alert' : undefined}
       >
-        {rejected ? INVALID_HINT : FORMAT_HINT}
+        {rejected ? OUT_OF_RANGE_HINT : BOUNDS_HINT}
       </p>
     </div>
   );
