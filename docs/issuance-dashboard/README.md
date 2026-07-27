@@ -173,10 +173,9 @@ charts pass all four. The full source is in
 [01-design-system.md](./01-design-system.md#chart-wrapper).
 
 **4. Write `calendar.tsx` by hand as well.** It is `react-day-picker` v10 with
-every class replaced, so the generated component shares no styling with it — the
-palette differs and a selected range renders as separate pills rather than one
-band. Pin `react-day-picker` to v10 and do not import its stylesheet. Full source
-and the reasoning behind both decisions are in
+every class in the map replaced, so it shares no palette or type scale with a
+generated calendar. Pin `react-day-picker` to v10 and do not import its
+stylesheet. Full source and the reasoning behind each decision are in
 [01-design-system.md](./01-design-system.md#calendar).
 
 **5. Copy the stylesheet blocks.** Roughly 120 lines of CSS live outside the

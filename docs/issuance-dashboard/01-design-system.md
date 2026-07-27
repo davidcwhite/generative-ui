@@ -701,17 +701,24 @@ accepts typing at all.
 
 The calendar is `react-day-picker` v10 driven directly. It lives in the shadcn
 `ui/` folder and follows the same conventions — composed with `cn`, forwarding
-both `className` and `classNames` — but it is **not** the shadcn calendar. Every
-visual class is replaced, so generating the stock component and expecting a match
-will not work. Copy the source below verbatim instead.
+both `className` and `classNames` — but every visual class is replaced, so it
+carries none of the default palette or type scale. Copy the source below verbatim
+rather than generating a calendar and adjusting it.
 
 Two structural decisions produce the look, and both are easy to lose.
 
-**The range is one continuous band, not a row of pills.** The fill sits on the
-day *cell* through `range_start` / `range_middle` / `range_end`, and the inner
-button is then neutralised with `[&>button]:!bg-transparent`. Styling the buttons
-instead — which is what the stock component does — leaves a visible gap between
-every day, because the button is inset within its cell.
+**The range fill sits on the day cell, not the day button.** `range_start` /
+`range_middle` / `range_end` paint `bg-stone-100` on the `<td>`, and the inner
+button is then neutralised with `[&>button]:!bg-transparent`. Because the cells
+tile edge to edge at exactly one cell-width apart, the fill reads as one
+continuous band with no seams. Painting the buttons instead leaves a gap at every
+day boundary, since a button is inset within its cell — the usual workaround is a
+bridging `after:` pseudo-element on the two endpoints, which this avoids
+entirely.
+
+Selected endpoints then sit on top as `stone-900` squares with white text, and
+the cell corners round outward only at the two ends (`rounded-l-md` on the start,
+`rounded-r-md` on the end) so the band has square internal joins.
 
 **The nav floats over the caption.** The `nav` container is
 `absolute inset-x-1 top-1` with `pointer-events-none`, and each arrow re-enables
@@ -729,7 +736,7 @@ export function Calendar({ className, classNames, ...props }: DayPickerProps) {
 
   return (
     <DayPicker
-      className={cn('p-2 text-stone-900', className)}
+      className={cn('p-2 text-stone-900 [--cell-size:2rem]', className)}
       classNames={{
         root: defaults.root,
         months: 'flex gap-5',
@@ -744,15 +751,15 @@ export function Calendar({ className, classNames, ...props }: DayPickerProps) {
         month_grid: 'w-full border-collapse',
         weekdays: 'flex',
         weekday:
-          'w-8 text-center text-[9px] font-medium uppercase tracking-[0.08em] text-stone-400',
+          'w-(--cell-size) text-center text-[9px] font-medium uppercase tracking-[0.08em] text-stone-400',
         week: 'mt-0.5 flex',
-        day: 'relative h-8 w-8 p-0 text-center text-[11px] first:rounded-l-md last:rounded-r-md',
+        day: 'relative size-(--cell-size) p-0 text-center text-[11px] first:rounded-l-md last:rounded-r-md',
         range_start: 'rounded-l-md bg-stone-100',
         range_middle:
           'bg-stone-100 [&>button]:!bg-transparent [&>button]:!text-stone-800 [&>button]:hover:!bg-stone-200',
         range_end: 'rounded-r-md bg-stone-100',
         day_button:
-          'relative h-8 w-8 rounded-md tabular-nums transition-colors hover:bg-stone-200/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900/20',
+          'relative size-(--cell-size) rounded-md tabular-nums transition-colors hover:bg-stone-200/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900/20',
         selected: '[&>button]:bg-stone-900 [&>button]:text-white [&>button]:hover:bg-stone-800',
         today: 'font-semibold',
         outside: 'text-stone-300',
@@ -784,8 +791,15 @@ dense and full-size type makes it shout:
 | Day number | `text-[11px]` | inherits | `tabular-nums` on the button |
 | Nav arrow | `h-3.5 w-3.5` | `stone-400` | `stone-800` on hover |
 
-Day cells are a fixed 32px square (`h-8 w-8`), which the `w-8` weekday header
-matches so the columns line up. Months are separated by `gap-5`, rows by
+All cell geometry derives from one variable, `--cell-size`, declared as `2rem` on
+the root and consumed by the day cell, the day button and the weekday header
+(`size-(--cell-size)` and `w-(--cell-size)`). Keeping it in one place is what
+guarantees the three stay in lockstep, and it lets a caller resize the grid with
+`className="[--cell-size:2.5rem]"` — `cn` runs the passed `className` last, so the
+override wins. At `2rem` a month panel measures 224px (seven 32px columns).
+
+Nav arrows are deliberately *not* cell-sized: they stay at `h-6 w-6`, matching the
+caption row height rather than a day. Months are separated by `gap-5`, rows by
 `mt-0.5`, and the whole thing is padded `p-2`.
 
 State colours, in specificity order:
@@ -804,17 +818,22 @@ focus         focus-visible:ring-2 ring-stone-900/20
 selection a coloured today marker competes with the band, and the user is picking
 a window, not locating the present date.
 
-Three things will silently break the styling:
+Four things are worth knowing before you touch it:
 
 - **Do not import `react-day-picker/style.css`.** The `classNames` map above is
   complete — layout comes from `months: 'flex gap-5'`, `weekdays: 'flex'`,
-  `week: 'flex'` and the fixed 32px cells. `getDefaultClassNames()` is called for
-  `root` only. Adding the stylesheet reintroduces the library's own table layout,
-  which fights the flex rules.
+  `week: 'flex'` and `--cell-size`. `getDefaultClassNames()` is called for `root`
+  only. Adding the stylesheet reintroduces the library's own table layout, which
+  fights the flex rules.
 - **Pin `react-day-picker` to v10.** These keys are v9+ naming. On v8 they match
   nothing and the grid renders unstyled.
 - **The grid key is `month_grid`, not `table`.** `table` was deprecated in v9 and
   removed in v10, so it fails strict TypeScript.
+- **The rendered DOM carries no `rdp-*` class names except `rdp-root`.** Every
+  other key is replaced rather than merged with `getDefaultClassNames()`, so
+  selectors like `.rdp-day` or `.rdp-range_start` match nothing. Target `<td>` and
+  `<th>` inside `.rdp-root`, or the Tailwind classes themselves, when writing
+  tests or inspecting in devtools.
 
 Behaviour — two months, month-controlled paging, and bounds clamped to the
 dataset — belongs to the wrapper around this component, not to the component
