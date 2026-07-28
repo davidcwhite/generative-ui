@@ -24,6 +24,7 @@ data that is already on screen is never blanked out while newer data loads.
 | [07-filter-bar.md](./07-filter-bar.md) | The filter row: clause model, two-mode popover, editors, chips |
 | [08-volume-chart.md](./08-volume-chart.md) | The bar chart end to end: bucketing, ranking, Recharts config, tooltip, legend |
 | [09-donut-chart.md](./09-donut-chart.md) | The composition ring: geometry, centre readout, legend rows, and how it differs from the bar chart |
+| [10-ag-grid-and-detail-draft.md](./10-ag-grid-and-detail-draft.md) | Draft: the complete AG Grid, infinite paging, loading rows, selection, and issuance detail card |
 
 Start with the [page map](./01-design-system.md#page-map) — it names the eight
 regions and links each to its own specification. Then read 01 and 02 to build
