@@ -312,8 +312,19 @@ The centre of the donut shows one of two things:
   labelled `of volume`.
 
 ```ts
+const breakdownValues = selectedValues(filters, shownBreakdownBy);
+
+/**
+ * Slice volumes are exact per category, so a selection that takes only part
+ * of the folded "Other" slice cannot be priced from them — it would claim the
+ * whole bucket, two orders of magnitude out for a single issuer.
+ */
+const otherPartlySelected =
+  breakdownOther.some((value) => breakdownValues.includes(value)) &&
+  !breakdownOther.every((value) => breakdownValues.includes(value));
+
 const selectedShare =
-  selectedValues(filters, shownBreakdownBy).length === 0 || breakdownTotal === 0
+  breakdownValues.length === 0 || breakdownTotal === 0 || otherPartlySelected
     ? null
     : (breakdown
         .filter((slice) => isActive(shownBreakdownBy, slice.category, breakdownOther))
@@ -321,7 +332,13 @@ const selectedShare =
 ```
 
 That turns the donut into a live readout of how much of the market the current
-selection represents.
+selection represents — and, when it cannot state that honestly, into a deal
+count instead. The response carries volumes per slice, not per value, so a
+filter on one issuer inside a folded `Other` slice has no share the client can
+compute; claiming the bucket's share would be wildly wrong. Withholding is the
+same instinct as the granularity gate: show nothing rather than something
+misleading. Full reasoning in
+[09-donut-chart.md](./09-donut-chart.md#the-centre-readout).
 
 ---
 

@@ -35,7 +35,11 @@ export function MixDonut({
   breakdownBy: Dimension;
   shownBreakdownBy: Dimension;
   dealCount: number;
-  /** Share of volume the current filter covers, or null when nothing is picked. */
+  /**
+   * Share of volume the current filter covers. Null when nothing is picked on
+   * this dimension, or when the share cannot be stated exactly — the centre
+   * falls back to the deal count rather than showing a figure that is wrong.
+   */
   selectedShare: number | null;
   isFirstLoad: boolean;
   isRefreshing: boolean;
@@ -101,7 +105,7 @@ export function MixDonut({
                   {selectedShare === null ? dealCount : `${selectedShare.toFixed(0)}%`}
                 </span>
                 <span className="mt-0.5 text-[10px] text-stone-400">
-                  {selectedShare === null ? 'deals' : 'of volume'}
+                  {selectedShare === null ? (dealCount === 1 ? 'deal' : 'deals') : 'of volume'}
                 </span>
               </div>
             </div>

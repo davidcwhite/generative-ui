@@ -147,8 +147,19 @@ export function IssuanceDashboard({
       : values.includes(category);
   };
 
+  const breakdownValues = selectedValues(filters, shownBreakdownBy);
+
+  /**
+   * Slice volumes are exact per category, so a selection that takes only part
+   * of the folded "Other" slice cannot be priced from them — it would claim the
+   * whole bucket, two orders of magnitude out for a single issuer.
+   */
+  const otherPartlySelected =
+    breakdownOther.some((value) => breakdownValues.includes(value)) &&
+    !breakdownOther.every((value) => breakdownValues.includes(value));
+
   const selectedShare =
-    selectedValues(filters, shownBreakdownBy).length === 0 || breakdownTotal === 0
+    breakdownValues.length === 0 || breakdownTotal === 0 || otherPartlySelected
       ? null
       : (breakdown
           .filter((slice) => isActive(shownBreakdownBy, slice.category, breakdownOther))
