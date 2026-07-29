@@ -31,6 +31,141 @@ Interpretation:
 | Request succeeds but scrollbar/rows disappear          | Incorrect `successCallback` total                               |
 | An earlier request changes the final count/data        | Missing cancellation or generation guard                        |
 
+## How skeleton geometry matches the table
+
+The implementation does **not** replace AG Grid with a separate skeleton table.
+The real grid, column definitions and headers stay mounted from the first
+render. Only the content inside an unloaded body cell is replaced.
+
+That is the central technique:
+
+```tsx
+<div className="issuance-grid h-[560px] w-full">
+  <AgGridReact<IssuanceRecord>
+    theme={sizing.theme}
+    columnDefs={COLUMNS}
+    rowModelType="infinite"
+    datasource={datasource}
+    cacheBlockSize={25}
+    infiniteInitialRowCount={25}
+    defaultColDef={DEFAULT_COL_DEF}
+    rowHeight={sizing.rowHeight}
+    headerHeight={sizing.headerHeight}
+  />
+</div>
+```
+
+### The headers stay real
+
+`columnDefs={COLUMNS}` is available before row data. AG Grid can therefore
+render the real:
+
+- header names and sort indicators;
+- pinned Status and Issuer columns;
+- fixed, minimum and flex widths;
+- numeric alignment;
+- resize handles;
+- header and row heights.
+
+There is no loading branch around the grid:
+
+```tsx
+// Do not do this:
+return isLoading ? <SeparateTableSkeleton /> : <AgGridReact />;
+```
+
+That anti-pattern removes the real headers during loading, duplicates the column
+geometry in a second component, remounts AG Grid when data arrives and almost
+guarantees a visible alignment shift.
+
+### AG Grid provides the placeholder row geometry
+
+The infinite row model creates row nodes before their data arrives.
+`infiniteInitialRowCount={25}` gives the first render one block of placeholder
+rows, while `rowHeight` gives those rows the same height as loaded records.
+
+Each empty row is still laid out through the actual `COLUMNS`. A loading cell
+therefore inherits the real column's width, pinned position and horizontal
+alignment. The skeleton renderer does not calculate column geometry itself.
+
+### Only unloaded body cells shimmer
+
+The selector runs for body cells, not headers:
+
+```ts
+const loadingAwareRenderer = ({ data }: { data?: IssuanceRecord }) =>
+  data ? undefined : { component: LoadingCell };
+
+const DEFAULT_COL_DEF: ColDef<IssuanceRecord> = {
+  sortable: true,
+  filter: false,
+  resizable: true,
+  suppressHeaderMenuButton: true,
+  cellRendererSelector: loadingAwareRenderer,
+};
+```
+
+- `data === undefined` means the row has not arrived, so render `LoadingCell`.
+- Returning `undefined` for loaded data restores the column's normal formatter
+  or renderer.
+- Header components never pass through `cellRendererSelector`, so they never
+  shimmer.
+
+### Inner bars suggest content without changing geometry
+
+The cell already has the correct width. A per-column map controls only the
+short grey bar inside it:
+
+```ts
+const LOADING_CELL_WIDTHS: Record<string, string> = {
+  status: "52px",
+  pricingDate: "48px",
+  issuer: "78%",
+  ticker: "44px",
+  region: "72%",
+  currency: "28px",
+  size: "72px",
+  tenor: "30px",
+  rating: "64px",
+  sector: "70%",
+  spread: "40px",
+  nip: "30px",
+  book: "58px",
+  cover: "32px",
+};
+```
+
+```tsx
+function LoadingCell({ column }: CustomCellRendererProps<IssuanceRecord>) {
+  const colId = column?.getColId() ?? "";
+  const width = LOADING_CELL_WIDTHS[colId] ?? "60%";
+
+  return (
+    <span className="flex h-full items-center" aria-hidden>
+      <span className="sk-shimmer block h-2 rounded-full" style={{ width }} />
+    </span>
+  );
+}
+```
+
+The outer span fills and vertically centres within the real cell. The inner bar
+varies by expected content: Currency is short, Issuer is long, numeric columns
+sit between them. These values improve visual plausibility; they do not affect
+column sizing.
+
+### Geometry checklist
+
+- Keep `<AgGridReact>` mounted during first load and block loads.
+- Provide stable `columnDefs` immediately, preferably at module scope.
+- Set an explicit grid height and width.
+- Use the infinite row model's placeholder rows.
+- Keep `rowHeight` and `headerHeight` on the real grid.
+- Apply the loading selector through `defaultColDef`.
+- Skeletonise body-cell content only.
+- Let the actual columns determine widths, pinning and alignment.
+- Use the width map only for the inner shimmer bars.
+- Return `undefined` from the selector as soon as row data exists.
+
 ## 1. Verify the skeleton independently of animation
 
 Reduced motion can stop the moving gradient, but it must not make the
