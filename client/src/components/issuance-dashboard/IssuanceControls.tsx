@@ -560,7 +560,10 @@ export function StackByMenu({
     <DropdownMenu>
       <MenuTrigger>
         <span className="text-stone-400">Stack</span>
-        <span>{value ? DIMENSION_LABELS[value].toLowerCase() : 'off'}</span>
+        {/* The chosen value carries the weight; the prefix stays a caption. */}
+        <span className={value ? 'text-stone-800' : undefined}>
+          {value ? DIMENSION_LABELS[value].toLowerCase() : 'off'}
+        </span>
       </MenuTrigger>
       <DropdownMenuContent align="end" aria-label="Stack bars by">
         <DropdownMenuRadioGroup
@@ -590,7 +593,7 @@ export function BreakdownMenu({
     <DropdownMenu>
       <MenuTrigger>
         <span className="text-stone-400">By</span>
-        <span>{DIMENSION_LABELS[value].toLowerCase()}</span>
+        <span className="text-stone-800">{DIMENSION_LABELS[value].toLowerCase()}</span>
       </MenuTrigger>
       <DropdownMenuContent align="end" aria-label="Break down by">
         <DropdownMenuRadioGroup value={value} onValueChange={(next) => onChange(next as Dimension)}>

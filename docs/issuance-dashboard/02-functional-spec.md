@@ -377,8 +377,10 @@ one click filters on all of them. The response carries that membership list
 alongside the slices.
 
 Selection is shown by dimming what is not selected: bands drop to `0.25`,
-segments to `0.2`, legend entries to `opacity-40`. Nothing is highlighted, so an
-unfiltered chart has no visual state to reset.
+segments to `0.2`, legend entries to `opacity-40`. The one positive cue is in
+the legend, where the entry doing the filtering darkens to
+`font-medium text-stone-900`. The chart marks themselves gain no highlight, so
+an unfiltered chart has no visual state to reset.
 
 A clause that ends up empty is dropped rather than kept as an empty array, which
 keeps the chip row honest.
@@ -463,7 +465,11 @@ Sector Financials          // one value
 Sector 4 selected          // several
 ```
 
-The field list marks fields that already have a clause with a small dot.
+Chips are the page's one accent: `bg-blue-50/90 text-blue-800`, the same blue
+family as the grid's selected row, so live filters never read as neutral
+chrome. The Filter button's icon turns `blue-600` while any clause is applied,
+and the field list marks fields that already have a clause with a small
+`blue-600` dot.
 
 At most one clause per field, so a clause is identified by its field alone.
 `upsertClause` replaces by field and drops the clause when it becomes empty.
@@ -719,4 +725,7 @@ panel visibility. Supplied by the host, not controlled in-page.
 - Decorative marks — swatches, dots, chevrons, skeletons — are `aria-hidden`.
   Icon-only controls have `sr-only` labels or an `aria-label`.
 - Focus rings are explicit: `focus-visible:ring-2` with `ring-stone-900/15`.
-- Every animation is disabled under `prefers-reduced-motion`.
+- Decorative CSS animation is disabled under `prefers-reduced-motion`. The
+  450ms Recharts data transitions explicitly remain active for cross-machine
+  chart parity; see
+  [08-volume-chart.md](./08-volume-chart.md#host-reduced-motion-setting).

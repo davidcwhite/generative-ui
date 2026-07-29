@@ -39,7 +39,7 @@ Eight regions, top to bottom. Widths are at `xl` and above.
 ║   StatStrip — hero + 3 stats, left-bordered                                  ║
 ║                                                                       mt-8   ║
 ║  ┌─ ④ col-span-8 ──────────────────────────┐ ┌─ ⑤ col-span-4 ─────────────┐  ║
-║  │              Stack ▾  [D│W│M│Q]         │ │ SECTOR MIX          By ▾   │  ║
+║  │ VOLUME TREND  Stack ▾  [D│W│M│Q]        │ │ SECTOR MIX          By ▾   │  ║
 ║  │  ChartBar  (min-h-8, both aligned)      │ │  ChartBar                  │  ║
 ║  │ ─────────────────────────────── mt-5 ─── │ │ ──────────────────── mt-5 ─│  ║
 ║  │ €28bn┤                                  │ │        ╭───────╮           │  ║
@@ -151,7 +151,7 @@ does not translate. Only overlays, which own their space, are allowed to scale.
 | --- | --- |
 | `white` | Page canvas, grid background, card fill, active segment |
 | `stone-50` | Metric well inside the detail card, legend row hover |
-| `stone-100` | Segmented control track, view tabs, filter chips, icon wells |
+| `stone-100` | Segmented control track, view tabs, the filter trigger, icon wells |
 | `stone-200` | Input borders, the divider inside the segmented control |
 | `stone-200/70` | Section rules, detail card border |
 | `stone-200/80` | Stat dividers, top bar hairline once scrolled |
@@ -164,6 +164,20 @@ does not translate. Only overlays, which own their space, are allowed to scale.
 
 `stone-400` carries almost every label on the page. It is deliberately low
 contrast — labels are there to be found when looked for, not read first.
+
+### Selection blue
+
+One chromatic accent, drawn from the same family as the chart ramp, and spent
+only on state that persists:
+
+| Token | Use |
+| --- | --- |
+| `blue-50/90` | Applied filter chip fill (pairs with the grid's `#EEF4FF` selected row) |
+| `blue-600` | Filter icon when filters are live, editor checkboxes, active-field dot (`#2563eb`, the grid's `accentColor`) |
+| `blue-800` | Filter chip text |
+
+Transient states — hover, focus, an open menu — stay in the stone scale, so a
+splash of blue always means "something is filtering or selected right now".
 
 ### Chart ramp
 
@@ -320,9 +334,9 @@ it. `minHeight` lets the column grow and push the table down instead.
 
 ### Control bar alignment
 
-Each chart's controls sit in a `ChartBar` directly above it. Both reserve
-`min-h-8`, which is what puts the two charts on the same baseline even though
-one bar has a label and the other does not.
+Each chart's controls sit in a `ChartBar` directly above it, with an eyebrow
+label on the left (`Volume trend`, `Sector mix`) and the controls pushed right.
+Both reserve `min-h-8`, which is what puts the two charts on the same baseline.
 
 ```tsx
 export function ChartBar({ label, children }: { label?: string; children: React.ReactNode }) {
@@ -511,14 +525,18 @@ Quiet by default, so it reads as a caption until approached:
   text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900
   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900/15">
   <span className="text-stone-400">Stack</span>
-  <span>{value ? DIMENSION_LABELS[value].toLowerCase() : 'off'}</span>
+  <span className={value ? 'text-stone-800' : undefined}>
+    {value ? DIMENSION_LABELS[value].toLowerCase() : 'off'}
+  </span>
   <ChevronDown className="h-3 w-3 text-stone-400" aria-hidden />
 </button>
 ```
 
-The prefix (`Stack`, `By`) is dimmer than the value, so the eye lands on what is
-selected. The value is lowercased, which keeps it reading as prose rather than a
-second label.
+The prefix (`Stack`, `By`) is dimmer than the value, and an engaged value steps
+up to `text-stone-800` (the `By` menu always has one, so its value is always
+dark; `Stack off` stays at the trigger's base `stone-500`). The eye lands on
+what is selected. The value is lowercased, which keeps it reading as prose
+rather than a second label.
 
 The popover carries no title — `aria-label` on the content supplies the context
 that a visible heading would only repeat.
@@ -600,7 +618,9 @@ transition-colors hover:bg-stone-50
 `pl-11` on the chip row aligns it with the plot area, clearing the 52px y-axis.
 
 Swatches are `h-2 w-2 shrink-0 rounded-[2px]` in both. Deselected entries get
-`opacity-40`. Both set `aria-pressed`.
+`opacity-40`; the entry doing the filtering steps up from `stone-600` to
+`font-medium text-stone-900` (the donut's percentage also lifts to `stone-600`),
+so the pick is named, not just implied by what dimmed. Both set `aria-pressed`.
 
 ```ts
 export function useCollapsed<T>(items: T[], limit: number) {
@@ -650,14 +670,17 @@ Search is `min-w-[200px] flex-1 sm:max-w-[280px]` with an `h-8` input, a
 `pl-8` inset for the icon, and the icon at
 `absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-stone-400`.
 
-The filter trigger and chips share the `h-8` height and a `stone-100` tint:
+The filter trigger and chips share the `h-8` height. The trigger stays a
+`stone-100` tint; applied chips take the selection blue — the one accent on the
+page, shared with the grid theme's `accentColor: '#2563eb'` and selected-row
+wash `#EEF4FF` — so live filters stand apart from neutral chrome:
 
 ```
-// trigger
+// trigger (its ListFilter icon turns text-blue-600 once filters exist)
 h-8 gap-1.5 bg-stone-100/70 text-[11px] text-stone-600 hover:bg-stone-100 hover:text-stone-900
 
 // chip
-inline-flex h-8 items-center rounded-lg bg-stone-100/80 pr-1 text-[11px] text-stone-700
+inline-flex h-8 items-center rounded-lg bg-blue-50/90 pr-1 text-[11px] text-blue-800
 ```
 
 The chip is two buttons in one shell: the label reopens the editor, the `X`
@@ -714,9 +737,10 @@ whose colour is set outright rather than inherited, so leaving them at
 `text-stone-300` strands grey slashes inside otherwise-red digits, which reads as
 a rendering fault rather than a warning.
 
-`bg-stone-200` rather than an accent fill is the one deliberate departure from
+`bg-stone-200` rather than an accent fill is a deliberate departure from
 platform convention: a native date input highlights the focused segment in the
-system accent, which would be the only saturated non-data colour on the page.
+system accent, but here the selection blue is reserved for state that persists
+(applied filters, selected rows), not transient focus.
 `caret-transparent` hides the text caret, since a segment is stepped rather than
 edited character by character.
 
@@ -975,8 +999,13 @@ appear to come from the button rather than from its own centre.
 120ms and 240ms so a cluster reads as one surface rather than several blinking
 rectangles.
 
-Every animation is disabled under `prefers-reduced-motion`, with the shimmer
-falling back to a flat `#eeedec` fill rather than nothing.
+Decorative CSS animation is disabled under `prefers-reduced-motion`, with the
+shimmer falling back to a flat `#eeedec` fill rather than nothing. The 450ms
+Recharts data transitions are the deliberate exception: bars and the donut pass
+`isAnimationActive` explicitly so machines that report reduced motion do not
+silently turn chart interpolation into an instant swap. The trade-off and
+measured behavior are documented in
+[08-volume-chart.md](./08-volume-chart.md#host-reduced-motion-setting).
 
 ---
 

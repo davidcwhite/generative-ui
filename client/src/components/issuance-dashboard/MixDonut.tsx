@@ -87,6 +87,9 @@ export function MixDonut({
                     paddingAngle={2}
                     strokeWidth={0}
                     animationDuration={450}
+                    // Match the bar chart: retain the short data transition
+                    // even when the host OS reports reduced motion.
+                    isAnimationActive
                   >
                     {slices.map((slice) => (
                       <Cell
@@ -157,10 +160,19 @@ function BreakdownLegend({
               style={{ backgroundColor: slice.fill }}
               aria-hidden
             />
-            <span className="min-w-0 flex-1 truncate text-[11px] text-stone-600">
+            {/* A filtering row darkens; dimming alone leaves the pick implicit. */}
+            <span
+              className={`min-w-0 flex-1 truncate text-[11px] ${
+                active === true ? 'font-medium text-stone-900' : 'text-stone-600'
+              }`}
+            >
               {slice.category}
             </span>
-            <span className="text-[10px] tabular-nums text-stone-400">
+            <span
+              className={`text-[10px] tabular-nums ${
+                active === true ? 'text-stone-600' : 'text-stone-400'
+              }`}
+            >
               {percentage.toFixed(0)}%
             </span>
           </button>

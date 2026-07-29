@@ -29,7 +29,7 @@ chart and — when stacking is on — the legend, then a caption.
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
-│                     Stack sector ▾   Daily Weekly Monthly Qtr │ ← ChartBar, min-h-8
+│ VOLUME TREND        Stack sector ▾   Daily Weekly Monthly Qtr │ ← ChartBar, min-h-8
 ├───────────────────────────────────────────────────────────────┤
 │ €80bn ┤              ▓                                        │
 │       │        ▓  ▓  ▓     ▓                                  │
@@ -348,7 +348,7 @@ Three branches inside one fixed-height band, then the caption.
 export function VolumeChart({ /* …props… */ }) {
   return (
     <>
-      <ChartBar>
+      <ChartBar label="Volume trend">
         <StackByMenu value={stackBy} onChange={onStackByChange} />
         <GranularityTabs value={granularity} range={dateWindow} onChange={onGranularityChange} />
       </ChartBar>
@@ -450,6 +450,7 @@ Stacked and unstacked are two branches, not one parameterised `Bar`:
       fill={item.fill}
       maxBarSize={40}
       animationDuration={450}
+      isAnimationActive
       radius={index === categories.length - 1 ? [3, 3, 0, 0] : 0}
       className="cursor-pointer"
       opacity={activeOf(item.category) === false ? 0.25 : 1}
@@ -464,17 +465,27 @@ Stacked and unstacked are two branches, not one parameterised `Bar`:
     radius={[4, 4, 0, 0]}
     maxBarSize={40}
     animationDuration={450}
+    isAnimationActive
   />
 )}
 ```
 
-- **Only the topmost band rounds.** Rounding every band leaves visible notches
-  where they meet, so a stack reads as a broken column. The unstacked bar takes
-  the fuller `[4,4,0,0]`.
+- **Only the last declared band receives a radius.** In this dataset its folded
+  `Other` band remains populated, so that is also the visible top. Do not treat
+  this series-level shortcut as generic: if the last series is absent in one
+  bucket, the effective top changes. Recharts 3.6+ `BarStack` or a per-datum
+  fallback is required for sparse stacks; see
+  [12-stacked-bar-radius-diagnostics.md](./12-stacked-bar-radius-diagnostics.md).
+  Rounding every child band is not a fix — it leaves notches at internal joins.
+  The unstacked bar takes the fuller `[4,4,0,0]`.
 - **`maxBarSize={40}`** stops six buckets from rendering as slabs.
 - **`animationDuration={450}`** is tied to the grey-out timings; the two are
-  choreographed in [The animation](#the-animation). `isAnimationActive` is
-  deliberately not passed.
+  choreographed in [The animation](#the-animation).
+- **`isAnimationActive` is deliberately true.** Recharts 3.8 otherwise defaults
+  to `'auto'`, which silently disables the transition whenever the host OS or
+  browser reports `prefers-reduced-motion: reduce`. The explicit prop keeps this
+  short data transition consistent with charting libraries that do not consume
+  that media query automatically.
 - **Selection dims rather than highlights** — deselected bands drop to `0.25`.
   An unfiltered chart therefore has no visual state to reset.
 - **`activeOf` returns `boolean | null`**, and only an explicit `false` dims. A
@@ -622,7 +633,14 @@ function StackLegend({
               style={{ backgroundColor: item.fill }}
               aria-hidden
             />
-            <span className="max-w-[160px] truncate text-stone-600">{item.category}</span>
+            {/* A filtering chip darkens; dimming alone leaves the pick implicit. */}
+            <span
+              className={`max-w-[160px] truncate ${
+                active === true ? 'font-medium text-stone-900' : 'text-stone-600'
+              }`}
+            >
+              {item.category}
+            </span>
           </button>
         );
       })}
@@ -670,16 +688,19 @@ Notes:
   claim an entire row.
 - **`aria-pressed={active === true}`** — a `null` is not pressed, and coercing it
   would announce every chip as unpressed even with no filter applied.
+- **The active chip darkens** to `font-medium text-stone-900` while the rest dim
+  to `opacity-40`, so the selection is named rather than left to inference.
 
 ---
 
 ## The controls above it
 
-Both live in `ChartBar`, which reserves `min-h-8` so this chart and the donut
-start on the same baseline even though only one bar carries a label.
+Both live in `ChartBar`, which carries the `Volume trend` eyebrow on the left
+and reserves `min-h-8` so this chart and the donut start on the same baseline.
 
 **Stack menu.** A ghost trigger that reads as a caption until hovered, with a
-radio group so the current dimension is visible without opening it:
+radio group so the current dimension is visible without opening it. The chosen
+value steps up to `text-stone-800`; `off` stays at the trigger's base grey:
 
 ```tsx
 export function StackByMenu({ value, onChange }: {
@@ -690,7 +711,10 @@ export function StackByMenu({ value, onChange }: {
     <DropdownMenu>
       <MenuTrigger>
         <span className="text-stone-400">Stack</span>
-        <span>{value ? DIMENSION_LABELS[value].toLowerCase() : 'off'}</span>
+        {/* The chosen value carries the weight; the prefix stays a caption. */}
+        <span className={value ? 'text-stone-800' : undefined}>
+          {value ? DIMENSION_LABELS[value].toLowerCase() : 'off'}
+        </span>
       </MenuTrigger>
       <DropdownMenuContent align="end" aria-label="Stack bars by">
         <DropdownMenuRadioGroup
@@ -967,15 +991,37 @@ This is the strongest argument for the dim. The re-labelling and the rescale bot
 happen while the chart is at 45% opacity and 55% saturation, which is precisely
 where the eye is least likely to be reading exact heights.
 
-### Reduced motion
+### Host reduced-motion setting
 
-The whole choreography collapses to an instant swap, and it takes no extra code.
+Recharts 3.8 consumes the operating system's reduced-motion preference by
+default. Its internal resolution is:
 
-`isAnimationActive` defaults to `'auto'` in Recharts 3.8, which resolves through
-the library's own media query — `isActiveProp === 'auto' ? !isSsr &&
-!prefersReducedMotion : isActiveProp`. Leaving the prop off, as this chart does,
-is therefore the accessible choice; hard-coding `isAnimationActive={true}` would
-override the user's preference.
+```ts
+const isActive =
+  isActiveProp === 'auto'
+    ? !Global.isSsr && !prefersReducedMotion
+    : isActiveProp;
+```
+
+That differs from libraries such as ECharts, which generally animate unless the
+application disables animation itself. On a managed machine or browser reporting
+`prefers-reduced-motion: reduce`, an omitted prop therefore makes this chart snap
+even though an ECharts chart on the same machine still moves.
+
+This implementation opts the data marks back in:
+
+```tsx
+<Bar animationDuration={450} isAnimationActive />
+```
+
+The behavior was verified with Chrome's reduced-motion media emulation still
+active. Before the override a range change produced two geometries — old and new.
+After it, the same test produced 46 distinct intermediate bar geometries.
+
+This is an intentional accessibility trade-off: the chart's short 450ms data
+transition remains, while decorative CSS movement still follows reduced motion.
+If the product must offer a user-controlled motion preference, map that setting
+to this boolean instead of hard-coding it.
 
 The dim loses its transition from the stylesheet — one rule inside the shared
 reduced-motion block, which also flattens the shimmer and the popovers
@@ -1122,8 +1168,10 @@ in [02-functional-spec.md](./02-functional-spec.md#scope-exclusion).
   and destroys the bar-to-bar animation the whole loading pattern depends on.
 - **Keep the 420ms hold just under `animationDuration`.** Raise the duration on
   its own and the chart returns to full colour with the bars still sliding.
-- **Do not pass `isAnimationActive={true}`.** The `'auto'` default already
-  respects `prefers-reduced-motion`; hard-coding it overrides the user.
+- **Do not omit `isAnimationActive` if cross-machine animation parity is a
+  requirement.** Recharts' `'auto'` default turns the chart animation off when
+  the host reports reduced motion; ECharts commonly does not, which is why the
+  two can differ on the same machine.
 - **Recharts matches rectangles by index, not by key**, so a bar can morph from
   October into Q3. Harmless here, but it rules out treating the movement as
   meaningful.
@@ -1139,7 +1187,9 @@ in [02-functional-spec.md](./02-functional-spec.md#scope-exclusion).
 - [ ] `minTickGap` 28 daily / 12 otherwise, `interval="preserveStartEnd"`
 - [ ] Year in bucket labels only when the window spans more than one
 - [ ] `maxBarSize={40}`, `animationDuration={450}`, warm 7% hover cursor
-- [ ] `[4,4,0,0]` unstacked; `[3,3,0,0]` on the top band only when stacked
+- [ ] `[4,4,0,0]` unstacked; for stacked bars use stack-level rounding
+      (`BarStack` in Recharts 3.6+) when any bucket can omit a series — see
+      [12-stacked-bar-radius-diagnostics.md](./12-stacked-bar-radius-diagnostics.md)
 - [ ] Bands ranked by volume, tail folded into a stone-grey `Other`, never a fold of one
 - [ ] Band cap 5 or 10 by universe size; colours from the interpolated ramp
 - [ ] Tooltip: `labelLong` heading, `hideEmpty`, `rankRows` when stacked, 7 rows then `N more`, total footer
@@ -1148,6 +1198,7 @@ in [02-functional-spec.md](./02-functional-spec.md#scope-exclusion).
 - [ ] Skeleton on first load, `.dash-stale` on refresh, empty band with a Clear filters action
 - [ ] Refresh keeps the old series mounted, so bars morph into the new data rather than rebuilding
 - [ ] 220ms before the dim, 420ms hold after the data lands, 450ms bar movement — in that relation
-- [ ] `isAnimationActive` left at its default so reduced motion is honoured
+- [ ] `isAnimationActive` explicitly true on stacked and unstacked bars when
+      cross-machine animation parity is required
 - [ ] `aria-busy` on the wrapping column while loading or refreshing
 - [ ] Stack menu reads `Stack off` / `Stack sector`; granularity tabs disabled with a hint, not hidden

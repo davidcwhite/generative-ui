@@ -26,6 +26,7 @@ data that is already on screen is never blanked out while newer data loads.
 | [09-donut-chart.md](./09-donut-chart.md) | The composition ring: geometry, centre readout, legend rows, and how it differs from the bar chart |
 | [10-ag-grid-and-detail-draft.md](./10-ag-grid-and-detail-draft.md) | Draft: the complete AG Grid, infinite paging, loading rows, selection, and issuance detail card |
 | [11-ag-grid-loading-diagnostics.md](./11-ag-grid-loading-diagnostics.md) | Diagnose blank skeleton rows, pinned-only layouts, disappearing data, and datasource races |
+| [12-stacked-bar-radius-diagnostics.md](./12-stacked-bar-radius-diagnostics.md) | Diagnose rounded caps inside sparse stacks and implement stack-level or per-datum rounding |
 
 Start with the [page map](./01-design-system.md#page-map) — it names the eight
 regions and links each to its own specification. Then read 01 and 02 to build
@@ -112,12 +113,12 @@ those above it, so they can be read top to bottom.
 | `chartFrame.tsx` | 55 | Band height, control bar, collapsible legend hook |
 | `IssuanceSkeletons.tsx` | 108 | Loading placeholders |
 | `IssuanceHero.tsx` | 54 | Headline stats strip |
-| `IssuanceControls.tsx` | 548 | Range, granularity, dimension and date controls |
+| `IssuanceControls.tsx` | 609 | Range, granularity, dimension and date controls |
 | `IssuanceDetail.tsx` | 108 | Selected-record panel |
-| `IssuanceFilterBar.tsx` | 460 | Search, filter popover, chips |
+| `IssuanceFilterBar.tsx` | 462 | Search, filter popover, chips |
 | `IssuanceGrid.tsx` | 326 | AG Grid |
-| `VolumeChart.tsx` | 211 | Bar chart and its legend |
-| `MixDonut.tsx` | 178 | Donut chart and its legend |
+| `VolumeChart.tsx` | 223 | Bar chart and its legend |
+| `MixDonut.tsx` | 194 | Donut chart and its legend |
 | `IssuanceTable.tsx` | 99 | Filter bar + grid + detail panel |
 | `DashboardShell.tsx` | 103 | Top bar and navigation |
 | `IssuanceDashboard.tsx` | 254 | Orchestrator |

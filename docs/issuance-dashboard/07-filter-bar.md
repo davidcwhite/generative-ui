@@ -234,7 +234,7 @@ function FilterEditor({
                   >
                     <span className="flex-1">{item.label}</span>
                     {findClause(filters, item.field) && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-stone-900" aria-hidden />
+                      <span className="h-1.5 w-1.5 rounded-full bg-blue-600" aria-hidden />
                     )}
                     <ChevronRight className="h-3 w-3 text-stone-300" aria-hidden />
                   </CommandItem>
@@ -341,7 +341,7 @@ const toggle = (value: string) => {
           <span
             className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border transition-colors ${
               selected.includes(option)
-                ? 'border-stone-900 bg-stone-900 text-white'
+                ? 'border-blue-600 bg-blue-600 text-white'
                 : 'border-stone-300'
             }`}
             aria-hidden
@@ -413,8 +413,10 @@ function FilterChip({ clause, filters, onChange }: {
   onChange: (filters: FilterClause[]) => void;
 }) {
   const [open, setOpen] = useState(false);
+  /* Applied clauses take the grid's selection blue — an active filter is the
+     one state on the page that should not read as neutral chrome. */
   return (
-    <span className="inline-flex h-8 items-center rounded-lg bg-stone-100/80 pr-1 text-[11px] text-stone-700">
+    <span className="inline-flex h-8 items-center rounded-lg bg-blue-50/90 pr-1 text-[11px] text-blue-800">
       <FilterEditor
         filters={filters}
         onChange={onChange}
@@ -424,7 +426,7 @@ function FilterChip({ clause, filters, onChange }: {
       >
         <button
           type="button"
-          className="h-8 rounded-l-lg pl-2.5 pr-1.5 font-medium transition-colors hover:text-stone-950"
+          className="h-8 rounded-l-lg pl-2.5 pr-1.5 font-medium transition-colors hover:text-blue-950"
         >
           {describeClause(clause)}
         </button>
@@ -433,7 +435,7 @@ function FilterChip({ clause, filters, onChange }: {
         type="button"
         onClick={() => onChange(removeClause(filters, clause.field))}
         aria-label={`Remove ${describeClause(clause)}`}
-        className="rounded-md p-1 text-stone-400 transition-colors hover:bg-stone-200/70 hover:text-stone-800"
+        className="rounded-md p-1 text-blue-400 transition-colors hover:bg-blue-100 hover:text-blue-800"
       >
         <X className="h-2.5 w-2.5" aria-hidden />
       </button>
@@ -441,6 +443,10 @@ function FilterChip({ clause, filters, onChange }: {
   );
 }
 ```
+
+The blue is the same family as the AG Grid theme's `accentColor: '#2563eb'` and
+selected-row wash `#EEF4FF`, so filter state and row selection read as one
+system rather than two accents.
 
 The wrapper is a `<span>`, not a `<button>` — nesting buttons is invalid HTML and
 would make the ✕ unreachable. `pr-1` on the wrapper plus `p-1` on the ✕ gives the
@@ -516,13 +522,14 @@ viewport without dominating a narrow one.
 
 ### Add button and Clear
 
-The icon changes to signal state without adding a badge:
+The icon changes to signal state without adding a badge — and takes the accent
+blue once filters are live, matching the chips beside it:
 
 ```tsx
 {filters.length === 0 ? (
   <Plus className="h-3 w-3 text-stone-400" aria-hidden />
 ) : (
-  <ListFilter className="h-3 w-3 text-stone-400" aria-hidden />
+  <ListFilter className="h-3 w-3 text-blue-600" aria-hidden />
 )}
 Filter
 ```

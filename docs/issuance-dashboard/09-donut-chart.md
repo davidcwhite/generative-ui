@@ -220,6 +220,7 @@ is what the centre overlay positions against.
       paddingAngle={2}
       strokeWidth={0}
       animationDuration={450}
+      isAnimationActive
     >
       {slices.map((slice) => (
         <Cell
@@ -417,10 +418,19 @@ function BreakdownLegend({
               style={{ backgroundColor: slice.fill }}
               aria-hidden
             />
-            <span className="min-w-0 flex-1 truncate text-[11px] text-stone-600">
+            {/* A filtering row darkens; dimming alone leaves the pick implicit. */}
+            <span
+              className={`min-w-0 flex-1 truncate text-[11px] ${
+                active === true ? 'font-medium text-stone-900' : 'text-stone-600'
+              }`}
+            >
               {slice.category}
             </span>
-            <span className="text-[10px] tabular-nums text-stone-400">
+            <span
+              className={`text-[10px] tabular-nums ${
+                active === true ? 'text-stone-600' : 'text-stone-400'
+              }`}
+            >
               {percentage.toFixed(0)}%
             </span>
           </button>
@@ -481,8 +491,9 @@ dimension produces eleven and collapses to six plus `5 more`.
 
 ## The control above it
 
-One ghost dropdown, in a `ChartBar` that also carries a label — the only chart
-control row in the dashboard that does:
+One ghost dropdown, in a `ChartBar` that also carries a label (`Sector mix`,
+following the dimension; the bar chart's is a fixed `Volume trend`). The
+always-present value sits a step darker than its `By` prefix:
 
 ```tsx
 export function BreakdownMenu({ value, onChange }: {
@@ -493,7 +504,7 @@ export function BreakdownMenu({ value, onChange }: {
     <DropdownMenu>
       <MenuTrigger>
         <span className="text-stone-400">By</span>
-        <span>{DIMENSION_LABELS[value].toLowerCase()}</span>
+        <span className="text-stone-800">{DIMENSION_LABELS[value].toLowerCase()}</span>
       </MenuTrigger>
       <DropdownMenuContent align="end" aria-label="Break down by">
         <DropdownMenuRadioGroup value={value} onValueChange={(next) => onChange(next as Dimension)}>
@@ -667,9 +678,16 @@ why it does not wait for the round-trip:
 opacity={activeOf(slice.category) === false ? 0.2 : 1}
 ```
 
-Reduced motion needs no handling here either: `isAnimationActive` defaults to
-`'auto'` in Recharts 3.8, which resolves through the library's own
-`prefers-reduced-motion` query. Leaving the prop off is the accessible choice.
+The donut also passes `isAnimationActive` explicitly. Without it, Recharts 3.8
+uses its `'auto'` default and disables the sweep whenever the host reports
+`prefers-reduced-motion: reduce`, even though ECharts on the same machine may
+continue to animate. With reduced-motion emulation active, a Sector → Currency
+switch was verified to produce intermediate sector geometries after the
+override, rather than one instant replacement.
+
+This deliberately retains the short data transition while decorative CSS
+movement remains disabled. If the application exposes its own motion setting,
+pass that boolean instead of forcing `true`.
 
 ---
 
@@ -755,7 +773,7 @@ different, and each difference has a reason.
 | | Bar chart | Donut |
 | --- | --- | --- |
 | Band height | `height` — legend collapses | `minHeight` — legend grows the column |
-| Control row | No label | `Sector mix` label |
+| Control row | Fixed `Volume trend` label | Dimension-aware `Sector mix` label |
 | Dimension can be off | Yes, `'none'` sentinel | No, always a dimension |
 | Click target | `onClick` on the `Bar` | `onClick` on each `Cell` |
 | Deselected opacity | `0.25`, snaps | `0.2`, `transition-opacity` |
@@ -812,6 +830,7 @@ you are porting this, pick one.
 - [ ] `minHeight: CHART_BAND` (372px) so an expanded legend grows the column
 - [ ] Two-column at `sm`, single column at `xl`; ring box `h-[184px] max-w-[230px]`, centred
 - [ ] Ring 62 → 82 radius, `paddingAngle={2}`, `strokeWidth={0}`, `animationDuration={450}`
+- [ ] `isAnimationActive` explicitly true when cross-machine animation parity is required
 - [ ] Control row labelled `{Dimension} mix` from the **response's** dimension, `min-h-8`
 - [ ] `By ▾` ghost dropdown, radio group, no title in the popover, no "off" option
 - [ ] Centre: deal count with no selection, `N% of volume` with one, count again when the share cannot be stated exactly

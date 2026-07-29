@@ -55,7 +55,7 @@ export function VolumeChart({
 }) {
   return (
     <>
-      <ChartBar>
+      <ChartBar label="Volume trend">
         <StackByMenu value={stackBy} onChange={onStackByChange} />
         <GranularityTabs value={granularity} range={dateWindow} onChange={onGranularityChange} />
       </ChartBar>
@@ -121,6 +121,10 @@ export function VolumeChart({
                       fill={item.fill}
                       maxBarSize={40}
                       animationDuration={450}
+                      // Recharts' "auto" default disables chart motion whenever
+                      // the OS reports reduced motion. This dashboard keeps the
+                      // short data transition on deliberately.
+                      isAnimationActive
                       radius={index === categories.length - 1 ? [3, 3, 0, 0] : 0}
                       className="cursor-pointer"
                       opacity={activeOf(item.category) === false ? 0.25 : 1}
@@ -135,6 +139,7 @@ export function VolumeChart({
                     radius={[4, 4, 0, 0]}
                     maxBarSize={40}
                     animationDuration={450}
+                    isAnimationActive
                   />
                 )}
               </BarChart>
@@ -192,7 +197,14 @@ function StackLegend({
               style={{ backgroundColor: item.fill }}
               aria-hidden
             />
-            <span className="max-w-[160px] truncate text-stone-600">{item.category}</span>
+            {/* A filtering chip darkens; dimming alone leaves the pick implicit. */}
+            <span
+              className={`max-w-[160px] truncate ${
+                active === true ? 'font-medium text-stone-900' : 'text-stone-600'
+              }`}
+            >
+              {item.category}
+            </span>
           </button>
         );
       })}
