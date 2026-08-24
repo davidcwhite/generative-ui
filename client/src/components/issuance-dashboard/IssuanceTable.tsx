@@ -5,7 +5,7 @@ import { IssuanceFilterBar } from './IssuanceFilterBar';
 import { IssuanceGrid } from './IssuanceGrid';
 import { DetailSkeleton, RefreshIndicator } from './IssuanceSkeletons';
 import { useSettledFlag } from './useIssuanceAggregates';
-import type { FilterClause, IssuanceQuery } from './issuanceApi';
+import { fetchDealTranches, type FilterClause, type IssuanceQuery } from './issuanceApi';
 import type { IssuanceRecord } from './issuanceData';
 
 /**
@@ -21,6 +21,8 @@ export function IssuanceTable({
   onClearAll,
   /** Bumped by a clear-all, which remounts the bar and empties its search box. */
   searchKey,
+  /** Distinct deals in scope, from the stats the dashboard already fetches. */
+  dealCount,
   density,
   showDetailPanel,
   wide,
@@ -31,6 +33,7 @@ export function IssuanceTable({
   onSearchChange: (value: string) => void;
   onClearAll: () => void;
   searchKey: number;
+  dealCount: number | null;
   density: 'comfortable' | 'compact';
   showDetailPanel: boolean;
   wide: boolean;
@@ -39,12 +42,25 @@ export function IssuanceTable({
   const [defaultRow, setDefaultRow] = useState<IssuanceRecord | null>(null);
   const [totalRows, setTotalRows] = useState<number | null>(null);
   const [isGridLoading, setIsGridLoading] = useState(true);
+  const [dealTranches, setDealTranches] = useState<IssuanceRecord[] | null>(null);
   const showRefreshing = useSettledFlag(isGridLoading && totalRows !== null);
 
   // A new result set invalidates the user's row choice; block refetches don't.
   useEffect(() => setPickedRow(null), [query]);
 
   const record = pickedRow ?? defaultRow;
+  const dealId = record?.dealId ?? null;
+
+  // The card needs every tranche of the deal, not just the clicked row.
+  useEffect(() => {
+    setDealTranches(null);
+    if (!dealId) return;
+    const controller = new AbortController();
+    fetchDealTranches(dealId, controller.signal)
+      .then(setDealTranches)
+      .catch(() => {});
+    return () => controller.abort();
+  }, [dealId]);
 
   return (
     <section className="mt-10 border-t border-stone-200/70 pt-5">
@@ -59,7 +75,10 @@ export function IssuanceTable({
         {totalRows === null ? (
           <Skeleton className="h-2.5 w-14" />
         ) : (
-          <span className="tabular-nums">{totalRows.toLocaleString()} issues</span>
+          <span className="tabular-nums">
+            {totalRows.toLocaleString()} tranches
+            {dealCount !== null && ` · ${dealCount.toLocaleString()} deals`}
+          </span>
         )}
       </IssuanceFilterBar>
 
@@ -85,11 +104,11 @@ export function IssuanceTable({
         {showDetailPanel && (
           <div>
             {record ? (
-              <IssuanceDetail record={record} />
+              <IssuanceDetail record={record} tranches={dealTranches} />
             ) : isGridLoading ? (
               <DetailSkeleton />
             ) : (
-              <IssuanceDetail record={null} />
+              <IssuanceDetail record={null} tranches={null} />
             )}
           </div>
         )}

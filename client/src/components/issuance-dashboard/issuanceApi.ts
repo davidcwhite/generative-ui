@@ -68,8 +68,22 @@ export interface IssuanceRowSort {
   direction: 'asc' | 'desc';
 }
 
+/**
+ * A tranche row plus the banding metadata the grid needs to emulate merged
+ * deal cells. Stamped post-filter/pre-slice so it stays correct when a deal
+ * splits across fetch blocks or a filter hides some of its tranches.
+ */
+export interface IssuanceGridRow extends IssuanceRecord {
+  /** First visible row of its deal under the current sort and filters. */
+  groupHead: boolean;
+  /** Position among the deal's visible tranches, so the grid can spot the last one. */
+  groupIndex: number;
+  /** Visible tranches of the deal after filtering. */
+  groupSize: number;
+}
+
 export interface IssuanceRowPage {
-  rows: IssuanceRecord[];
+  rows: IssuanceGridRow[];
   totalRows: number;
 }
 
@@ -144,21 +158,31 @@ function computeStats(rows: IssuanceRecord[]): IssuanceStats {
   if (rows.length === 0) {
     return { totalVolume: 0, dealCount: 0, averageSize: 0, largest: null };
   }
+  // Deal totals sum only the tranches in scope, so a size filter that hides
+  // part of a deal prices the visible remainder rather than the whole print.
   let total = 0;
-  let largest = rows[0];
+  const dealTotals = new Map<string, { issuer: string; ticker: string; volume: number }>();
   rows.forEach((row) => {
     total += row.eurEquivalent;
-    if (row.eurEquivalent > largest.eurEquivalent) largest = row;
+    const deal = dealTotals.get(row.dealId);
+    if (deal) deal.volume += row.eurEquivalent;
+    else {
+      dealTotals.set(row.dealId, {
+        issuer: row.issuer,
+        ticker: row.ticker,
+        volume: row.eurEquivalent,
+      });
+    }
+  });
+  let largest: { issuer: string; ticker: string; volume: number } | null = null;
+  dealTotals.forEach((deal) => {
+    if (!largest || deal.volume > largest.volume) largest = deal;
   });
   return {
     totalVolume: total / 1000,
-    dealCount: rows.length,
-    averageSize: total / rows.length,
-    largest: {
-      issuer: largest.issuer,
-      ticker: largest.ticker,
-      volume: largest.eurEquivalent,
-    },
+    dealCount: dealTotals.size,
+    averageSize: total / dealTotals.size,
+    largest,
   };
 }
 
@@ -199,6 +223,35 @@ export function fetchIssuanceAggregates(
   return delay(aggregates, latency(AGGREGATE_LATENCY_MS), signal);
 }
 
+/** Columns whose value is shared by every tranche of a deal. */
+const DEAL_SCOPED_COLUMNS = new Set([
+  'issuer',
+  'ticker',
+  'region',
+  'sector',
+  'rating',
+  'currency',
+  'status',
+  'pricingDate',
+]);
+
+/** Tenor strings sort by their year count, not alphabetically ('10Y' after '8Y'). */
+function sortValue(row: IssuanceRecord, colId: string): number | string {
+  if (colId === 'tenor') return parseInt(row.tenor, 10);
+  const value = row[colId as keyof IssuanceRecord];
+  return typeof value === 'number' ? value : String(value);
+}
+
+function compareValues(left: number | string, right: number | string) {
+  if (typeof left === 'number' && typeof right === 'number') return left - right;
+  return String(left).localeCompare(String(right));
+}
+
+/**
+ * Sorting never separates a deal's tranches: deal groups are ordered by a
+ * representative value, and every row is stamped with banding metadata before
+ * the page is sliced, so blocks fetched later agree on where deals begin.
+ */
 export function fetchIssuanceRows(
   query: IssuanceQuery,
   startRow: number,
@@ -206,23 +259,68 @@ export function fetchIssuanceRows(
   sort: IssuanceRowSort | null,
   signal?: AbortSignal,
 ): Promise<IssuanceRowPage> {
-  const rows = scope(query);
-  const sorted = sort ? [...rows].sort(compareBy(sort)) : rows;
+  const tranches = scope(query);
+
+  const groups = new Map<string, IssuanceRecord[]>();
+  tranches.forEach((row) => {
+    const group = groups.get(row.dealId);
+    if (group) group.push(row);
+    else groups.set(row.dealId, [row]);
+  });
+
+  // Tranches always read shortest tenor first inside a deal, whatever the sort.
+  const dealGroups = [...groups.values()];
+  dealGroups.forEach((group) => group.sort((a, b) => a.trancheIndex - b.trancheIndex));
+
+  if (sort) {
+    const direction = sort.direction === 'asc' ? 1 : -1;
+    const dealScoped = DEAL_SCOPED_COLUMNS.has(sort.colId);
+    // Deal-scoped columns share one value, so any tranche represents the deal.
+    // Per-tranche columns take the best value in the sort direction (min when
+    // ascending, max when descending), so the deal sits where its strongest
+    // tranche belongs.
+    const representatives = new Map<IssuanceRecord[], number | string>(
+      dealGroups.map((group) => {
+        let best = sortValue(group[0], sort.colId);
+        if (!dealScoped) {
+          for (let index = 1; index < group.length; index += 1) {
+            const value = sortValue(group[index], sort.colId);
+            if (compareValues(value, best) * direction < 0) best = value;
+          }
+        }
+        return [group, best];
+      }),
+    );
+    dealGroups.sort(
+      (a, b) =>
+        compareValues(representatives.get(a)!, representatives.get(b)!) * direction ||
+        a[0].dealId.localeCompare(b[0].dealId),
+    );
+  }
+
+  const stamped: IssuanceGridRow[] = [];
+  dealGroups.forEach((group) => {
+    group.forEach((row, index) => {
+      stamped.push({
+        ...row,
+        groupHead: index === 0,
+        groupIndex: index,
+        groupSize: group.length,
+      });
+    });
+  });
+
   const page: IssuanceRowPage = {
-    rows: sorted.slice(startRow, endRow),
-    totalRows: sorted.length,
+    rows: stamped.slice(startRow, endRow),
+    totalRows: stamped.length,
   };
   return delay(page, latency(ROW_PAGE_LATENCY_MS), signal);
 }
 
-function compareBy(sort: IssuanceRowSort) {
-  const direction = sort.direction === 'asc' ? 1 : -1;
-  return (a: IssuanceRecord, b: IssuanceRecord) => {
-    const left = a[sort.colId as keyof IssuanceRecord];
-    const right = b[sort.colId as keyof IssuanceRecord];
-    if (typeof left === 'number' && typeof right === 'number') {
-      return (left - right) * direction;
-    }
-    return String(left).localeCompare(String(right)) * direction;
-  };
+/** Every tranche of one deal, ladder order, for the deal card. */
+export function fetchDealTranches(dealId: string, signal?: AbortSignal): Promise<IssuanceRecord[]> {
+  const tranches = SHADCN_ISSUANCE_ROWS.filter((row) => row.dealId === dealId).sort(
+    (a, b) => a.trancheIndex - b.trancheIndex,
+  );
+  return delay(tranches, latency(ROW_PAGE_LATENCY_MS), signal);
 }

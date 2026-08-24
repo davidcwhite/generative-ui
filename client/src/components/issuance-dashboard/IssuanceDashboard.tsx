@@ -261,6 +261,7 @@ export function IssuanceDashboard({
           onSearchChange={setSearch}
           onClearAll={clearAll}
           searchKey={searchKey}
+          dealCount={stats?.dealCount ?? null}
           density={prefs.density}
           showDetailPanel={prefs.showDetailPanel}
           wide={viewMode === 'data'}

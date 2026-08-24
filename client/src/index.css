@@ -1949,6 +1949,35 @@ body {
   height: 9px;
 }
 
+/* Multi-tranche deals are grouped by omission, not decoration: shared fields
+   render once and only the dividers inside the deal disappear. Single-tranche
+   rows retain the table's normal hairline. */
+.issuance-grid .ag-row.deal-band > .ag-grid-pinned-left-cells,
+.issuance-grid .ag-row.deal-band > .ag-grid-scrolling-cells {
+  border-bottom-color: transparent;
+}
+
+/* Last tranche of the deal: the divider below it is a deal boundary again. */
+.issuance-grid .ag-row.deal-band-end > .ag-grid-pinned-left-cells,
+.issuance-grid .ag-row.deal-band-end > .ag-grid-scrolling-cells {
+  border-bottom-color: #f1f1f0;
+}
+
+/* Selecting any tranche tints its whole deal. Rows the grid does not consider
+   selected have no overlay element of their own, so this paints one to match the
+   built-in .ag-row-selected treatment, and outranks hover so the deal stays blue
+   while the pointer moves down it. */
+.issuance-grid .ag-row.deal-selected > .ag-grid-pinned-left-cells::before,
+.issuance-grid .ag-row.deal-selected > .ag-grid-scrolling-cells::before {
+  background-color: #eef4ff;
+  background-image: none;
+  content: '';
+  display: block;
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
 /* Resize handles read as column rules at rest, so only show them on hover. */
 .issuance-grid .ag-header-cell-resize::after {
   background-color: transparent;

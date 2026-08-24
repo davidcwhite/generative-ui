@@ -1,9 +1,10 @@
-import { memo, useEffect, useMemo, useRef } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   CellStyleModule,
   InfiniteRowModelModule,
   ModuleRegistry,
   RowSelectionModule,
+  RowStyleModule,
   ScrollApiModule,
   ValidationModule,
   themeQuartz,
@@ -12,8 +13,13 @@ import {
   type IDatasource,
 } from 'ag-grid-community';
 import { AgGridReact, type CustomCellRendererProps } from 'ag-grid-react';
-import { fetchIssuanceRows, type IssuanceQuery, type IssuanceRowSort } from './issuanceApi';
-import type { IssuanceRecord, IssuanceStatus } from './issuanceData';
+import {
+  fetchIssuanceRows,
+  type IssuanceGridRow,
+  type IssuanceQuery,
+  type IssuanceRowSort,
+} from './issuanceApi';
+import type { IssuanceStatus } from './issuanceData';
 
 /**
  * Only the features this grid uses. `AllCommunityModule` would pull in the
@@ -26,6 +32,8 @@ ModuleRegistry.registerModules([
   InfiniteRowModelModule,
   RowSelectionModule,
   CellStyleModule,
+  /** Deal banding classes arrive via rowClassRules. */
+  RowStyleModule,
   ScrollApiModule,
   ...(import.meta.env.DEV ? [ValidationModule] : []),
 ]);
@@ -88,7 +96,7 @@ const STATUS_STYLES: Record<IssuanceStatus, { dot: string; text: string }> = {
   Priced: { dot: 'bg-stone-300', text: 'text-stone-500' },
 };
 
-function StatusCell({ value }: CustomCellRendererProps<IssuanceRecord, IssuanceStatus>) {
+function StatusCell({ value }: CustomCellRendererProps<IssuanceGridRow, IssuanceStatus>) {
   if (!value) return null;
   const style = STATUS_STYLES[value];
   return (
@@ -100,10 +108,29 @@ function StatusCell({ value }: CustomCellRendererProps<IssuanceRecord, IssuanceS
 }
 
 /**
+ * Issuer names the whole deal. The count is the only extra visual signal:
+ * follow-on rows simply omit repeated deal-level fields and their divider.
+ */
+function IssuerCell({ value, data }: CustomCellRendererProps<IssuanceGridRow, string>) {
+  if (!value) return null;
+  const groupSize = data?.groupSize ?? 1;
+  return (
+    <span className="flex h-full min-w-0 items-center gap-2">
+      <span className="truncate">{value}</span>
+      {groupSize > 1 && (
+        <span className="shrink-0 text-[9px] font-medium uppercase tracking-[0.07em] text-stone-400 tabular-nums">
+          {groupSize} tranches
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
  * Rendered in every cell of a block that has not arrived yet. Widths vary by
  * column so a loading region still looks like a table rather than a grey slab.
  */
-function LoadingCell({ column }: CustomCellRendererProps<IssuanceRecord>) {
+function LoadingCell({ column }: CustomCellRendererProps<IssuanceGridRow>) {
   const colId = column?.getColId() ?? '';
   const width = LOADING_CELL_WIDTHS[colId] ?? '60%';
   return (
@@ -118,8 +145,20 @@ function LoadingCell({ column }: CustomCellRendererProps<IssuanceRecord>) {
  * skeleton is injected per cell. Returning undefined leaves loaded rows on the
  * column's own renderer.
  */
-const loadingAwareRenderer = ({ data }: { data?: IssuanceRecord }) =>
+const loadingAwareRenderer = ({ data }: { data?: IssuanceGridRow }) =>
   data ? undefined : { component: LoadingCell };
+
+const BlankCell = () => null;
+
+/**
+ * Deal-scoped columns render once per deal: repeated values on follow-on
+ * tranche rows blank out, emulating a merged cell. Unloaded rows (data
+ * undefined) still get the skeleton — banding only applies to loaded data.
+ */
+const dealScopedRenderer = ({ data }: { data?: IssuanceGridRow }) => {
+  if (!data) return { component: LoadingCell };
+  return data.groupHead ? undefined : { component: BlankCell };
+};
 
 const LOADING_CELL_WIDTHS: Record<string, string> = {
   status: '52px',
@@ -138,7 +177,7 @@ const LOADING_CELL_WIDTHS: Record<string, string> = {
   cover: '32px',
 };
 
-const COLUMNS: ColDef<IssuanceRecord>[] = [
+const COLUMNS: ColDef<IssuanceGridRow>[] = [
   {
     field: 'status',
     headerName: 'STATUS',
@@ -146,12 +185,14 @@ const COLUMNS: ColDef<IssuanceRecord>[] = [
     pinned: 'left',
     sortable: false,
     cellRenderer: StatusCell,
+    cellRendererSelector: dealScopedRenderer,
   },
   {
     field: 'pricingDate',
     headerName: 'PRICED',
     width: 104,
     sort: 'desc',
+    cellRendererSelector: dealScopedRenderer,
     valueFormatter: ({ value }) => (value ? PRICED_DATE.format(new Date(String(value))) : ''),
   },
   {
@@ -161,9 +202,23 @@ const COLUMNS: ColDef<IssuanceRecord>[] = [
     flex: 1.2,
     pinned: 'left',
     cellClass: 'font-medium text-stone-950',
+    cellRenderer: IssuerCell,
+    cellRendererSelector: dealScopedRenderer,
   },
-  { field: 'ticker', headerName: 'TICKER', width: 92, cellClass: 'text-stone-500' },
-  { field: 'region', headerName: 'REGION', minWidth: 130, flex: 0.7 },
+  {
+    field: 'ticker',
+    headerName: 'TICKER',
+    width: 92,
+    cellClass: 'text-stone-500',
+    cellRendererSelector: dealScopedRenderer,
+  },
+  {
+    field: 'region',
+    headerName: 'REGION',
+    minWidth: 130,
+    flex: 0.7,
+    cellRendererSelector: dealScopedRenderer,
+  },
   { field: 'currency', headerName: 'CCY', width: 72 },
   {
     field: 'size',
@@ -173,8 +228,19 @@ const COLUMNS: ColDef<IssuanceRecord>[] = [
     valueFormatter: ({ data }) => (data ? `${data.currency} ${data.size.toLocaleString()}m` : ''),
   },
   { field: 'tenor', headerName: 'TENOR', width: 82 },
-  { field: 'rating', headerName: 'RATING', width: 106 },
-  { field: 'sector', headerName: 'SECTOR', minWidth: 125, flex: 0.8 },
+  {
+    field: 'rating',
+    headerName: 'RATING',
+    width: 106,
+    cellRendererSelector: dealScopedRenderer,
+  },
+  {
+    field: 'sector',
+    headerName: 'SECTOR',
+    minWidth: 125,
+    flex: 0.8,
+    cellRendererSelector: dealScopedRenderer,
+  },
   {
     field: 'spread',
     headerName: 'SPREAD',
@@ -207,7 +273,7 @@ const COLUMNS: ColDef<IssuanceRecord>[] = [
   },
 ];
 
-const DEFAULT_COL_DEF: ColDef<IssuanceRecord> = {
+const DEFAULT_COL_DEF: ColDef<IssuanceGridRow> = {
   sortable: true,
   filter: false,
   resizable: true,
@@ -236,15 +302,17 @@ export const IssuanceGrid = memo(function IssuanceGrid({
 }: {
   query: IssuanceQuery;
   density?: keyof typeof DENSITY;
-  onSelect: (record: IssuanceRecord) => void;
+  onSelect: (record: IssuanceGridRow) => void;
   /** First row of the first block, used before the user picks anything. */
-  onDefaultRow: (record: IssuanceRecord | null) => void;
+  onDefaultRow: (record: IssuanceGridRow | null) => void;
   onTotalRowsChange: (total: number | null) => void;
   onLoadingChange: (loading: boolean) => void;
 }) {
-  const apiRef = useRef<GridApi<IssuanceRecord> | null>(null);
+  const apiRef = useRef<GridApi<IssuanceGridRow> | null>(null);
   const sortRef = useRef<IssuanceRowSort | null>({ colId: 'pricingDate', direction: 'desc' });
   const pendingBlocks = useRef(0);
+  /** A click tints the whole deal, not just the clicked tranche row. */
+  const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
 
   /**
    * Rebuilding the datasource purges every cached block, so it may only depend
@@ -288,15 +356,36 @@ export const IssuanceGrid = memo(function IssuanceGrid({
   );
 
   // Scroll back to the top whenever the result set changes underneath the user.
+  // The row choice is invalidated upstream at the same time, so the tint goes too.
   useEffect(() => {
+    setSelectedDealId(null);
     apiRef.current?.ensureIndexVisible(0, 'top');
   }, [query]);
+
+  /**
+   * A fresh rules object per selection: AG Grid re-applies row classes when the
+   * rowClassRules option changes identity, which re-tints live rows in place.
+   * (redrawRows is not available with this module set, and a ref would leave
+   * already-rendered rows stale.)
+   */
+  const rowClassRules = useMemo(
+    () => ({
+      /** Any row of a multi-tranche deal; single-tranche deals stay untouched. */
+      'deal-band': ({ data }: { data?: IssuanceGridRow }) => (data?.groupSize ?? 1) > 1,
+      /** Last visible tranche, which closes the band on the deal boundary. */
+      'deal-band-end': ({ data }: { data?: IssuanceGridRow }) =>
+        data != null && data.groupSize > 1 && data.groupIndex === data.groupSize - 1,
+      'deal-selected': ({ data }: { data?: IssuanceGridRow }) =>
+        data != null && data.dealId === selectedDealId,
+    }),
+    [selectedDealId],
+  );
 
   const sizing = DENSITY[density];
 
   return (
     <div className="issuance-grid h-[560px] w-full">
-      <AgGridReact<IssuanceRecord>
+      <AgGridReact<IssuanceGridRow>
         theme={sizing.theme}
         columnDefs={COLUMNS}
         rowModelType="infinite"
@@ -313,11 +402,14 @@ export const IssuanceGrid = memo(function IssuanceGrid({
         rowHeight={sizing.rowHeight}
         headerHeight={sizing.headerHeight}
         rowSelection={ROW_SELECTION}
+        rowClassRules={rowClassRules}
         onGridReady={({ api }) => {
           apiRef.current = api;
         }}
         onRowClicked={({ data }) => {
-          if (data) onSelect(data);
+          if (!data) return;
+          onSelect(data);
+          setSelectedDealId(data.dealId);
         }}
         overlayNoRowsTemplate="<span class='text-xs text-stone-500'>No issuance matches these filters.</span>"
       />

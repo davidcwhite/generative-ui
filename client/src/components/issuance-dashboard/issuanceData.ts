@@ -17,6 +17,14 @@ export type Granularity = 'daily' | 'weekly' | 'monthly' | 'quarterly';
 
 export interface IssuanceRecord {
   id: string;
+  /** Groups tranches priced together as one deal. */
+  dealId: string;
+  /** Position on the deal's tenor ladder, shortest tranche first. */
+  trancheIndex: number;
+  /** Tranches in the deal before any filtering. */
+  trancheCount: number;
+  /** Whole-deal size across all tranches, EUR-equivalent millions. */
+  dealEurEquivalent: number;
   pricingDate: string;
   monthKey: string;
   issuer: string;
@@ -244,6 +252,10 @@ function buildMonths(): MonthSeed[] {
 const MONTHS = buildMonths();
 const ISSUER_WEIGHTS = ISSUERS.map((seed) => seed.weight);
 
+/** Tranche counts per deal: mostly singles, a thin tail of jumbo prints. */
+const TRANCHE_COUNTS = [1, 2, 3, 4, 5, 6] as const;
+const TRANCHE_COUNT_WEIGHTS = [55, 25, 12, 4, 2.5, 1.5] as const;
+
 function buildRows(): IssuanceRecord[] {
   const random = mulberry32(20260724);
   const rows: IssuanceRecord[] = [];
@@ -253,41 +265,75 @@ function buildRows(): IssuanceRecord[] {
     const seasonal = month.month === 1 || month.month === 9 ? 1.4 : month.month === 8 ? 0.45 : 1;
     // The current month is only part-run, so scale supply by how much of it has passed.
     const complete = month.days.length / 21;
-    const dealCount = Math.max(3, Math.round((11 + random() * 6) * seasonal * Math.min(1, complete)));
+    // Fewer deals than the single-tranche dataset: multi-tranche deals keep the
+    // total tranche-row count in the same ~850–1,000 band.
+    const dealCount = Math.max(2, Math.round((6 + random() * 4) * seasonal * Math.min(1, complete)));
 
     for (let dealIndex = 0; dealIndex < dealCount; dealIndex += 1) {
       const seed = pick(ISSUERS, ISSUER_WEIGHTS, random);
-      const size = SIZES[Math.floor(random() * SIZES.length)];
-      const spread = 48 + Math.round(random() * 118);
-      const nip = 1 + Math.round(random() * 11);
-      const cover = Number((1.6 + random() * 3.4).toFixed(1));
       const day = pick(month.days, month.weights, random);
+      const dealId = `deal-${month.key}-${dealIndex + 1}`;
+      const pricingDate = `${month.key}-${pad(day)}`;
 
-      rows.push({
-        id: `issue-${month.key}-${dealIndex + 1}`,
-        pricingDate: `${month.key}-${pad(day)}`,
-        monthKey: month.key,
-        issuer: seed.issuer,
-        ticker: seed.ticker,
-        region: seed.region,
-        sector: seed.sector,
-        rating: seed.rating,
-        currency: seed.currency,
-        size,
-        eurEquivalent: Math.round(size * EUR_RATES[seed.currency]),
-        tenor: TENORS[Math.floor(random() * TENORS.length)],
-        coupon: Number((2.125 + Math.round(random() * 14) * 0.125).toFixed(3)),
-        spread,
-        nip,
-        book: Math.round(size * cover),
-        cover,
-        leads: seed.leads,
-        status: 'Priced',
+      const trancheCount = pick(TRANCHE_COUNTS, TRANCHE_COUNT_WEIGHTS, random);
+      // Distinct tenors, ascending: a deal ladders out along the curve.
+      const tenorIndices = new Set<number>();
+      while (tenorIndices.size < trancheCount) {
+        tenorIndices.add(Math.floor(random() * TENORS.length));
+      }
+      const ladder = [...tenorIndices].sort((a, b) => a - b);
+
+      // Credit quality sets the base spread; each longer tranche pays a term premium.
+      let spread = 46 + Math.round(random() * 96) + ladder[0] * 2;
+
+      const tranches = ladder.map((tenorIndex, trancheIndex) => {
+        if (trancheIndex > 0) {
+          spread += Math.max(
+            2,
+            Math.round((tenorIndex - ladder[trancheIndex - 1]) * (3 + random() * 5)),
+          );
+        }
+        const size = SIZES[Math.floor(random() * SIZES.length)];
+        const nip = 1 + Math.round(random() * 11);
+        const cover = Number((1.6 + random() * 3.4).toFixed(1));
+
+        return {
+          id: `${dealId}-t${trancheIndex + 1}`,
+          dealId,
+          trancheIndex,
+          trancheCount,
+          pricingDate,
+          monthKey: month.key,
+          issuer: seed.issuer,
+          ticker: seed.ticker,
+          region: seed.region,
+          sector: seed.sector,
+          rating: seed.rating,
+          currency: seed.currency,
+          size,
+          eurEquivalent: Math.round(size * EUR_RATES[seed.currency]),
+          tenor: TENORS[tenorIndex],
+          coupon: Number((2.125 + Math.round(random() * 14) * 0.125).toFixed(3)),
+          spread,
+          nip,
+          book: Math.round(size * cover),
+          cover,
+          leads: seed.leads,
+          status: 'Priced' as IssuanceStatus,
+        };
       });
+
+      const dealEurEquivalent = tranches.reduce((sum, tranche) => sum + tranche.eurEquivalent, 0);
+      tranches.forEach((tranche) => rows.push({ ...tranche, dealEurEquivalent }));
     }
   });
 
-  rows.sort((a, b) => b.pricingDate.localeCompare(a.pricingDate));
+  rows.sort(
+    (a, b) =>
+      b.pricingDate.localeCompare(a.pricingDate) ||
+      a.dealId.localeCompare(b.dealId) ||
+      a.trancheIndex - b.trancheIndex,
+  );
 
   // Deals inside the last fortnight are still being executed or watched.
   const latest = `${LATEST.year}-${pad(LATEST.month)}-${pad(LATEST.day)}`;
@@ -463,12 +509,14 @@ function categoryLimit(dimension: Dimension) {
  * so a stack never grows more bands than the ramp can distinguish.
  */
 export function rankCategories(rows: IssuanceRecord[], dimension: Dimension): CategorySlice[] {
-  const totals = new Map<string, { volume: number; deals: number }>();
+  // Volume sums every tranche; deals count distinct dealIds. All groupable
+  // dimensions are deal-scoped, so a deal never straddles two categories.
+  const totals = new Map<string, { volume: number; deals: Set<string> }>();
   rows.forEach((row) => {
     const key = row[dimension];
-    const current = totals.get(key) ?? { volume: 0, deals: 0 };
+    const current = totals.get(key) ?? { volume: 0, deals: new Set<string>() };
     current.volume += row.eurEquivalent / 1000;
-    current.deals += 1;
+    current.deals.add(row.dealId);
     totals.set(key, current);
   });
 
@@ -476,7 +524,7 @@ export function rankCategories(rows: IssuanceRecord[], dimension: Dimension): Ca
     .map(([category, value]) => ({
       category,
       volume: Number(value.volume.toFixed(1)),
-      deals: value.deals,
+      deals: value.deals.size,
     }))
     .sort((a, b) => b.volume - a.volume);
 
@@ -534,6 +582,8 @@ export function buildSeries(
   const keys = bucketKeysBetween(from, to, granularity);
   const multiYear = from.slice(0, 4) !== to.slice(0, 4);
   const otherSet = new Set(otherValues);
+  // Distinct deals per bucket, kept off the point so its index signature stays numeric.
+  const bucketDeals = new Map<string, Set<string>>();
 
   const points = new Map<string, SeriesPoint>(
     keys.map((key) => {
@@ -552,11 +602,17 @@ export function buildSeries(
   );
 
   rows.forEach((row) => {
-    const point = points.get(bucketKeyOf(row.pricingDate, granularity));
+    const bucketKey = bucketKeyOf(row.pricingDate, granularity);
+    const point = points.get(bucketKey);
     if (!point) return;
     const volume = row.eurEquivalent / 1000;
     point.total = (point.total as number) + volume;
-    point.deals = (point.deals as number) + 1;
+    let deals = bucketDeals.get(bucketKey);
+    if (!deals) {
+      deals = new Set();
+      bucketDeals.set(bucketKey, deals);
+    }
+    deals.add(row.dealId);
     if (!categories || !dimension) return;
     const raw = row[dimension];
     const category = otherSet.has(raw) ? OTHER_CATEGORY : raw;
@@ -566,7 +622,11 @@ export function buildSeries(
   });
 
   return [...points.values()].map((point) => {
-    const rounded: SeriesPoint = { ...point, total: Number((point.total as number).toFixed(2)) };
+    const rounded: SeriesPoint = {
+      ...point,
+      total: Number((point.total as number).toFixed(2)),
+      deals: bucketDeals.get(point.key)?.size ?? 0,
+    };
     categories?.forEach((category) => {
       rounded[category.category] = Number((point[category.category] as number).toFixed(2));
     });

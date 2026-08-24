@@ -27,6 +27,7 @@ data that is already on screen is never blanked out while newer data loads.
 | [10-ag-grid-and-detail-draft.md](./10-ag-grid-and-detail-draft.md) | Draft: the complete AG Grid, infinite paging, loading rows, selection, and issuance detail card |
 | [11-ag-grid-loading-diagnostics.md](./11-ag-grid-loading-diagnostics.md) | Diagnose blank skeleton rows, pinned-only layouts, disappearing data, and datasource races |
 | [12-stacked-bar-radius-diagnostics.md](./12-stacked-bar-radius-diagnostics.md) | Diagnose rounded caps inside sparse stacks and implement stack-level or per-datum rounding |
+| [13-multi-tranche-deal-view.md](./13-multi-tranche-deal-view.md) | Portable deal/tranche data model, grouped Community grid, deal card, view toggle and Enterprise alternatives |
 
 Start with the [page map](./01-design-system.md#page-map) — it names the eight
 regions and links each to its own specification. Then read 01 and 02 to build
